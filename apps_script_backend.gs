@@ -135,6 +135,46 @@ function readSpecialAwards() {
   return awards;
 }
 
+// CacheService allows max ~100KB per key, so store the payload in chunks.
+// All cache operations are best-effort: caching must never break the response.
+const CACHE_CHUNK = 90000;
+
+function cacheGetLarge(cache, baseKey) {
+  try {
+    const meta = cache.get(baseKey + '_n');
+    if (!meta) return null;
+    const n = parseInt(meta, 10);
+    if (!(n > 0)) return null;
+    const keys = [];
+    for (let i = 0; i < n; i++) keys.push(baseKey + '_' + i);
+    const parts = cache.getAll(keys);
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      const p = parts[baseKey + '_' + i];
+      if (p == null) return null; // a chunk expired -> treat as a miss
+      out += p;
+    }
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+function cachePutLarge(cache, baseKey, value, ttl) {
+  try {
+    const obj = {};
+    let n = 0;
+    for (let i = 0; i < value.length; i += CACHE_CHUNK) {
+      obj[baseKey + '_' + n] = value.substring(i, i + CACHE_CHUNK);
+      n++;
+    }
+    obj[baseKey + '_n'] = String(n);
+    cache.putAll(obj, ttl);
+  } catch (e) {
+    // best-effort only
+  }
+}
+
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'data';
   const fresh = e && e.parameter && (e.parameter.fresh === '1' || e.parameter.nocache === '1');
@@ -147,9 +187,9 @@ function doGet(e) {
       // Serve from a short-lived cache to keep polling fast and save quota.
       // `?fresh=1` (manual refresh) bypasses the cache and refreshes it.
       const cache = CacheService.getScriptCache();
-      const CACHE_KEY = 'wc_data_v1';
+      const CACHE_KEY = 'wc_data_v2';
       if (!fresh) {
-        const hit = cache.get(CACHE_KEY);
+        const hit = cacheGetLarge(cache, CACHE_KEY);
         if (hit) {
           return ContentService.createTextOutput(hit)
             .setMimeType(ContentService.MimeType.JSON);
@@ -184,7 +224,7 @@ function doGet(e) {
         special_awards: readSpecialAwards()
       });
 
-      cache.put(CACHE_KEY, payload, 30); // cache 30s
+      cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
       return ContentService.createTextOutput(payload)
         .setMimeType(ContentService.MimeType.JSON);
     }
