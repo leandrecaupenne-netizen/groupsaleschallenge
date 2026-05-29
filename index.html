@@ -1226,12 +1226,13 @@ function setSyncWarning(show) {
 }
 
 // Animate [data-countup] numbers from 0 to their value, respecting their format.
+// Uses dash-free formatters so the zero frame shows "0"/"0.0%" rather than "—".
 function animateCountUps() {
   const fmtVal = (v, fmt) => {
     if (fmt === 'money') return fmtMoney(v);
-    if (fmt === 'pct') return fmtPct(v);
+    if (fmt === 'pct') return `${(v * 100).toFixed(1)}%`;
     if (fmt === 'int') return Math.round(v).toFixed(0);
-    return fmtNum(v);
+    return v.toFixed(1);
   };
   document.querySelectorAll('[data-countup]').forEach(el => {
     const to = parseFloat(el.getAttribute('data-countup'));
@@ -1385,7 +1386,7 @@ function renderPlaymaker() {
         <p class="section-subtitle">Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, &gt; €50K)</p>
       </div>
       <div class="individuals-grid">
-        ${top5.map((p, i) => renderIndivCard(p, i+1, p.opps.toFixed(0), 'Opportunities Created', [
+        ${top5.map((p, i) => renderIndivCard(p, i+1, Number(p.opps||0).toFixed(0), 'Opportunities Created', [
           `${fmtNum(p.meetings)} meet/wk`,
           `${fmtMoney(p.ps_total)} PS total`
         ], 'playmaker')).join('')}
@@ -1794,7 +1795,7 @@ function renderPositionDetails(person) {
     {
       label: 'Playmaker Rank',
       value: playmakerRank ? `#${playmakerRank}` : '—',
-      sub: `${person.opps} opportunities`,
+      sub: `${Number(person.opps||0)} opportunities`,
       highlight: playmakerRank && playmakerRank <= 5
     },
     {
@@ -1924,7 +1925,7 @@ function renderTeamModal() {
                   <div class="member-stat col-gm">${fmtPct(m.ps_total_gm)}</div>
                   <div class="member-stat col-meet">${fmtNum(m.meetings)}</div>
                   <div class="col-opps">
-                    <span class="member-stat">${m.opps.toFixed(0)} opps</span>
+                    <span class="member-stat">${Number(m.opps||0).toFixed(0)} opps</span>
                     <span class="member-cards">${cards.join('')}</span>
                   </div>
                 </div>
@@ -2237,20 +2238,24 @@ function renderTV() {
 // === LIVE: polling ===
 let pollIntervalId = null;
 
+// Background refresh used by polling and on tab re-focus: uses the server cache
+// (fresh=false) to stay fast and protect the Apps Script quota, and never
+// replays entrance animations.
+async function backgroundRefresh() {
+  const success = await fetchData(false);
+  if (success) {
+    const scrollY = window.scrollY;
+    suppressAnim = true;
+    try { render(); } finally { suppressAnim = false; }
+    window.scrollTo(0, scrollY);
+    if (tvMode) renderTV(); // keep the projection panel live
+  }
+  return success;
+}
+
 function startPolling() {
   stopPolling();
-  pollIntervalId = setInterval(async () => {
-    const success = await fetchData();
-    if (success) {
-      // Re-render while preserving scroll position and any open modal.
-      const scrollY = window.scrollY;
-      suppressAnim = true;          // background refresh: no replayed animations
-      render();
-      suppressAnim = false;
-      window.scrollTo(0, scrollY);
-      if (tvMode) renderTV();       // keep the projection panel live
-    }
-  }, CONFIG.POLL_INTERVAL_MS);
+  pollIntervalId = setInterval(backgroundRefresh, CONFIG.POLL_INTERVAL_MS);
 }
 
 function stopPolling() {
@@ -2261,7 +2266,7 @@ function stopPolling() {
 document.addEventListener('visibilitychange', () => {
   if (!isLoggedIn()) return;
   if (document.hidden) stopPolling();
-  else { manualRefresh(); startPolling(); }
+  else { backgroundRefresh(); startPolling(); } // cached refresh, not a cache-bypass
 });
 
 // === LIVE: manual refresh (header button) ===
@@ -2271,8 +2276,7 @@ async function manualRefresh() {
   const scrollY = window.scrollY;
   await fetchData(true); // force a fresh read, bypass server cache
   suppressAnim = true;
-  render();
-  suppressAnim = false;
+  try { render(); } finally { suppressAnim = false; }
   window.scrollTo(0, scrollY);
   if (tvMode) renderTV();
   if (btn) setTimeout(() => btn.classList.remove('spinning'), 600);
