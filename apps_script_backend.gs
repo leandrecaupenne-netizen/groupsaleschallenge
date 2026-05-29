@@ -175,6 +175,61 @@ function cachePutLarge(cache, baseKey, value, ttl) {
   }
 }
 
+function getCorrectPassword() {
+  const config = readConfig();
+  return (config.password !== undefined && config.password !== '')
+    ? String(config.password) : String(SETTINGS.PASSWORD);
+}
+
+function passwordOk(pw) {
+  return String(pw == null ? '' : pw) === getCorrectPassword();
+}
+
+// Build (or serve from cache) the data payload as a JSON ContentService output.
+function dataResponse(fresh) {
+  const cache = CacheService.getScriptCache();
+  const CACHE_KEY = 'wc_data_v2';
+  if (!fresh) {
+    const hit = cacheGetLarge(cache, CACHE_KEY);
+    if (hit) {
+      return ContentService.createTextOutput(hit)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  const config = readConfig();
+
+  const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP)
+    .filter(t => !isExcluded(t.country));
+
+  const people = readMapped(SETTINGS.PEOPLE_TAB, PEOPLE_MAP)
+    .filter(p => !isExcluded(p.team))
+    .map(p => {
+      const tenure = String(p.tenure || '');
+      return Object.assign({}, p, {
+        is_rookie: tenure.indexOf('months') !== -1 || tenure.indexOf('<') !== -1,
+        yellow_meetings: (p.meetings || 0) < 5,
+        yellow_gm: (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0
+      });
+    });
+
+  const payload = JSON.stringify({
+    teams: teams,
+    people: people,
+    updated_at: config.last_update || new Date().toISOString(),
+    period: config.period || SETTINGS.PERIOD,
+    challenge_dates: {
+      start: config.challenge_start || SETTINGS.CHALLENGE_START,
+      end: config.challenge_end || SETTINGS.CHALLENGE_END
+    },
+    special_awards: readSpecialAwards()
+  });
+
+  cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
+  return ContentService.createTextOutput(payload)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'data';
   const fresh = e && e.parameter && (e.parameter.fresh === '1' || e.parameter.nocache === '1');
@@ -184,49 +239,12 @@ function doGet(e) {
     }
 
     if (action === 'data') {
-      // Serve from a short-lived cache to keep polling fast and save quota.
-      // `?fresh=1` (manual refresh) bypasses the cache and refreshes it.
-      const cache = CacheService.getScriptCache();
-      const CACHE_KEY = 'wc_data_v2';
-      if (!fresh) {
-        const hit = cacheGetLarge(cache, CACHE_KEY);
-        if (hit) {
-          return ContentService.createTextOutput(hit)
-            .setMimeType(ContentService.MimeType.JSON);
-        }
+      // Data requires the password. The web app sends it via POST (below); a `pw`
+      // query param is allowed too (handy for manual checks). No password -> no data.
+      if (!passwordOk(e && e.parameter && e.parameter.pw)) {
+        return jsonResponse({ error: 'unauthorized' });
       }
-
-      const config = readConfig();
-
-      const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP)
-        .filter(t => !isExcluded(t.country));
-
-      const people = readMapped(SETTINGS.PEOPLE_TAB, PEOPLE_MAP)
-        .filter(p => !isExcluded(p.team))
-        .map(p => {
-          const tenure = String(p.tenure || '');
-          return Object.assign({}, p, {
-            is_rookie: tenure.indexOf('months') !== -1 || tenure.indexOf('<') !== -1,
-            yellow_meetings: (p.meetings || 0) < 5,
-            yellow_gm: (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0
-          });
-        });
-
-      const payload = JSON.stringify({
-        teams: teams,
-        people: people,
-        updated_at: config.last_update || new Date().toISOString(),
-        period: config.period || SETTINGS.PERIOD,
-        challenge_dates: {
-          start: config.challenge_start || SETTINGS.CHALLENGE_START,
-          end: config.challenge_end || SETTINGS.CHALLENGE_END
-        },
-        special_awards: readSpecialAwards()
-      });
-
-      cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
-      return ContentService.createTextOutput(payload)
-        .setMimeType(ContentService.MimeType.JSON);
+      return dataResponse(fresh);
     }
 
     return jsonResponse({ error: 'Unknown action' });
@@ -238,12 +256,18 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
     if (data.action === 'verify_password') {
-      const config = readConfig();
-      const correct = (config.password !== undefined && config.password !== '')
-        ? config.password : SETTINGS.PASSWORD;
-      return jsonResponse({ ok: String(data.password) === String(correct) });
+      return jsonResponse({ ok: passwordOk(data.password) });
     }
+
+    if (data.action === 'data') {
+      if (!passwordOk(data.password)) {
+        return jsonResponse({ error: 'unauthorized' });
+      }
+      return dataResponse(data.fresh === true || data.fresh === '1');
+    }
+
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
     return jsonResponse({ error: err.message });

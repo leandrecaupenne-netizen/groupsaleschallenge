@@ -955,6 +955,7 @@ const CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec',
   POLL_INTERVAL_MS: 30000,  // 30 seconds
   SESSION_KEY: 'devoteam_wc_session_v1',
+  PWD_KEY: 'devoteam_wc_pwd_v1',   // stored access code, sent with each data request
   // Manual refresh is admin-only. Activate on YOUR device by opening the site with
   //   ?admin=<ADMIN_KEY>   (deactivate with ?admin=off). Change this secret as you like.
   ADMIN_KEY: 'leandre-refresh-2026',
@@ -1013,13 +1014,23 @@ function computeRankings() {
 }
 
 // === LIVE: data fetching ===
-// fresh=true bypasses the server-side 30s cache (used by the manual refresh).
+// The access code is sent in the POST body (never in the URL). fresh=true bypasses
+// the server-side 30s cache (used by the manual refresh).
 async function fetchData(fresh) {
   try {
-    const url = CONFIG.APPS_SCRIPT_URL + '?action=data' + (fresh ? '&fresh=1' : '');
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
+      body: JSON.stringify({ action: 'data', password: safeGet(CONFIG.PWD_KEY) || '', fresh: !!fresh })
+    });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    if (data.error === 'unauthorized') {
+      // Stored code is wrong/expired -> back to login.
+      logout();
+      return false;
+    }
     if (data.error) throw new Error(data.error);
 
     DATA = data;
@@ -1647,6 +1658,7 @@ function isLoggedIn() {
 
 function logout() {
   safeRemove(CONFIG.SESSION_KEY);
+  safeRemove(CONFIG.PWD_KEY);
   location.reload();
 }
 
@@ -1687,6 +1699,7 @@ async function attemptLogin(password) {
     const data = await res.json();
     if (data.ok) {
       safeSet(CONFIG.SESSION_KEY, '1');
+      safeSet(CONFIG.PWD_KEY, password); // needed to authorize each data request
       return true;
     }
     return false;
