@@ -809,6 +809,100 @@ input { font-family: inherit; }
   .header-status { gap: 6px; }
   .sync-warn { font-size: 9px; padding: 3px 6px; }
 }
+
+/* ===================================================================
+   MOBILE RESPONSIVE OVERHAUL
+   =================================================================== */
+
+/* Safety net: never allow sideways scrolling on small screens */
+html, body { max-width: 100%; overflow-x: hidden; }
+img, table { max-width: 100%; }
+* { min-width: 0; }
+
+@media (max-width: 760px) {
+  /* Header is not sticky (it scrolls away); pin the tabs to the very top so
+     there's no empty gap and the tabs stay reachable while scrolling. */
+  .app-header { padding: 12px 16px; gap: 12px; flex-wrap: wrap; }
+  .logo { gap: 10px; }
+  .logo-img { width: 42px; height: 42px; }
+  .logo-text .title { font-size: 18px; }
+  .logo-text .subtitle { font-size: 9px; letter-spacing: 0.12em; }
+  .tabs-bar { top: 0; padding: 0 8px; gap: 2px; }
+  .tab-btn { padding: 12px 12px; font-size: 12px; }
+  .header-status { gap: 8px; }
+}
+
+@media (max-width: 600px) {
+  .section { padding: 20px 14px; }
+  .section-title { font-size: 26px; }
+  .section-subtitle { font-size: 13px; }
+  .hero { padding: 26px 14px 32px; }
+  .hero-title { font-size: 30px; }
+  .hero-eyebrow { font-size: 10px; }
+  .hero-desc { font-size: 13px; margin-bottom: 20px; }
+
+  /* All multi-column card grids collapse to one column to avoid the
+     minmax() min-widths (280–300px) overflowing narrow phones. */
+  .individuals-grid,
+  .awards-grid,
+  .position-stats,
+  .modal-summary { grid-template-columns: 1fr; }
+
+  /* Search input must not force a 280px minimum on a ~320px screen */
+  .search-row { gap: 8px; }
+  .search-input { min-width: 0; width: 100%; flex: 1 1 100%; }
+
+  /* Teams table → 3 columns: rank · team · avg PS (the ranking metric) */
+  .teams-table-header,
+  .teams-table-row {
+    grid-template-columns: 40px 1fr 88px;
+    font-size: 12px; padding: 10px 12px; gap: 8px;
+  }
+  /* hide MEMBERS(3), AVG GM(5), AVG OPPS(7) via classes + AVG MEET(6) by position */
+  .teams-table-header > div:nth-child(6),
+  .teams-table-row   > div:nth-child(6) { display: none; }
+  .teams-table-row .click-hint { display: none; }
+  .tt-money-sub { font-size: 10px; }
+
+  /* Long team / people names wrap instead of pushing layout wider */
+  .podium-team-name, .indiv-name, .indiv-team, .position-name,
+  .modal-title, .member-name, .award-row .name .full-name { overflow-wrap: anywhere; }
+
+  /* Podium: tighten so the winner card reads well stacked */
+  .podium-card, .podium-card.first { padding: 20px 16px; }
+  .podium-card.first .podium-rank { font-size: 48px; }
+  .podium-card.first .podium-team-name { font-size: 21px; }
+
+  /* Individual cards a touch more compact */
+  .indiv-rank { font-size: 34px; min-width: 38px; }
+  .indiv-rank.medal-1 { font-size: 40px; }
+
+  /* Modal becomes full-screen and comfortably padded */
+  .modal-overlay { padding: 0; }
+  .modal { max-width: 100%; min-height: 100%; border-radius: 0; }
+  .modal-header { padding: 16px; gap: 12px; }
+  .modal-title { font-size: 20px; }
+  .modal-subtitle { font-size: 10px; }
+  .modal-rank-badge { font-size: 26px; min-width: 42px; padding: 8px; }
+  .modal-summary { padding: 16px; gap: 12px; }
+  .modal-body { padding: 16px 16px 28px; }
+  .modal-section-title { font-size: 16px; }
+
+  .app-footer { padding: 22px 16px; }
+  .app-footer .countdown { font-size: 18px; }
+
+  /* Login card fits small screens */
+  .login-card { padding: 28px 22px; }
+  .login-title { font-size: 24px; }
+}
+
+@media (max-width: 380px) {
+  .hero-title { font-size: 25px; }
+  .section-title { font-size: 22px; }
+  .teams-table-header,
+  .teams-table-row { grid-template-columns: 30px 1fr 76px; font-size: 11px; padding: 9px 10px; }
+  .tab-btn { padding: 11px 9px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
