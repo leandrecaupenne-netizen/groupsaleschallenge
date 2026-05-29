@@ -989,9 +989,22 @@ img, table { max-width: 100%; }
 .tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
 .tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(24px, 3.6vw, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
-.tv-dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 1; padding-top: 2vh; }
-.tv-dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+.tv-dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 2; padding-top: 2vh; }
+.tv-dots span { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.15s, transform 0.15s; }
+.tv-dots span:hover { transform: scale(1.2); }
 .tv-dots span.on { background: var(--gold); }
+/* Prev / next arrows for manual navigation (swipe also works on touch) */
+.tv-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(255,255,255,0.10); color: #fff;
+  font-size: 34px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.tv-nav:hover { background: rgba(255,255,255,0.26); }
+.tv-prev { left: 2vw; }
+.tv-next { right: 2vw; }
+@media (max-width: 600px) { .tv-nav { width: 44px; height: 44px; font-size: 26px; } }
 .tv-anim { animation: tvFade 0.6s ease both; }
 @keyframes tvFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tv-anim { animation: none; } }
@@ -2054,16 +2067,34 @@ function render() {
   });
 }
 
-// ESC closes the TV overlay first, then the team modal.
+// Keyboard: in TV mode, ← / → switch panels and Esc exits; otherwise Esc closes
+// the team modal.
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
-  if (tvMode) { exitTV(); return; }
-  if (openTeamModal) {
+  if (tvMode) {
+    if (e.key === 'ArrowRight') { tvGo(1); return; }
+    if (e.key === 'ArrowLeft') { tvGo(-1); return; }
+    if (e.key === 'Escape') { exitTV(); return; }
+    return;
+  }
+  if (e.key === 'Escape' && openTeamModal) {
     openTeamModal = null;
     document.body.style.overflow = '';
     render();
   }
 });
+
+// Touch swipe to switch TV panels.
+let tvTouchX = null, tvTouchY = null;
+document.addEventListener('touchstart', e => {
+  if (tvMode && e.touches[0]) { tvTouchX = e.touches[0].clientX; tvTouchY = e.touches[0].clientY; }
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!tvMode || tvTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - tvTouchX;
+  const dy = e.changedTouches[0].clientY - tvTouchY;
+  tvTouchX = tvTouchY = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) tvGo(dx < 0 ? 1 : -1); // horizontal swipe only
+}, { passive: true });
 
 // Leaving fullscreen (browser Esc / F11) also exits TV mode.
 document.addEventListener('fullscreenchange', () => {
@@ -2161,6 +2192,27 @@ let tvMode = false, tvPanel = 0, tvTimer = null;
 const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight'];
 const TV_ROTATE_MS = 10000; // 10s per panel
 
+function startTvTimer() {
+  clearInterval(tvTimer);
+  tvTimer = setInterval(() => { tvPanel = (tvPanel + 1) % TV_PANELS.length; renderTV(); }, TV_ROTATE_MS);
+}
+
+// Manual navigation (swipe / arrows / arrows buttons / dots). Resets the auto
+// rotation so it doesn't jump immediately after a manual move.
+function tvGo(delta) {
+  if (!tvMode) return;
+  const n = TV_PANELS.length;
+  tvPanel = (tvPanel + delta + n) % n;
+  renderTV();
+  startTvTimer();
+}
+function tvGoto(i) {
+  if (!tvMode) return;
+  tvPanel = ((i % TV_PANELS.length) + TV_PANELS.length) % TV_PANELS.length;
+  renderTV();
+  startTvTimer();
+}
+
 function enterTV() {
   tvMode = true; tvPanel = 0;
   try {
@@ -2169,8 +2221,7 @@ function enterTV() {
     if (rfs) rfs.call(el).catch(() => {});
   } catch (e) {}
   renderTV();
-  clearInterval(tvTimer);
-  tvTimer = setInterval(() => { tvPanel = (tvPanel + 1) % TV_PANELS.length; renderTV(); }, TV_ROTATE_MS);
+  startTvTimer();
 }
 
 function exitTV() {
@@ -2226,16 +2277,24 @@ function renderTV() {
   const root = document.getElementById('tv-root');
   if (!root) return;
   root.innerHTML = `
-    <div class="tv-overlay">
+    <div class="tv-overlay" id="tv-overlay">
       <div class="tv-bar">
         <div class="tv-brand">DEVOTEAM WORLD CUP${period ? ' · ' + escapeHtml(period) : ''}</div>
         <button class="tv-close" id="tv-close" title="Exit (Esc)">✕ Exit</button>
       </div>
+      <button class="tv-nav tv-prev" id="tv-prev" aria-label="Previous">‹</button>
+      <button class="tv-nav tv-next" id="tv-next" aria-label="Next">›</button>
       <div class="tv-body tv-anim">${tvPanelHTML(TV_PANELS[tvPanel])}</div>
-      <div class="tv-dots">${TV_PANELS.map((_, i) => `<span class="${i === tvPanel ? 'on' : ''}"></span>`).join('')}</div>
+      <div class="tv-dots">${TV_PANELS.map((_, i) => `<span class="${i === tvPanel ? 'on' : ''}" data-i="${i}"></span>`).join('')}</div>
     </div>`;
   const c = document.getElementById('tv-close');
   if (c) c.addEventListener('click', exitTV);
+  const prev = document.getElementById('tv-prev');
+  const next = document.getElementById('tv-next');
+  if (prev) prev.addEventListener('click', () => tvGo(-1));
+  if (next) next.addEventListener('click', () => tvGo(1));
+  root.querySelectorAll('.tv-dots span').forEach(d =>
+    d.addEventListener('click', () => tvGoto(parseInt(d.getAttribute('data-i'), 10))));
 }
 
 // === LIVE: polling ===
