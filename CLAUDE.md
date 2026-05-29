@@ -762,8 +762,11 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - **Léandre CAUPENNE** (project owner, plateforme) : leandre.caupenne@devoteam.com
 - **Jose** (data owner Group Sales) : à compléter
 - **Devoteam IT** (pour DNS domaine custom) : à compléter
-- **URL Apps Script** : à renseigner après déploiement
-- **URL Vercel** : à renseigner après déploiement
+- **URL Apps Script** : `https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec`
+- **URL Vercel (preview branche)** : https://groupsaleschallenge-git-clau-a93676-leandre-caupenne-s-projects.vercel.app/
+- **URL Vercel (production)** : à définir dans Vercel → Settings → Domains (recommandé pour le lancement)
+- **Mot de passe d'accès** : `devoteam2026` (constante `SETTINGS.PASSWORD` dans `apps_script_backend.gs`)
+- **Clé admin (refresh manuel)** : `?admin=leandre-refresh-2026`
 - **Repo GitHub** : leandrecaupenne-netizen/groupsaleschallenge
 
 ---
