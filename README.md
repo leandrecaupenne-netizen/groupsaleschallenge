@@ -34,18 +34,22 @@ save Apps Script quota), with a manual refresh button and a "last updated" times
 
 ## Setup (one-time)
 
-### 1. Google Sheet
-Create the Sheet exactly as described in [`SHEET_SPEC.md`](./SHEET_SPEC.md) (tabs
-`Teams`, `People`, `Config`, and optionally `Special Awards`). Jose owns the data.
+### 1. Google Sheet — nothing to build
+The backend reads the **existing OneBI-fed sheet** directly: the `Team Ranking` tab
+(headers on row 2) and the `Challenge Ranking` tab (headers on row 1). The 3 excluded
+teams (Morocco/Serbia/Tunisia) are filtered out automatically. See
+[`SHEET_SPEC.md`](./SHEET_SPEC.md) for the exact columns to keep stable. Jose keeps his
+OneBI workflow unchanged — just don't rename those tabs or their headers.
 
 ### 2. Apps Script back-end
-1. In the Sheet: **Extensions → Apps Script**.
+1. In the OneBI sheet: **Extensions → Apps Script**.
 2. Paste the contents of [`apps_script_backend.gs`](./apps_script_backend.gs).
+   (Optionally edit the `SETTINGS` block: password, period, challenge dates.)
 3. Save, name the project `Devoteam World Cup API`.
 4. **Deploy → New deployment → Web app**.
    - Execute as: **Me**
-   - Who has access: **Anyone, even anonymous** (required, otherwise CORS blocks the fetch).
-5. Copy the `/exec` URL.
+   - Who has access: **Anyone** (required, otherwise CORS blocks the fetch).
+5. Authorize when prompted, then copy the `/exec` URL.
 6. Sanity check: open `<URL>?action=ping` in a browser → should return `{"ok":true,...}`.
 
 ### 3. Wire the front-end
@@ -60,8 +64,9 @@ const CONFIG = {
 };
 ```
 
-The access password is **not** in the code — it lives in the Sheet's `Config` tab
-(`password` key) and is verified server-side by the Apps Script `verify_password` action.
+The access password lives **server-side** (the `SETTINGS.PASSWORD` constant in
+`apps_script_backend.gs`, or a `Config` tab if you add one) and is verified by the Apps
+Script `verify_password` action — it is never shipped in the front-end.
 
 ### 4. Host on Vercel
 The GitHub repo is connected to Vercel, so deployment is automatic:
@@ -76,8 +81,9 @@ The GitHub repo is connected to Vercel, so deployment is automatic:
 
 ## How it works
 
-- **Login** — a password gate (stored server-side in the Sheet). On success a flag is kept
-  in `localStorage` (`SESSION_KEY`) so the session persists across reloads.
+- **Login** — a password gate verified server-side (Apps Script `SETTINGS.PASSWORD`, or a
+  `Config` tab override). On success a flag is kept in `localStorage` (`SESSION_KEY`) so the
+  session persists across reloads.
 - **Live data** — `fetchData()` calls `?action=data`; rankings are recomputed client-side.
 - **Polling** — every 30s, preserving scroll position and any open team modal; paused when
   the tab is hidden.
@@ -87,8 +93,9 @@ The GitHub repo is connected to Vercel, so deployment is automatic:
   show the jury winners from the optional `Special Awards` tab, or a "to be selected"
   placeholder if empty.
 
-To change the password, edit the `password` cell in the Sheet's `Config` tab — no redeploy
-needed. To force re-login on a device, clear the `devoteam_wc_session_v1` localStorage key.
+To change the password, edit `SETTINGS.PASSWORD` in `apps_script_backend.gs` and redeploy
+(or add a `password` row in a `Config` tab — no redeploy needed). To force re-login on a
+device, clear the `devoteam_wc_session_v1` localStorage key.
 
 ---
 

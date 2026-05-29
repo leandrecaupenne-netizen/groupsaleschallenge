@@ -1,137 +1,112 @@
 # Google Sheet Spec — Devoteam World Cup 2026
 
-> Document à transmettre à Jose (Group Sales) pour la création de la Google Sheet qui alimentera la plateforme web du Sales Challenge.
+> How the platform reads the **existing** OneBI-fed Google Sheet. Good news for Jose:
+> **nothing new to build.** The backend reads the tabs you already maintain. This doc
+> just lists the columns that must stay stable so the platform keeps working.
 
 ---
 
 ## Overview
 
-The platform reads data from a Google Sheet maintained by Jose. The Sheet acts as the **single source of truth** for live data, with values pulled from OneBI reports.
+The platform reads data from the Google Sheet maintained by Jose (fed from OneBI).
+A Google Apps Script (`apps_script_backend.gs`) maps two existing tabs to the JSON the
+web app consumes. Teams ranking comes from `Team Ranking`, individual data from
+`Challenge Ranking`. Columns are matched **by header name** (case / spaces / line-breaks
+are ignored), so column order can change without breaking anything — only the **header
+text** matters.
 
-**File name suggestion**: `Devoteam World Cup 2026 — Live Data`
-
-**Sharing**:
-- Léandre: edit access (to set up the Apps Script and validate structure)
-- Jose: edit access (primary data owner)
-- The Apps Script runs under one of these accounts and reads the Sheet on behalf of the web app
-
-**Sheet ID**: copy the long string in the URL between `/d/` and `/edit`. Share it with Léandre once created.
+**Sheet ID**: the long string in the URL between `/d/` and `/edit`. Share it with Léandre.
 
 ---
 
-## Tab 1: `Teams`
+## Tab 1: `Team Ranking` (already exists)
 
-Row 1 = headers, data starts at row 2. **32 teams expected** (Serbia, Tunisia and Morocco excluded).
+Headers are on **row 2**, data from **row 3**. The backend reads these columns by name:
 
-| Column | Type | Example | Notes |
-|--------|------|---------|-------|
-| `country` | string | `LUXEMBOURG` | Official team name, **must match exactly** the `team` value in the People tab |
-| `members` | int | `4` | Number of active members |
-| `total_ps` | number | `8056326.49` | Total PS Bookings (sum for the team) |
-| `avg_ps` | number | `2014081.62` | Average PS Bookings per person — **used for team ranking** |
-| `avg_gm` | number | `0.27` | Average GM as **decimal** (0.27 = 27%) |
-| `avg_meetings` | number | `5.67` | Average meetings per week (across members) |
-| `avg_opps` | number | `6.75` | Average opportunities created |
+| Header (must stay) | Used as | Notes |
+|--------------------|---------|-------|
+| `Country` | team name | Must match the `TEAM` value in `Challenge Ranking` |
+| `Team Members` | member count | |
+| `Total PS Booking` | team total | |
+| `Average PS Bookings` | **team ranking** | Teams are sorted on this |
+| `Average GM` | avg GM | decimal (0.27 = 27%) |
+| `Average Meetings` | avg meetings/week | |
+| `Average Opportunities` | avg opps | |
 
-**Important**:
-- GM values must be in **decimal** form (`0.27`, not `27` or `"27%"`)
-- Don't include header rows for groupings (e.g. no "FRANCE" group row above the FR teams)
-- One row = one team
-
----
-
-## Tab 2: `People`
-
-Row 1 = headers, data starts at row 2. **377 rows expected**.
-
-| Column | Type | Example | Notes |
-|--------|------|---------|-------|
-| `name` | string | `Louis MASSON` | Full name, must be unique |
-| `team` | string | `LUXEMBOURG` | **Must match exactly** a `country` in the Teams tab |
-| `tenure` | string | `Over a year` | Allowed values: `Over a year`, `Over 6 months`, `<6 months` |
-| `ps_total` | number | `2699249.5` | PS Bookings Total (all business) |
-| `ps_total_gm` | number | `0.30` | GM decimal on PS Total — used for Yellow Card detection (< 25%) |
-| `ps_nb` | number | `712462` | PS Bookings New Business — **used for Golden Boot ranking** |
-| `ps_nb_gm` | number | `0.29` | GM decimal on PS NB |
-| `licence_gm` | number | `26906` | Licence GM Amount — used for Licence award |
-| `meetings` | number | `7.09` | Meetings per week — used for Yellow Card detection (< 5) |
-| `opps` | number | `17` | Opportunities created — **used for Playmaker ranking**. Pre-filter from OneBI: Stage 2+ and > €50K only |
-
-**Important**:
-- Replace formula errors (`#DIV/0!`, `#N/A`, `#REF!`) with `0` or empty cells
-- Don't include the 3 excluded countries (SERBIA, TUNISIA, MOROCCO) — leave them out entirely
-- Don't include inactive employees
-- The `team` field is critical: any typo means the person will not appear in the team drilldown view
+The 3 excluded teams (`MOROCCO`, `SERBIA`, `TUNISIA`) are **filtered out automatically by
+the backend** — you can leave them in the sheet, they just won't appear on the platform.
+That leaves 32 ranked teams.
 
 ---
 
-## Tab 3: `Config`
+## Tab 2: `Challenge Ranking` (already exists)
 
-Configuration values for the platform. Two columns: `key` and `value`.
+Headers on **row 1**, data from **row 2**. The backend reads these columns by name:
+
+| Header (must stay) | Used as | Notes |
+|--------------------|---------|-------|
+| `Full name` | person name | |
+| `TEAM` | team | Should match a `Country` in `Team Ranking` for the team drilldown |
+| `Tenure` | tenure | `Over a year` / `Over 6 months` / `<6 months` → drives Rookie + 🌱 badge |
+| `PS Booking Total` | PS total | |
+| `PS Booking Total GM` | GM total | decimal — Yellow Card if < 0.25 |
+| `PS Booking NB` | **Golden Boot ranking** | New business bookings |
+| `PS Booking NB GM` | GM new business | decimal |
+| `Licence GM Amount` | **Licence award** | |
+| `Meetings` | meetings/week | Yellow Card if < 5 |
+| `Opportunities Created` | **Playmaker ranking** | |
+
+After excluding the 3 countries this is **377 people**. People whose `TEAM` has no row in
+`Team Ranking` (e.g. `UK`) still count in the **individual** rankings (Golden Boot,
+Playmaker, Rookie, Licence) — they just aren't part of a ranked team.
+
+**Data hygiene** (nice to have, not blocking — the backend already coerces these):
+- Formula errors (`#DIV/0!`, `#N/A`, `#REF!`) are read as `0`.
+- GM columns should be **decimals** (`0.27`), not `27` or `"27%"`.
+- Empty rows are skipped.
+
+---
+
+## Optional tab: `Config` (only if you want to override defaults)
+
+You do **not** need to create this. If absent, the backend uses sensible defaults baked
+into `apps_script_backend.gs` (`SETTINGS`: password, period, dates). Create a `Config` tab
+(columns `key` / `value`) only if you'd rather manage these from the sheet:
 
 | key | value | description |
 |-----|-------|-------------|
-| `password` | `devoteam2026` | Access password to the platform — communicated to all sales |
-| `last_update` | `2026-06-15T14:30:00Z` | ISO timestamp, **must be updated** every time the Teams or People tabs are refreshed |
-| `period` | `Week 3 of 5` | Label displayed in the platform header |
-| `challenge_start` | `2026-06-01` | Challenge start date |
-| `challenge_end` | `2026-07-03` | Challenge end date |
+| `password` | `devoteam2026` | Access code (overrides the script default) |
+| `last_update` | `2026-06-15T14:30:00Z` | ISO timestamp shown as "Last updated"; if absent the API uses the current time |
+| `period` | `Week 3 of 5` | Header label |
+| `challenge_start` | `2026-06-01` | |
+| `challenge_end` | `2026-07-03` | |
 
-**Auto-updating `last_update`** (optional but recommended):
-Use this formula in the value cell of `last_update`:
-
-```
-=TEXT(NOW(),"YYYY-MM-DD""T""HH:MM:SS""Z""")
-```
-
-This way every recalc of the sheet updates the timestamp automatically. Force a recalc by editing any other cell, or use `File → Recalculation → On change`.
+Auto-updating `last_update` (optional): put `=TEXT(NOW(),"YYYY-MM-DD""T""HH:MM:SS""Z""")`
+in its value cell.
 
 ---
 
-## Tab 4: `Special Awards` (optional, until winners are chosen)
+## Optional tab: `Special Awards`
 
-For AI Play and Transformative Deal awards selected by jury panels.
+For AI Play and Transformative Deal winners selected by jury panels. If absent, the
+platform shows "To be selected after the challenge".
 
 | key | name | team | description |
 |-----|------|------|-------------|
 | `ai_play_winner` | (winner name) | (their team) | Description of the AI deal |
 | `transformative_deal_winner` | (winner name) | (their team) | Description of the deal |
 
-If left empty, the platform displays "To be selected after the challenge".
+---
+
+## What changes for Jose's workflow
+
+**Nothing.** Keep refreshing `Team Ranking` and `Challenge Ranking` from OneBI as usual.
+The only thing to avoid is **renaming those tabs or their column headers** — that's what
+the backend matches on.
+
+If you ever rename a tab, update `SETTINGS.TEAMS_TAB` / `SETTINGS.PEOPLE_TAB` (and the
+`headerRow`) at the top of `apps_script_backend.gs`, then redeploy.
 
 ---
 
-## Update workflow
-
-When you refresh the data (e.g. weekly):
-
-1. Pull the latest OneBI report
-2. Replace the data in tabs `Teams` and `People` (keep the headers in row 1)
-3. Update `last_update` in `Config` (or use the auto formula)
-4. Optionally update `period` in `Config` if the week label changes
-
-The web platform automatically polls the Sheet every 30 seconds, so changes are visible to all users within ~1 minute without any further action.
-
----
-
-## Common pitfalls to avoid
-
-- **Mismatched team names** between People and Teams → person doesn't appear in team detail view
-- **GM as percentage instead of decimal** → Yellow Cards trigger wrongly
-- **Numbers stored as text** → ranking breaks. Make sure to format columns as Number, not Text
-- **Empty rows mixed in the data** → the API filters them out, but cleaner to remove
-- **Excluded countries left in** → they appear in the leaderboard. Remove SERBIA/TUNISIA/MOROCCO rows entirely.
-- **Forgetting to update `last_update`** → users see a stale timestamp and don't trust the data
-
----
-
-## Questions / debugging
-
-If something doesn't appear correctly on the platform:
-1. Check that the Sheet structure matches this spec exactly (column names, casing)
-2. Check that `last_update` was bumped after the latest data refresh
-3. Reach out to Léandre with the Sheet URL and a description of what's missing
-
----
-
-*Spec v1 — May 2026*
+*Spec v2 — adapted to the existing OneBI sheet (May 2026)*

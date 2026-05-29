@@ -142,7 +142,16 @@ Si Devoteam IT joue le jeu, possibilité d'ajouter un sous-domaine maison type `
 
 ---
 
-## 5. SHEET_SPEC.md — structure exacte à créer côté Google Sheet
+## 5. SHEET_SPEC.md — structure de la Google Sheet
+
+> ⚠️ **MISE À JOUR (mai 2026).** Après inspection du vrai fichier OneBI, on ne crée
+> **plus** d'onglets `Teams`/`People`. Le backend lit directement les onglets existants
+> `Team Ranking` (headers ligne 2) et `Challenge Ranking` (headers ligne 1), exclut
+> automatiquement Morocco/Serbia/Tunisia (→ 32 équipes, 377 personnes), et prend le mot
+> de passe / période / dates dans les constantes du script (onglet `Config` optionnel).
+> **La spec à jour et faisant foi est dans le fichier [`SHEET_SPEC.md`](./SHEET_SPEC.md).**
+> La structure ci-dessous décrit le format "idéal standardisé" d'origine, conservée pour
+> mémoire.
 
 À transmettre tel quel à Jose.
 
@@ -216,7 +225,13 @@ Si pas rempli, la plateforme affiche "To be selected after the challenge" comme 
 
 ## 6. Apps Script back-end (code prêt à déployer)
 
-Coller intégralement dans Extensions → Apps Script de la Google Sheet. Aucune modification nécessaire.
+> ⚠️ **MISE À JOUR (mai 2026).** Le code ci-dessous est l'ébauche d'origine (qui lisait
+> des onglets `Teams`/`People`). **Le code réellement déployé est dans
+> [`apps_script_backend.gs`](./apps_script_backend.gs)** : il lit les onglets existants
+> `Team Ranking` / `Challenge Ranking`, mappe les colonnes par nom (insensible à la
+> casse/espaces/retours ligne), exclut Morocco/Serbia/Tunisia, et porte le mot de passe /
+> période / dates dans un bloc `SETTINGS`. C'est ce fichier qui fait foi. Le bloc ci-dessous
+> est conservé pour mémoire.
 
 ```javascript
 // ============================================

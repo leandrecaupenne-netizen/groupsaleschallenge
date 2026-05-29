@@ -1300,7 +1300,7 @@ function renderPositionDetails(person) {
   return `
     <div class="position-result">
       <div class="position-name">${escapeHtml(person.name)}</div>
-      <div class="position-team">${escapeHtml(person.team)} · Team #${teamRank} of ${sortedTeams.length}</div>
+      <div class="position-team">${escapeHtml(person.team)}${teamRank > 0 ? ` · Team #${teamRank} of ${sortedTeams.length}` : ''}</div>
       <div class="position-stats">
         ${stats.map(s => `
           <div class="pos-stat ${s.highlight ? 'highlight' : ''}">
