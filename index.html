@@ -122,6 +122,7 @@ input { font-family: inherit; }
   letter-spacing: 0.04em;
   border-bottom: 3px solid transparent;
   white-space: nowrap;
+  flex: 0 0 auto;        /* keep intrinsic width; the tabs bar scrolls (overrides global min-width:0) */
   transition: color 0.15s, border-color 0.15s;
 }
 .tab-btn:hover { color: var(--ink); }
