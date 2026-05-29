@@ -945,6 +945,44 @@ img, table { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .spot-anim { opacity: 1; animation: none; }
 }
+
+/* === TV / projection mode === */
+.tv-btn { background: rgba(255,255,255,0.1); color: var(--gold); width: 32px; height: 32px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.tv-btn:hover { background: rgba(255,255,255,0.25); }
+.tv-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: radial-gradient(circle at 50% 0%, #2D3550 0%, #1E2A78 55%, #131a4d 100%);
+  color: #fff; display: flex; flex-direction: column; padding: 3vh 4vw;
+}
+.tv-overlay::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 26px);
+}
+.tv-bar { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
+.tv-brand { font-family: 'Anton', Impact, sans-serif; letter-spacing: 0.06em; font-size: clamp(16px, 2.4vw, 30px); color: var(--gold); }
+.tv-close { background: rgba(255,255,255,0.12); color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; }
+.tv-close:hover { background: rgba(255,255,255,0.28); }
+.tv-body { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 1; }
+.tv-title { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 6vw, 76px); line-height: 1; text-align: center; }
+.tv-sub { text-align: center; color: rgba(255,255,255,0.7); font-size: clamp(12px, 1.6vw, 20px); letter-spacing: 0.08em; text-transform: uppercase; margin: 10px 0 3vh; }
+.tv-list { display: flex; flex-direction: column; gap: 1.4vh; max-width: 1100px; width: 100%; margin: 0 auto; }
+.tv-row {
+  display: flex; align-items: center; gap: 3vw;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; padding: 1.6vh 2.4vw;
+}
+.tv-row.lead { background: linear-gradient(90deg, rgba(242,199,92,0.28), rgba(242,199,92,0.06)); border-color: rgba(242,199,92,0.6); }
+.tv-pos { font-size: clamp(26px, 4vw, 52px); min-width: 1.4em; text-align: center; }
+.tv-name { flex: 1; font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3vw, 40px); line-height: 1.05; }
+.tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
+.tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
+.tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(24px, 3.6vw, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
+.tv-dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 1; padding-top: 2vh; }
+.tv-dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+.tv-dots span.on { background: var(--gold); }
+.tv-anim { animation: tvFade 0.6s ease both; }
+@keyframes tvFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tv-anim { animation: none; } }
 </style>
 </head>
 <body>
@@ -970,6 +1008,7 @@ img, table { max-width: 100%; }
   <div class="header-status" id="header-status">
     <div class="last-update" id="last-update">Loading...</div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <button id="tv-btn" class="refresh-btn tv-btn" title="TV / projection mode" aria-label="TV mode">📺</button>
     <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
   </div>
 </header>
@@ -986,6 +1025,7 @@ img, table { max-width: 100%; }
     </div>
   </noscript>
 </div>
+<div id="tv-root"></div>
 
 
 <script>
@@ -1814,13 +1854,20 @@ function render() {
   });
 }
 
-// Fermer le modal avec ESC
+// ESC closes the TV overlay first, then the team modal.
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && openTeamModal) {
+  if (e.key !== 'Escape') return;
+  if (tvMode) { exitTV(); return; }
+  if (openTeamModal) {
     openTeamModal = null;
     document.body.style.overflow = '';
     render();
   }
+});
+
+// Leaving fullscreen (browser Esc / F11) also exits TV mode.
+document.addEventListener('fullscreenchange', () => {
+  if (tvMode && !document.fullscreenElement) exitTV();
 });
 
 // === LIVE: authentication ===
@@ -1909,6 +1956,88 @@ function setChromeVisible(visible) {
   if (header) header.style.display = visible ? '' : 'none';
 }
 
+// === LIVE: TV / projection mode ===
+let tvMode = false, tvPanel = 0, tvTimer = null;
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight'];
+const TV_ROTATE_MS = 10000; // 10s per panel
+
+function enterTV() {
+  tvMode = true; tvPanel = 0;
+  try {
+    const el = document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (rfs) rfs.call(el).catch(() => {});
+  } catch (e) {}
+  renderTV();
+  clearInterval(tvTimer);
+  tvTimer = setInterval(() => { tvPanel = (tvPanel + 1) % TV_PANELS.length; renderTV(); }, TV_ROTATE_MS);
+}
+
+function exitTV() {
+  if (!tvMode) return;
+  tvMode = false;
+  clearInterval(tvTimer); tvTimer = null;
+  try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+  const root = document.getElementById('tv-root');
+  if (root) root.innerHTML = '';
+}
+
+function toggleTV() { tvMode ? exitTV() : enterTV(); }
+
+function tvSection(title, sub, rows) {
+  return `<div class="tv-title">${title}</div><div class="tv-sub">${sub}</div><div class="tv-list">${rows}</div>`;
+}
+function tvPersonRow(i, p, val) {
+  const medal = ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1));
+  return `<div class="tv-row${i === 0 ? ' lead' : ''}">
+    <span class="tv-pos">${medal}</span>
+    <span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span>
+    <span class="tv-val">${val}</span>
+  </div>`;
+}
+function tvPanelHTML(kind) {
+  if (kind === 'podium') {
+    const rows = sortedTeams.slice(0, 3).map((t, i) =>
+      `<div class="tv-row${i === 0 ? ' lead' : ''}">
+        <span class="tv-pos">${['🥇', '🥈', '🥉'][i]}</span>
+        <span class="tv-name">${escapeHtml(t.country)} <em>${t.members} players</em></span>
+        <span class="tv-val">${fmtMoney(t.avg_ps)}</span>
+      </div>`).join('');
+    return tvSection('🏆 WORLD CUP — TOP TEAMS', 'Average PS Bookings per person', rows);
+  }
+  if (kind === 'golden') {
+    const rows = sortedGoldenBoot.slice(0, 5).map((p, i) => tvPersonRow(i, p, fmtMoney(p.ps_nb))).join('');
+    return tvSection('🥇 GOLDEN BOOT — TOP SCORERS', 'PS Bookings — New Business', rows);
+  }
+  if (kind === 'playmaker') {
+    const rows = sortedPlaymaker.slice(0, 5).map((p, i) => tvPersonRow(i, p, Number(p.opps).toFixed(0))).join('');
+    return tvSection('🎯 PLAYMAKERS — MOST ASSISTS', 'Opportunities created', rows);
+  }
+  const rows = buildSpotlights().map(s =>
+    `<div class="tv-row">
+      <span class="tv-pos">${s.icon}</span>
+      <span class="tv-name">${escapeHtml(s.person.name)} <em>${escapeHtml(s.person.team)}</em><small>${s.cat}</small></span>
+      <span class="tv-val">${spotStatText(s)}</span>
+    </div>`).join('');
+  return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", rows);
+}
+function renderTV() {
+  if (!tvMode) return;
+  const root = document.getElementById('tv-root');
+  if (!root) return;
+  root.innerHTML = `
+    <div class="tv-overlay">
+      <div class="tv-bar">
+        <div class="tv-brand">DEVOTEAM WORLD CUP${period ? ' · ' + escapeHtml(period) : ''}</div>
+        <button class="tv-close" id="tv-close" title="Exit (Esc)">✕ Exit</button>
+      </div>
+      <div class="tv-body tv-anim">${tvPanelHTML(TV_PANELS[tvPanel])}</div>
+      <div class="tv-dots">${TV_PANELS.map((_, i) => `<span class="${i === tvPanel ? 'on' : ''}"></span>`).join('')}</div>
+    </div>`;
+  const c = document.getElementById('tv-close');
+  if (c) c.addEventListener('click', exitTV);
+}
+
 // === LIVE: polling ===
 let pollIntervalId = null;
 
@@ -1923,6 +2052,7 @@ function startPolling() {
       render();
       suppressAnim = false;
       window.scrollTo(0, scrollY);
+      if (tvMode) renderTV();       // keep the projection panel live
     }
   }, CONFIG.POLL_INTERVAL_MS);
 }
@@ -1948,6 +2078,7 @@ async function manualRefresh() {
   render();
   suppressAnim = false;
   window.scrollTo(0, scrollY);
+  if (tvMode) renderTV();
   if (btn) setTimeout(() => btn.classList.remove('spinning'), 600);
 }
 
@@ -2001,6 +2132,13 @@ async function init() {
     refreshBtn.addEventListener('click', () => { if (isAdmin()) manualRefresh(); });
   }
   applyAdminVisibility(); // manual refresh is admin-only
+
+  // Bind the TV/projection button once.
+  const tvBtn = document.getElementById('tv-btn');
+  if (tvBtn && !tvBtn.dataset.bound) {
+    tvBtn.dataset.bound = '1';
+    tvBtn.addEventListener('click', toggleTV);
+  }
 
   startPolling();
 }
