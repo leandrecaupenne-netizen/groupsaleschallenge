@@ -992,6 +992,40 @@ img, table { max-width: 100%; }
 .tv-anim { animation: tvFade 0.6s ease both; }
 @keyframes tvFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tv-anim { animation: none; } }
+
+/* === New #1 flash === */
+.flash-gold { animation: flashGold 1.1s ease-in-out 3; }
+@keyframes flashGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242,199,92,0); }
+  50% { box-shadow: 0 0 0 4px rgba(242,199,92,0.9), 0 0 26px 6px rgba(242,199,92,0.55); }
+}
+@media (prefers-reduced-motion: reduce) { .flash-gold { animation: none; } }
+
+/* === New #1 toast === */
+#toast-root { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1100; display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; width: max-content; max-width: 92vw; }
+.toast {
+  background: linear-gradient(135deg, var(--navy), var(--navy-2));
+  color: #fff; border: 1px solid rgba(242,199,92,0.7);
+  border-radius: 999px; padding: 12px 22px;
+  font-weight: 700; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  animation: toastIn 0.4s cubic-bezier(.2,.8,.2,1) both;
+}
+.toast.out { animation: toastOut 0.4s ease forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(20px) scale(0.95); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
+/* === VAR Room === */
+.var-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.var-col { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 8px; }
+.var-col-title { font-weight: 800; font-size: 13px; letter-spacing: 0.03em; color: var(--ink-2); margin-bottom: 12px; }
+.var-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-top: 1px solid var(--line); }
+.var-row:first-of-type { border-top: none; }
+.var-card { font-size: 18px; }
+.var-name { flex: 1; font-weight: 700; font-size: 14px; }
+.var-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+.var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
+.var-more { padding: 10px 6px; color: var(--muted); font-size: 12px; font-style: italic; border-top: 1px dashed var(--line); }
 </style>
 </head>
 <body>
@@ -1035,6 +1069,7 @@ img, table { max-width: 100%; }
   </noscript>
 </div>
 <div id="tv-root"></div>
+<div id="toast-root"></div>
 
 
 <script>
@@ -1067,6 +1102,8 @@ let currentSearch = '';
 let positionQuery = '';
 let openTeamModal = null; // country name si modal ouverte
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
+let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
+let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
 
 // === UTILS ===
 const fmtMoney = n => {
@@ -1088,12 +1125,15 @@ const formatDate = iso => {
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const TEAM_COLORS = ['#C8102E','#1E2A78','#006847','#F2C75C','#8B5CF6','#EC4899','#0EA5E9','#84CC16','#F97316','#06B6D4'];
-const colorForTeam = team => {
-  if (!team) return TEAM_COLORS[0];
-  let hash = 0;
-  for (let i = 0; i < team.length; i++) hash = team.charCodeAt(i) + ((hash << 5) - hash);
-  return TEAM_COLORS[Math.abs(hash) % TEAM_COLORS.length];
+const hashStr = s => {
+  let h = 0; s = String(s || '');
+  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
+  return Math.abs(h);
 };
+const colorForTeam = team => team ? TEAM_COLORS[hashStr(team) % TEAM_COLORS.length] : TEAM_COLORS[0];
+
+// True if a leader change of `type` happened recently (drives the gold flash).
+const isFlashing = type => flash[type] && flash[type] > Date.now();
 
 // Recompute all rankings from the current `teams` / `people` arrays.
 function computeRankings() {
@@ -1134,6 +1174,7 @@ async function fetchData(fresh) {
     specialAwards = data.special_awards || {};
 
     computeRankings();
+    detectLeaderChanges();
     setSyncWarning(false);
     return true;
   } catch (err) {
@@ -1141,6 +1182,41 @@ async function fetchData(fresh) {
     setSyncWarning(true);
     return false;
   }
+}
+
+// Detect when a #1 changes between refreshes -> celebratory toast + gold flash.
+function detectLeaderChanges() {
+  const cur = {
+    team: sortedTeams[0] && sortedTeams[0].country,
+    golden: sortedGoldenBoot[0] && sortedGoldenBoot[0].name,
+    playmaker: sortedPlaymaker[0] && sortedPlaymaker[0].name
+  };
+  if (leaders) { // skip the very first load (no baseline yet)
+    if (cur.team && cur.team !== leaders.team) {
+      showToast(`🏆 New leaders! ${cur.team} top the Team Ranking`);
+      flash.team = Date.now() + 9000;
+    }
+    if (cur.golden && cur.golden !== leaders.golden) {
+      showToast(`🥇 ${cur.golden} grabs the Golden Boot top spot!`);
+      flash.golden = Date.now() + 9000;
+    }
+    if (cur.playmaker && cur.playmaker !== leaders.playmaker) {
+      showToast(`🎯 ${cur.playmaker} is the new top Playmaker!`);
+      flash.playmaker = Date.now() + 9000;
+    }
+  }
+  leaders = cur;
+}
+
+// Transient celebratory toast (auto-dismisses).
+function showToast(msg) {
+  const root = document.getElementById('toast-root');
+  if (!root) return;
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 6000);
 }
 
 // Toggle the discreet "sync failed" badge in the header without wiping the UI.
@@ -1196,8 +1272,9 @@ function renderHero() {
 }
 
 function renderPodiumCard(team, rank, medal, position) {
+  const flashCls = (rank === 1 && isFlashing('team')) ? ' flash-gold' : '';
   return `
-    <div class="podium-card ${position}">
+    <div class="podium-card ${position}${flashCls}">
       <div class="podium-medal">${medal}</div>
       <div class="podium-rank">#${rank}</div>
       <div class="podium-team-name">${escapeHtml(team.country)}</div>
@@ -1217,6 +1294,7 @@ const TABS = [
   { id: 'golden', label: 'Golden Boot 🥇' },
   { id: 'playmaker', label: 'Playmaker 🎯' },
   { id: 'awards', label: 'Special Awards' },
+  { id: 'var', label: 'VAR Room 🟨' },
   { id: 'position', label: 'My Position 🔍' },
 ];
 
@@ -1292,7 +1370,7 @@ function renderGoldenBoot() {
         ${top5.map((p, i) => renderIndivCard(p, i+1, fmtMoney(p.ps_nb), 'PS Bookings (NB)', [
           `GM ${fmtPct(p.ps_nb_gm)}`,
           `${fmtNum(p.meetings)} meet/wk`
-        ])).join('')}
+        ], 'golden')).join('')}
       </div>
     </div>
   `;
@@ -1310,15 +1388,51 @@ function renderPlaymaker() {
         ${top5.map((p, i) => renderIndivCard(p, i+1, p.opps.toFixed(0), 'Opportunities Created', [
           `${fmtNum(p.meetings)} meet/wk`,
           `${fmtMoney(p.ps_total)} PS total`
-        ])).join('')}
+        ], 'playmaker')).join('')}
       </div>
     </div>
   `;
 }
 
 // === Players of the Moment (Spotlight) ===
-// Picks 5 DISTINCT standout performers across different dimensions, each with an
-// English, commentary-ready headline to support the live post-match commentary.
+// Several English phrasings per category; one is picked deterministically per
+// person so the wording varies across players but stays stable across polls.
+const SPOT_HEADLINES = {
+  scorer: [
+    p => `Leading the Golden Boot race with ${fmtMoney(p.ps_nb)} of new business signed.`,
+    p => `Banging them in — ${fmtMoney(p.ps_nb)} of new business and still firing.`,
+    p => `Top of the scoring charts with ${fmtMoney(p.ps_nb)} in fresh new-business wins.`
+  ],
+  playmaker: [
+    p => `Pulling the strings — ${Number(p.opps).toFixed(0)} new opportunities created for the team.`,
+    p => `The creative engine: ${Number(p.opps).toFixed(0)} opportunities teed up for the squad.`,
+    p => `Assist king — ${Number(p.opps).toFixed(0)} chances created and counting.`
+  ],
+  closer: [
+    p => `Clinical in front of goal — ${fmtPct(p.ps_nb_gm)} margin on ${fmtMoney(p.ps_nb)} of new business.`,
+    p => `Ruthless finishing: ${fmtPct(p.ps_nb_gm)} margin on ${fmtMoney(p.ps_nb)} of new business.`,
+    p => `Quality over quantity — a stunning ${fmtPct(p.ps_nb_gm)} margin on ${fmtMoney(p.ps_nb)}.`
+  ],
+  rookie: [
+    p => `Breakout rookie — already ${fmtMoney(p.ps_nb)} of new business in under a year at Devoteam.`,
+    p => `The new kid making waves: ${fmtMoney(p.ps_nb)} of new business in record time.`,
+    p => `Rookie sensation — ${fmtMoney(p.ps_nb)} of new business and a bright future.`
+  ],
+  engine: [
+    p => `Never stops running — ${fmtNum(p.meetings)} client meetings every week.`,
+    p => `Box-to-box workhorse: ${fmtNum(p.meetings)} client meetings a week.`,
+    p => `Relentless on the pitch — ${fmtNum(p.meetings)} meetings per week.`
+  ],
+  inform: [
+    p => `In great form — ${fmtMoney(p.ps_total)} of total bookings on the board.`,
+    p => `Quietly piling it on: ${fmtMoney(p.ps_total)} of total bookings so far.`
+  ]
+};
+function pickHeadline(key, p) {
+  const arr = SPOT_HEADLINES[key];
+  return arr[hashStr(p.name + key) % arr.length](p);
+}
+
 function buildSpotlights() {
   const picked = new Set();
   const take = (arr, pred) => {
@@ -1333,14 +1447,14 @@ function buildSpotlights() {
   if (scorer) spots.push({
     cat: 'TOP SCORER', icon: '⚽', person: scorer,
     value: scorer.ps_nb, fmt: 'money', statLabel: 'PS Bookings — New Business',
-    headline: `Leading the Golden Boot race with ${fmtMoney(scorer.ps_nb)} of new business signed.`
+    headline: pickHeadline('scorer', scorer)
   });
 
   const pm = take(sortedPlaymaker, p => p.opps > 0);
   if (pm) spots.push({
     cat: 'THE PLAYMAKER', icon: '🎯', person: pm,
     value: pm.opps, fmt: 'int', statLabel: 'Opportunities created',
-    headline: `Pulling the strings — ${pm.opps.toFixed(0)} new opportunities created to set up the team.`
+    headline: pickHeadline('playmaker', pm)
   });
 
   // The Closer: best New-Business margin among people with meaningful NB volume.
@@ -1350,14 +1464,14 @@ function buildSpotlights() {
   if (closer) spots.push({
     cat: 'THE CLOSER', icon: '🧤', person: closer,
     value: closer.ps_nb_gm, fmt: 'pct', statLabel: 'Gross margin on New Business',
-    headline: `Clinical in front of goal — ${fmtPct(closer.ps_nb_gm)} margin on ${fmtMoney(closer.ps_nb)} of new business.`
+    headline: pickHeadline('closer', closer)
   });
 
   const rookie = take(sortedRookies, p => p.ps_nb > 0);
   if (rookie) spots.push({
     cat: 'RISING STAR', icon: '🌟', person: rookie,
     value: rookie.ps_nb, fmt: 'money', statLabel: 'PS Bookings — New Business (rookie)',
-    headline: `Breakout rookie — already ${fmtMoney(rookie.ps_nb)} of new business in under a year at Devoteam.`
+    headline: pickHeadline('rookie', rookie)
   });
 
   // The Engine: most client meetings per week.
@@ -1365,7 +1479,7 @@ function buildSpotlights() {
   if (engine) spots.push({
     cat: 'THE ENGINE', icon: '🔥', person: engine,
     value: engine.meetings, fmt: 'num', statLabel: 'Client meetings per week',
-    headline: `Never stops running — ${fmtNum(engine.meetings)} client meetings every week.`
+    headline: pickHeadline('engine', engine)
   });
 
   // Fallback to reach 5 if data is thin: top remaining by total PS.
@@ -1376,7 +1490,7 @@ function buildSpotlights() {
       spots.push({
         cat: 'IN FORM', icon: '✨', person: p,
         value: p.ps_total, fmt: 'money', statLabel: 'PS Bookings — Total',
-        headline: `In great form — ${fmtMoney(p.ps_total)} of total bookings on the board.`
+        headline: pickHeadline('inform', p)
       });
     }
   }
@@ -1454,14 +1568,51 @@ function renderSpotlight() {
   `;
 }
 
-function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats) {
+// === VAR Room (yellow cards) ===
+function renderVAR() {
+  const CAP = 12;
+  const lowMeet = people.filter(p => p.yellow_meetings).sort((a, b) => (a.meetings || 0) - (b.meetings || 0));
+  const lowGm = people.filter(p => p.yellow_gm).sort((a, b) => (a.ps_total_gm || 0) - (b.ps_total_gm || 0));
+  const names = new Set(); lowMeet.forEach(p => names.add(p.name)); lowGm.forEach(p => names.add(p.name));
+
+  const row = (p, val) => `
+    <div class="var-row">
+      <span class="var-card">🟨</span>
+      <span class="var-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+      <span class="var-val">${val}</span>
+    </div>`;
+  const col = (title, list, valFn, emptyMsg) => `
+    <div class="var-col">
+      <div class="var-col-title">${title} (${list.length})</div>
+      ${list.length
+        ? list.slice(0, CAP).map(p => row(p, valFn(p))).join('') +
+          (list.length > CAP ? `<div class="var-more">+ ${list.length - CAP} more on a yellow card</div>` : '')
+        : `<div class="no-result">${emptyMsg}</div>`}
+    </div>`;
+
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">🟨 VAR ROOM</h2>
+        <p class="section-subtitle">Discipline watch · ${names.size} player${names.size === 1 ? '' : 's'} currently on a yellow card · Two yellows = a red</p>
+      </div>
+      <div class="var-grid">
+        ${col('🟨 Low activity — under 5 meetings/week', lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, "No cards here — everyone's hitting their meetings. ✅")}
+        ${col('🟨 Low margin — GM below 25%', lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, 'No cards here — margins are healthy. ✅')}
+      </div>
+    </div>
+  `;
+}
+
+function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flashType) {
   const color = colorForTeam(person.team);
   const cards = [];
   if (person.yellow_meetings) cards.push({icon: '🟨', tip: `Yellow Card · less than 5 meetings/week (${fmtNum(person.meetings)})`});
   if (person.yellow_gm) cards.push({icon: '🟨', tip: `Yellow Card · GM below 25% (${fmtPct(person.ps_total_gm)})`});
+  const flashCls = (rank === 1 && flashType && isFlashing(flashType)) ? ' flash-gold' : '';
 
   return `
-    <div class="indiv-card" style="--c: ${color}">
+    <div class="indiv-card${flashCls}" style="--c: ${color}">
       ${cards.length ? `<div class="indiv-cards">${cards.map(c => `<span class="card-badge" title="${escapeHtml(c.tip)}">${c.icon}</span>`).join('')}</div>` : ''}
       <div class="indiv-card-top">
         <div class="indiv-rank ${rank === 1 ? 'medal-1' : ''}">#${rank}</div>
@@ -1810,6 +1961,7 @@ function render() {
     case 'golden': content = renderGoldenBoot(); break;
     case 'playmaker': content = renderPlaymaker(); break;
     case 'awards': content = renderSpecialAwards(); break;
+    case 'var': content = renderVAR(); break;
     case 'position': content = renderMyPosition(); break;
   }
 
