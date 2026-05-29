@@ -932,7 +932,18 @@ img, table { max-width: 100%; }
   </div>
 </header>
 
-<div id="app"></div>
+<div id="app">
+  <noscript>
+    <div style="padding:60px 24px;text-align:center;font-family:sans-serif;color:#1E2A78">
+      <h2 style="font-family:Anton,Impact,sans-serif">JavaScript required</h2>
+      <p style="color:#6B7280;max-width:420px;margin:12px auto">
+        This leaderboard needs JavaScript. Please open it in a web browser
+        (Chrome, Safari…) at its <strong>https://…vercel.app</strong> address —
+        not from a file preview.
+      </p>
+    </div>
+  </noscript>
+</div>
 
 
 <script>
@@ -1619,12 +1630,17 @@ document.addEventListener('keydown', e => {
 });
 
 // === LIVE: authentication ===
+// Safe localStorage wrappers — some in-app webviews block storage and throw.
+function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function safeRemove(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
 function isLoggedIn() {
-  return localStorage.getItem(CONFIG.SESSION_KEY) === '1';
+  return safeGet(CONFIG.SESSION_KEY) === '1';
 }
 
 function logout() {
-  localStorage.removeItem(CONFIG.SESSION_KEY);
+  safeRemove(CONFIG.SESSION_KEY);
   location.reload();
 }
 
@@ -1638,7 +1654,7 @@ async function attemptLogin(password) {
     });
     const data = await res.json();
     if (data.ok) {
-      localStorage.setItem(CONFIG.SESSION_KEY, '1');
+      safeSet(CONFIG.SESSION_KEY, '1');
       return true;
     }
     return false;
@@ -1762,7 +1778,12 @@ async function init() {
   startPolling();
 }
 
-init();
+// Never leave a silent blank page: surface any unexpected init error.
+init().catch(err => {
+  console.error('Init error:', err);
+  const app = document.getElementById('app');
+  if (app) app.innerHTML = `<div class="state-msg error">Something went wrong loading the app.<br/><button class="login-btn" onclick="location.reload()">Reload</button></div>`;
+});
 </script>
 </body>
 </html>
