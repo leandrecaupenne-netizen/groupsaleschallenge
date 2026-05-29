@@ -322,7 +322,7 @@ input { font-family: inherit; }
 /* === INDIVIDUAL CARDS === */
 .individuals-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 16px;
 }
 .indiv-card {
@@ -385,7 +385,7 @@ input { font-family: inherit; }
 /* === SPECIAL AWARDS === */
 .awards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 18px;
 }
 .award-card {
@@ -463,7 +463,7 @@ input { font-family: inherit; }
 }
 .position-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -617,7 +617,7 @@ input { font-family: inherit; }
 
 .modal-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
   gap: 12px;
   padding: 22px 28px;
   background: var(--cream);
@@ -775,9 +775,11 @@ input { font-family: inherit; }
 /* === LIVE: login screen === */
 .login-screen {
   min-height: 100vh;
+  min-height: 100dvh;            /* avoids mobile address-bar clipping */
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;              /* scroll if the card is taller than a short/landscape screen */
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
   padding: 20px;
 }
@@ -916,7 +918,7 @@ img, table { max-width: 100%; }
 .copy-btn.copied { background: var(--green); }
 .spotlight-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 16px;
 }
 .spotlight-card {
@@ -1016,7 +1018,7 @@ img, table { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 /* === VAR Room === */
-.var-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.var-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px; }
 .var-col { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 8px; }
 .var-col-title { font-weight: 800; font-size: 13px; letter-spacing: 0.03em; color: var(--ink-2); margin-bottom: 12px; }
 .var-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-top: 1px solid var(--line); }
