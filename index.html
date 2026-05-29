@@ -903,6 +903,48 @@ img, table { max-width: 100%; }
   .teams-table-row { grid-template-columns: 30px 1fr 76px; font-size: 11px; padding: 9px 10px; }
   .tab-btn { padding: 11px 9px; font-size: 11px; }
 }
+
+/* === Players of the Moment (Spotlight) === */
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.spotlight-card {
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 20px 20px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+}
+.spotlight-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--c), var(--gold));
+}
+.spot-head { display: flex; align-items: center; margin-bottom: 12px; }
+.spot-cat {
+  font-family: 'Anton', Impact, sans-serif; letter-spacing: 0.06em;
+  font-size: 12px; color: #fff; background: var(--c);
+  padding: 5px 11px; border-radius: 999px;
+}
+.spot-name { font-family: 'Anton', Impact, sans-serif; font-size: 23px; line-height: 1.1; color: var(--ink); }
+.spot-team { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; margin-top: 2px; text-transform: uppercase; }
+.spot-stat {
+  font-family: 'Anton', Impact, sans-serif; font-size: 34px; color: var(--c);
+  margin-top: 14px; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.spot-stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+.spot-headline {
+  margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line);
+  font-size: 14px; font-style: italic; color: var(--ink-2); line-height: 1.45;
+}
+.spot-anim { opacity: 0; animation: spotIn 0.5s cubic-bezier(.2,.7,.3,1) forwards; }
+@keyframes spotIn { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .spot-anim { opacity: 1; animation: none; }
+}
 </style>
 </head>
 <body>
@@ -975,6 +1017,7 @@ let currentTab = 'teams';
 let currentSearch = '';
 let positionQuery = '';
 let openTeamModal = null; // country name si modal ouverte
+let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 
 // === UTILS ===
 const fmtMoney = n => {
@@ -1057,6 +1100,30 @@ function setSyncWarning(show) {
   if (warn) warn.classList.toggle('show', !!show);
 }
 
+// Animate [data-countup] numbers from 0 to their value, respecting their format.
+function animateCountUps() {
+  const fmtVal = (v, fmt) => {
+    if (fmt === 'money') return fmtMoney(v);
+    if (fmt === 'pct') return fmtPct(v);
+    if (fmt === 'int') return Math.round(v).toFixed(0);
+    return fmtNum(v);
+  };
+  document.querySelectorAll('[data-countup]').forEach(el => {
+    const to = parseFloat(el.getAttribute('data-countup'));
+    const fmt = el.getAttribute('data-fmt') || 'num';
+    if (!isFinite(to)) return;
+    const dur = 900, start = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      el.textContent = fmtVal(to * eased, fmt);
+      if (t < 1) requestAnimationFrame(step);
+      else el.textContent = fmtVal(to, fmt);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
 // === RENDERERS ===
 
 function renderHero() {
@@ -1097,6 +1164,7 @@ function renderPodiumCard(team, rank, medal, position) {
 
 const TABS = [
   { id: 'teams', label: 'Team Ranking' },
+  { id: 'spotlight', label: 'Players of the Moment ⭐' },
   { id: 'golden', label: 'Golden Boot 🥇' },
   { id: 'playmaker', label: 'Playmaker 🎯' },
   { id: 'awards', label: 'Special Awards' },
@@ -1194,6 +1262,111 @@ function renderPlaymaker() {
           `${fmtNum(p.meetings)} meet/wk`,
           `${fmtMoney(p.ps_total)} PS total`
         ])).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// === Players of the Moment (Spotlight) ===
+// Picks 5 DISTINCT standout performers across different dimensions, each with an
+// English, commentary-ready headline to support the live post-match commentary.
+function buildSpotlights() {
+  const picked = new Set();
+  const take = (arr, pred) => {
+    for (const p of arr) {
+      if (p && p.name && !picked.has(p.name) && (!pred || pred(p))) { picked.add(p.name); return p; }
+    }
+    return null;
+  };
+  const spots = [];
+
+  const scorer = take(sortedGoldenBoot, p => p.ps_nb > 0);
+  if (scorer) spots.push({
+    cat: 'TOP SCORER', icon: '⚽', person: scorer,
+    value: scorer.ps_nb, fmt: 'money', statLabel: 'PS Bookings — New Business',
+    headline: `Leading the Golden Boot race with ${fmtMoney(scorer.ps_nb)} of new business signed.`
+  });
+
+  const pm = take(sortedPlaymaker, p => p.opps > 0);
+  if (pm) spots.push({
+    cat: 'THE PLAYMAKER', icon: '🎯', person: pm,
+    value: pm.opps, fmt: 'int', statLabel: 'Opportunities created',
+    headline: `Pulling the strings — ${pm.opps.toFixed(0)} new opportunities created to set up the team.`
+  });
+
+  // The Closer: best New-Business margin among people with meaningful NB volume.
+  const closerPool = [...people].filter(p => p.ps_nb >= 100000 && p.ps_nb_gm > 0)
+    .sort((a, b) => (b.ps_nb_gm || 0) - (a.ps_nb_gm || 0));
+  const closer = take(closerPool);
+  if (closer) spots.push({
+    cat: 'THE CLOSER', icon: '🧤', person: closer,
+    value: closer.ps_nb_gm, fmt: 'pct', statLabel: 'Gross margin on New Business',
+    headline: `Clinical in front of goal — ${fmtPct(closer.ps_nb_gm)} margin on ${fmtMoney(closer.ps_nb)} of new business.`
+  });
+
+  const rookie = take(sortedRookies, p => p.ps_nb > 0);
+  if (rookie) spots.push({
+    cat: 'RISING STAR', icon: '🌟', person: rookie,
+    value: rookie.ps_nb, fmt: 'money', statLabel: 'PS Bookings — New Business (rookie)',
+    headline: `Breakout rookie — already ${fmtMoney(rookie.ps_nb)} of new business in under a year at Devoteam.`
+  });
+
+  // The Engine: most client meetings per week.
+  const engine = take([...people].sort((a, b) => (b.meetings || 0) - (a.meetings || 0)), p => p.meetings > 0);
+  if (engine) spots.push({
+    cat: 'THE ENGINE', icon: '🔥', person: engine,
+    value: engine.meetings, fmt: 'num', statLabel: 'Client meetings per week',
+    headline: `Never stops running — ${fmtNum(engine.meetings)} client meetings every week.`
+  });
+
+  // Fallback to reach 5 if data is thin: top remaining by total PS.
+  for (const p of sortedPSTotal) {
+    if (spots.length >= 5) break;
+    if (!picked.has(p.name) && p.ps_total > 0) {
+      picked.add(p.name);
+      spots.push({
+        cat: 'IN FORM', icon: '✨', person: p,
+        value: p.ps_total, fmt: 'money', statLabel: 'PS Bookings — Total',
+        headline: `In great form — ${fmtMoney(p.ps_total)} of total bookings on the board.`
+      });
+    }
+  }
+  return spots.slice(0, 5);
+}
+
+function spotStatText(s) {
+  if (s.fmt === 'money') return fmtMoney(s.value);
+  if (s.fmt === 'pct') return fmtPct(s.value);
+  if (s.fmt === 'int') return Number(s.value).toFixed(0);
+  return fmtNum(s.value);
+}
+
+function renderSpotlight() {
+  const spots = buildSpotlights();
+  const anim = suppressAnim ? '' : ' spot-anim';
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">⭐ PLAYERS OF THE MOMENT</h2>
+        <p class="section-subtitle">This matchday's standout performances — five players catching the eye right now</p>
+      </div>
+      <div class="spotlight-grid">
+        ${spots.map((s, i) => {
+          const color = colorForTeam(s.person.team);
+          return `
+            <div class="spotlight-card${anim}" style="--c:${color}; animation-delay:${i * 90}ms">
+              <div class="spot-head">
+                <span class="spot-cat">${s.icon} ${s.cat}</span>
+              </div>
+              <div class="spot-name">${escapeHtml(s.person.name)}</div>
+              <div class="spot-team">${escapeHtml(s.person.team)}</div>
+              <div class="spot-stat" data-countup="${s.value}" data-fmt="${s.fmt}">${spotStatText(s)}</div>
+              <div class="spot-stat-label">${s.statLabel}</div>
+              <div class="spot-headline">“${s.headline}”</div>
+            </div>
+          `;
+        }).join('')}
+        ${spots.length === 0 ? '<div class="no-result">No standout performances yet — check back once the data lands.</div>' : ''}
       </div>
     </div>
   `;
@@ -1551,6 +1724,7 @@ function render() {
   let content = '';
   switch(currentTab) {
     case 'teams': content = renderTeamRanking(); break;
+    case 'spotlight': content = renderSpotlight(); break;
     case 'golden': content = renderGoldenBoot(); break;
     case 'playmaker': content = renderPlaymaker(); break;
     case 'awards': content = renderSpecialAwards(); break;
@@ -1567,6 +1741,9 @@ function render() {
 
   // Update last update
   document.getElementById('last-update').textContent = `Last updated: ${formatDate(updated_at)} · ${period}`;
+
+  // Count-up the spotlight stats on first view / tab change (not on background polls).
+  if (!suppressAnim && currentTab === 'spotlight') animateCountUps();
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1742,7 +1919,9 @@ function startPolling() {
     if (success) {
       // Re-render while preserving scroll position and any open modal.
       const scrollY = window.scrollY;
+      suppressAnim = true;          // background refresh: no replayed animations
       render();
+      suppressAnim = false;
       window.scrollTo(0, scrollY);
     }
   }, CONFIG.POLL_INTERVAL_MS);
@@ -1765,7 +1944,9 @@ async function manualRefresh() {
   if (btn) btn.classList.add('spinning');
   const scrollY = window.scrollY;
   await fetchData(true); // force a fresh read, bypass server cache
+  suppressAnim = true;
   render();
+  suppressAnim = false;
   window.scrollTo(0, scrollY);
   if (btn) setTimeout(() => btn.classList.remove('spinning'), 600);
 }
