@@ -928,7 +928,7 @@ img, table { max-width: 100%; }
   <div class="header-status" id="header-status">
     <div class="last-update" id="last-update">Loading...</div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
-    <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now">↻</button>
+    <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
   </div>
 </header>
 
@@ -954,7 +954,11 @@ const CONFIG = {
   // Deployed Apps Script /exec endpoint (Web App, access: Anyone).
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec',
   POLL_INTERVAL_MS: 30000,  // 30 seconds
-  SESSION_KEY: 'devoteam_wc_session_v1'
+  SESSION_KEY: 'devoteam_wc_session_v1',
+  // Manual refresh is admin-only. Activate on YOUR device by opening the site with
+  //   ?admin=<ADMIN_KEY>   (deactivate with ?admin=off). Change this secret as you like.
+  ADMIN_KEY: 'leandre-refresh-2026',
+  ADMIN_FLAG: 'devoteam_wc_admin_v1'
 };
 
 // Reuse the base64 logo already embedded in the header (no duplication).
@@ -1646,6 +1650,32 @@ function logout() {
   location.reload();
 }
 
+// === LIVE: admin (manual-refresh) gating ===
+function isAdmin() {
+  return safeGet(CONFIG.ADMIN_FLAG) === '1';
+}
+
+// Activate/deactivate admin mode from ?admin=<key> (or ?admin=off), then strip
+// the param from the URL so it isn't bookmarked or shared.
+function checkAdminParam() {
+  try {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('admin')) return;
+    const val = params.get('admin');
+    if (val === CONFIG.ADMIN_KEY) safeSet(CONFIG.ADMIN_FLAG, '1');
+    else if (val === 'off') safeRemove(CONFIG.ADMIN_FLAG);
+    params.delete('admin');
+    const qs = params.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+  } catch (e) {}
+}
+
+// Show the refresh button only for admins.
+function applyAdminVisibility() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) btn.style.display = isAdmin() ? 'flex' : 'none';
+}
+
 async function attemptLogin(password) {
   try {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
@@ -1774,11 +1804,15 @@ async function init() {
   const refreshBtn = document.getElementById('refresh-btn');
   if (refreshBtn && !refreshBtn.dataset.bound) {
     refreshBtn.dataset.bound = '1';
-    refreshBtn.addEventListener('click', manualRefresh);
+    refreshBtn.addEventListener('click', () => { if (isAdmin()) manualRefresh(); });
   }
+  applyAdminVisibility(); // manual refresh is admin-only
 
   startPolling();
 }
+
+// Read the admin activation param before anything else renders.
+checkAdminParam();
 
 // Never leave a silent blank page: surface any unexpected init error.
 init().catch(err => {
