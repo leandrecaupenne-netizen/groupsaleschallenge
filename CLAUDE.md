@@ -91,7 +91,7 @@ Transformer cette maquette en application production-ready, hébergée publiquem
            │ fetch via HTTPS
            ▼
 ┌──────────────────────────────────────┐
-│  Plateforme HTML (hébergée Netlify)  │
+│  Plateforme HTML (hébergée Vercel)   │
 │  - Auth par mot de passe             │
 │  - Polling toutes les 30 secondes    │
 │  - Bouton refresh manuel             │
@@ -132,9 +132,9 @@ Claude Code se charge de :
 - Gérer les états : loading, error, retry
 - Garantir que l'UX reste fluide pendant les refresh (pas de flash, pas de scroll perdu)
 
-### Étape 4 — Hébergement Netlify
+### Étape 4 — Hébergement Vercel
 
-Léandre crée un compte Netlify gratuit. Drag-and-drop du fichier HTML, configure un sous-domaine accrocheur (suggestion : `devoteam-world-cup-2026.netlify.app` ou `dvt-sales-challenge.netlify.app`).
+Le GitHub de Léandre est connecté à Vercel : importer le repo, preset `Other` (pas de build), déployer. Chaque push sur `main` redéploie automatiquement. Configurer un sous-domaine accrocheur (suggestion : `devoteam-world-cup-2026.vercel.app` ou `dvt-sales-challenge.vercel.app`).
 
 ### Étape 5 — Domaine custom (optionnel, après validation)
 
@@ -643,41 +643,40 @@ Si le fetch échoue pendant un polling, ne pas casser l'écran : garder les anci
 
 ---
 
-## 8. Hébergement Netlify
+## 8. Hébergement Vercel
 
-### 8.1 Création du compte
+### 8.1 Compte et connexion GitHub
 
-1. Aller sur https://app.netlify.com/signup
-2. S'inscrire avec un email Devoteam ou via GitHub (recommandé pour CI/CD future)
-3. Plan gratuit suffit largement (100 GB/mois bande passante)
+1. Le GitHub de Léandre est déjà connecté à Vercel.
+2. Plan gratuit (Hobby) suffit largement pour ~400 utilisateurs internes.
+3. Le repo contient un `vercel.json` (headers de sécurité + revalidation du HTML).
 
-### 8.2 Déploiement initial
+### 8.2 Déploiement (méthode GitHub, automatique)
 
-**Méthode rapide** (Netlify Drop, sans Git) :
-1. Aller sur https://app.netlify.com/drop
-2. Drag-and-drop le fichier `devoteam_world_cup_platform.html` (le renommer en `index.html` avant)
-3. Netlify génère une URL aléatoire type `random-name-12345.netlify.app`
-4. Aller dans Site Settings → Change site name pour le renommer en quelque chose comme `devoteam-world-cup-2026`
-5. URL finale : `https://devoteam-world-cup-2026.netlify.app`
+1. Sur Vercel : **Add New → Project → Import** le repo `groupsaleschallenge`.
+2. **Framework Preset** : `Other` (site statique, pas de framework).
+3. **Build Command** : vide. **Output Directory** : racine (`./`). **Install Command** : vide.
+4. Cliquer **Deploy**.
+5. À chaque push sur `main` → déploiement **Production** automatique. Les autres branches
+   génèrent des **Preview URLs** (pratique pour tester avant de merger).
+6. URL par défaut type `https://<projet>.vercel.app`, renommable dans
+   **Project Settings → Domains**.
 
-**Méthode propre** (avec GitHub, recommandé) :
-1. Créer un repo privé `devoteam-sales-challenge-2026` sur GitHub
-2. Push le fichier HTML renommé en `index.html`
-3. Sur Netlify : New site from Git → Connect to GitHub → choisir le repo
-4. Build settings : laisser vide (pas de build needed)
-5. Publish directory : `/` (racine)
-6. À chaque commit sur main, Netlify redéploie automatiquement
+> Note : pas de drag-and-drop comme sur Netlify. Le flux Vercel passe par Git
+> (ou la CLI `vercel`). Comme le repo est connecté, il n'y a rien d'autre à faire
+> que pousser sur `main`.
 
 ### 8.3 Domaine custom (étape suivante)
 
-**Option simple** : sous-domaine Netlify gratuit. Suggestions :
-- `devoteam-world-cup-2026.netlify.app`
-- `dvt-sales-challenge.netlify.app`
+**Option simple** : sous-domaine Vercel gratuit (renommer le projet), ex. :
+- `devoteam-world-cup-2026.vercel.app`
+- `dvt-sales-challenge.vercel.app`
 
 **Option premium** : domaine sous `devoteam.com`. Nécessite IT Devoteam pour configurer DNS :
-- Créer un CNAME : `salechallenge.devoteam.com` → `[netlify-site].netlify.app`
-- Dans Netlify : Domain settings → Add custom domain
-- Activer HTTPS (Let's Encrypt, gratuit, automatique via Netlify)
+- Dans Vercel : **Project Settings → Domains → Add** `salechallenge.devoteam.com`
+- Suivre les enregistrements DNS indiqués par Vercel (CNAME vers `cname.vercel-dns.com`,
+  ou A record selon le cas)
+- HTTPS automatique (certificat Let's Encrypt géré par Vercel)
 
 ---
 
@@ -699,7 +698,7 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - [ ] Le modal détail équipe s'ouvre et affiche les membres triés
 - [ ] La recherche My Position fonctionne avec des noms réels
 - [ ] La plateforme est responsive sur mobile (test sur iPhone et Android)
-- [ ] L'URL Netlify fonctionne en HTTPS
+- [ ] L'URL Vercel fonctionne en HTTPS
 - [ ] Test de charge minimal : 10 personnes ouvrent la page en même temps, vérifier que ça tient
 
 ---
@@ -749,19 +748,20 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - **Jose** (data owner Group Sales) : à compléter
 - **Devoteam IT** (pour DNS domaine custom) : à compléter
 - **URL Apps Script** : à renseigner après déploiement
-- **URL Netlify** : à renseigner après déploiement
-- **Repo GitHub** (si utilisé) : à renseigner après création
+- **URL Vercel** : à renseigner après déploiement
+- **Repo GitHub** : leandrecaupenne-netizen/groupsaleschallenge
 
 ---
 
 ## Annexe : structure des fichiers du projet
 
 ```
-devoteam-sales-challenge-2026/
+groupsaleschallenge/
 ├── CLAUDE.md                       (ce fichier, contexte pour Claude Code)
 ├── SHEET_SPEC.md                   (spec à transmettre à Jose, extrait de la section 5)
-├── index.html                      (la plateforme, point d'entrée Netlify)
+├── index.html                      (la plateforme, point d'entrée Vercel)
 ├── apps_script_backend.gs          (le code Apps Script, copie de la section 6)
+├── vercel.json                     (config Vercel : headers, revalidation HTML)
 ├── README.md                       (doc d'usage pour Léandre et futurs intervenants)
 └── .gitignore                      (node_modules, .env, etc.)
 ```

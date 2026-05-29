@@ -1,7 +1,7 @@
 # Devoteam World Cup Sales Challenge 2026 — Platform
 
 Live leaderboard for the Devoteam World Cup Sales Challenge 2026 (1 June – 3 July 2026).
-Single self-contained HTML file (vanilla JS, no build step) that reads live data from a
+Single self-contained HTML file (vanilla JS, no build step), deployed on Vercel, that reads live data from a
 Google Sheet via a Google Apps Script web app.
 
 For the full technical brief, see [`CLAUDE.md`](./CLAUDE.md).
@@ -13,7 +13,8 @@ For the Google Sheet structure to hand to Jose, see [`SHEET_SPEC.md`](./SHEET_SP
 
 | File | Purpose |
 |------|---------|
-| `index.html` | The platform. Single entry point, deployed to Netlify. |
+| `index.html` | The platform. Single entry point, deployed to Vercel. |
+| `vercel.json` | Vercel config (static site, security headers, HTML revalidation). |
 | `apps_script_backend.gs` | Google Apps Script code — the read-only JSON API over the Sheet. |
 | `SHEET_SPEC.md` | Spec for the Google Sheet (4 tabs) — give this to Jose. |
 | `CLAUDE.md` | Full project brief and architecture. |
@@ -23,7 +24,7 @@ For the Google Sheet structure to hand to Jose, see [`SHEET_SPEC.md`](./SHEET_SP
 ## Architecture
 
 ```
-Jose (OneBI) → Google Sheet → Apps Script Web App (JSON API) → index.html (Netlify) → ~400 sales
+Jose (OneBI) → Google Sheet → Apps Script Web App (JSON API) → index.html (Vercel) → ~400 sales
 ```
 
 The platform polls the API every 30 seconds (paused when the browser tab is hidden to
@@ -62,11 +63,14 @@ const CONFIG = {
 The access password is **not** in the code — it lives in the Sheet's `Config` tab
 (`password` key) and is verified server-side by the Apps Script `verify_password` action.
 
-### 4. Host on Netlify
-- Quick: drag-and-drop `index.html` onto <https://app.netlify.com/drop>, then rename the
-  site (e.g. `devoteam-world-cup-2026.netlify.app`).
-- Clean: connect this repo on Netlify (no build command, publish directory `/`); it
-  redeploys on every push.
+### 4. Host on Vercel
+The GitHub repo is connected to Vercel, so deployment is automatic:
+- **Framework preset**: `Other` (static site, no build).
+- **Build command**: none. **Output directory**: repo root (`./`).
+- `vercel.json` sets the security headers and forces HTML revalidation.
+- Every push to `main` triggers a Production deploy; other branches get Preview URLs.
+- Default URL looks like `https://<project>.vercel.app` — renamable in
+  Project Settings → Domains.
 
 ---
 
