@@ -905,6 +905,15 @@ img, table { max-width: 100%; }
 }
 
 /* === Players of the Moment (Spotlight) === */
+.copy-btn {
+  margin-top: 12px;
+  background: var(--navy); color: #fff;
+  padding: 9px 16px; border-radius: 8px;
+  font-weight: 700; font-size: 13px; letter-spacing: 0.04em;
+  transition: background 0.15s;
+}
+.copy-btn:hover { background: var(--navy-2); }
+.copy-btn.copied { background: var(--green); }
 .spotlight-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -1381,6 +1390,38 @@ function spotStatText(s) {
   return fmtNum(s.value);
 }
 
+// Plain-text version of the 5 headlines, for the commentary team.
+function commentaryText() {
+  const header = `DEVOTEAM WORLD CUP — Players of the Moment${period ? ' (' + period + ')' : ''}`;
+  const lines = buildSpotlights().map(s =>
+    `${s.icon} ${s.cat} — ${s.person.name} (${s.person.team}): "${s.headline}"`);
+  return header + '\n\n' + lines.join('\n');
+}
+
+async function copyCommentary() {
+  const text = commentaryText();
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch (e) {
+    try { // fallback for non-secure contexts / older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e2) {}
+  }
+  const btn = document.getElementById('copy-commentary');
+  if (btn) {
+    const old = btn.textContent;
+    btn.textContent = ok ? '✓ Copied!' : '⚠ Copy failed';
+    btn.classList.toggle('copied', ok);
+    setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1600);
+  }
+}
+
 function renderSpotlight() {
   const spots = buildSpotlights();
   const anim = suppressAnim ? '' : ' spot-anim';
@@ -1389,6 +1430,7 @@ function renderSpotlight() {
       <div class="section-header">
         <h2 class="section-title">⭐ PLAYERS OF THE MOMENT</h2>
         <p class="section-subtitle">This matchday's standout performances — five players catching the eye right now</p>
+        <button id="copy-commentary" class="copy-btn" title="Copy the five headlines to the clipboard">📋 Copy commentary</button>
       </div>
       <div class="spotlight-grid">
         ${spots.map((s, i) => {
@@ -1784,6 +1826,8 @@ function render() {
 
   // Count-up the spotlight stats on first view / tab change (not on background polls).
   if (!suppressAnim && currentTab === 'spotlight') animateCountUps();
+  const copyBtn = document.getElementById('copy-commentary');
+  if (copyBtn) copyBtn.addEventListener('click', copyCommentary);
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2141,6 +2185,12 @@ async function init() {
   }
 
   startPolling();
+
+  // Projection screens: ?tv=1 launches straight into TV mode (param kept so a
+  // reload re-enters it). Fullscreen itself may need one click/F11 (browser rule).
+  try {
+    if (!tvMode && new URLSearchParams(location.search).get('tv') === '1') enterTV();
+  } catch (e) {}
 }
 
 // Read the admin activation param before anything else renders.
