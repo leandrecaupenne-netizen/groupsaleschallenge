@@ -1009,9 +1009,11 @@ function computeRankings() {
 }
 
 // === LIVE: data fetching ===
-async function fetchData() {
+// fresh=true bypasses the server-side 30s cache (used by the manual refresh).
+async function fetchData(fresh) {
   try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL + '?action=data', { cache: 'no-store' });
+    const url = CONFIG.APPS_SCRIPT_URL + '?action=data' + (fresh ? '&fresh=1' : '');
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1719,7 +1721,7 @@ async function manualRefresh() {
   const btn = document.getElementById('refresh-btn');
   if (btn) btn.classList.add('spinning');
   const scrollY = window.scrollY;
-  await fetchData();
+  await fetchData(true); // force a fresh read, bypass server cache
   render();
   window.scrollTo(0, scrollY);
   if (btn) setTimeout(() => btn.classList.remove('spinning'), 600);

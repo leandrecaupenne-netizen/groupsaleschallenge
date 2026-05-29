@@ -137,12 +137,25 @@ function readSpecialAwards() {
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'data';
+  const fresh = e && e.parameter && (e.parameter.fresh === '1' || e.parameter.nocache === '1');
   try {
     if (action === 'ping') {
       return jsonResponse({ ok: true, time: new Date().toISOString() });
     }
 
     if (action === 'data') {
+      // Serve from a short-lived cache to keep polling fast and save quota.
+      // `?fresh=1` (manual refresh) bypasses the cache and refreshes it.
+      const cache = CacheService.getScriptCache();
+      const CACHE_KEY = 'wc_data_v1';
+      if (!fresh) {
+        const hit = cache.get(CACHE_KEY);
+        if (hit) {
+          return ContentService.createTextOutput(hit)
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+
       const config = readConfig();
 
       const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP)
@@ -159,7 +172,7 @@ function doGet(e) {
           });
         });
 
-      return jsonResponse({
+      const payload = JSON.stringify({
         teams: teams,
         people: people,
         updated_at: config.last_update || new Date().toISOString(),
@@ -170,6 +183,10 @@ function doGet(e) {
         },
         special_awards: readSpecialAwards()
       });
+
+      cache.put(CACHE_KEY, payload, 30); // cache 30s
+      return ContentService.createTextOutput(payload)
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
     return jsonResponse({ error: 'Unknown action' });
