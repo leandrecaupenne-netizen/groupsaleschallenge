@@ -1006,8 +1006,6 @@ img, table { max-width: 100%; }
 /* === TV / projection mode === */
 .tv-btn { background: rgba(255,255,255,0.1); color: var(--gold); width: 32px; height: 32px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 .tv-btn:hover { background: rgba(255,255,255,0.25); }
-.lang-btn { background: rgba(255,255,255,0.1); color: var(--gold); width: 32px; height: 32px; border-radius: 50%; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
-.lang-btn:hover { background: rgba(255,255,255,0.25); }
 .tv-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: radial-gradient(circle at 50% 0%, #2D3550 0%, #1E2A78 55%, #131a4d 100%);
@@ -1203,7 +1201,6 @@ img, table { max-width: 100%; }
       <span class="last-update" id="last-update">Loading...</span>
     </div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
-    <button id="lang-btn" class="refresh-btn lang-btn" title="Français / English" aria-label="Switch language">FR</button>
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
     <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
@@ -1256,9 +1253,7 @@ let teams = [], people = [], updated_at = null, period = '', challenge_dates = {
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
 
 // === STATE ===
-// === i18n (English / French) — football brand terms stay English by design ===
-const LANG_KEY = 'devoteam_wc_lang_v1';
-let LANG = 'en';
+// === Strings (English only — neutral common language for an international challenge) ===
 const I18N = {
   en: {
     'tab.teams': 'Team Ranking', 'tab.spotlight': 'Players of the Moment ⭐', 'tab.awards': 'Special Awards',
@@ -1276,7 +1271,7 @@ const I18N = {
     'load.title': 'KICK-OFF', 'load.sub': 'Loading the live leaderboard…',
     'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
     'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
-    'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m to the Final', 'cd.live': '🏆 The Final is on — Paris!',
+    'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m {s}s to the Final', 'cd.live': '🏆 The Final is on — Paris!',
     'hero.eyebrow': '🏆 WORLD CUP WINNER · CURRENT LEADERBOARD', 'hero.title': 'Who will lift the trophy?',
     'hero.desc': "Top 1 Team based on Average Total PS Bookings per person. Challenge runs from June 1st to July 3rd. Award ceremony in Paris, July 9th at Victoria Paris (l'Arc).",
     'th.rank': 'RANK', 'th.team': 'TEAM', 'th.members': 'MEMBERS', 'th.avgps': 'AVG PS / PERSON', 'th.avggm': 'AVG GM', 'th.avgmeet': 'AVG MEET', 'th.avgopps': 'AVG OPPS',
@@ -1285,47 +1280,11 @@ const I18N = {
     'playmaker.sub': 'Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, > €50K)',
     'var.low': '🟨 Low activity — under 5 meetings/week', 'var.gm': '🟨 Low margin — GM below 25%'
   },
-  fr: {
-    'tab.teams': 'Classement', 'tab.spotlight': 'Joueurs du moment ⭐', 'tab.awards': 'Prix spéciaux',
-    'tab.var': 'VAR 🟨', 'tab.position': 'Ma position 🔍',
-    'teams.sub': "Vainqueur de la World Cup · Équipe n°1 sur la moyenne de PS Bookings par personne · {n} équipes en lice",
-    'teams.searchPh': 'Rechercher par pays ou nom d\'équipe...',
-    'btn.export': '🖼️ Exporter le classement', 'btn.compare': '⚖️ Comparer', 'btn.copy': '📋 Copier le commentaire', 'btn.card': '🪪 Télécharger ma carte joueur',
-    'spotlight.title': '⭐ JOUEURS DU MOMENT', 'spotlight.sub': 'Les performances marquantes du moment — cinq joueurs en vue actuellement',
-    'awards.title': 'PRIX SPÉCIAUX', 'awards.sub': '4 prix · certains basés sur les données, d\'autres jugés par un jury',
-    'var.title': '🟨 SALLE VAR', 'var.sub': 'Surveillance discipline · {n} joueur{s} actuellement sous carton jaune · Deux jaunes = un rouge',
-    'pos.title': '🔍 MA POSITION', 'pos.sub': 'Tape ton nom pour voir ton classement dans le Sales Challenge', 'pos.searchPh': 'Tape ton nom (ex. Vincent CHEVALIER)',
-    'pos.start': 'Commence à taper ton nom ci-dessus ↑', 'pos.none': 'Aucun commercial trouvé avec ce nom. Vérifie l\'orthographe ou essaie juste le nom de famille.',
-    'login.sub': 'Sales Challenge 2026 — Accès interne', 'login.ph': 'Entre le code d\'accès', 'login.btn': 'ACCÉDER AU CLASSEMENT',
-    'login.bad': 'Code d\'accès incorrect. Réessaie.', 'login.err': 'Serveur injoignable. Vérifie ta connexion et réessaie.', 'login.checking': 'VÉRIFICATION...',
-    'load.title': 'COUP D\'ENVOI', 'load.sub': 'Chargement du classement en direct…',
-    'foot.runs': "Challenge du {a} au {b} · Cérémonie de remise des prix au Victoria Paris (l'Arc)",
-    'foot.data': 'Données : OneBI → Google Sheets · Mis à jour régulièrement · Surveillé chaque semaine par la VAR',
-    'foot.final': '🏆 GRANDE FINALE · PARIS · 9 JUILLET 2026', 'cd.fmt': '🏆 {d}j {h}h {m}m avant la Finale', 'cd.live': '🏆 C\'est la Finale — Paris !',
-    'hero.eyebrow': '🏆 VAINQUEUR DE LA WORLD CUP · CLASSEMENT ACTUEL', 'hero.title': 'Qui soulèvera le trophée ?',
-    'hero.desc': "Équipe n°1 sur la moyenne de PS Bookings totaux par personne. Challenge du 1er juin au 3 juillet. Cérémonie à Paris le 9 juillet, au Victoria Paris (l'Arc).",
-    'th.rank': 'RANG', 'th.team': 'ÉQUIPE', 'th.members': 'MEMBRES', 'th.avgps': 'MOY PS / PERS.', 'th.avggm': 'MOY GM', 'th.avgmeet': 'MOY RDV', 'th.avgopps': 'MOY OPPS',
-    'teams.clickHint': '→ cliquer pour voir les membres', 'teams.noresult': 'Aucune équipe ne correspond à ta recherche.',
-    'golden.sub': 'Plus de buts · Top 5 des commerciaux sur les PS Bookings New Business',
-    'playmaker.sub': 'Plus de passes décisives · Top 5 sur les opportunités New Business créées (Stage 2+, > 50 K€)',
-    'var.low': '🟨 Faible activité — moins de 5 RDV/semaine', 'var.gm': '🟨 Faible marge — GM sous 25 %'
-  }
 };
 function t(k, vars) {
-  let s = (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+  let s = (I18N.en && I18N.en[k]) || k;
   if (vars) Object.keys(vars).forEach(v => { s = s.replace('{' + v + '}', vars[v]); });
   return s;
-}
-function applyLangButton() {
-  const btn = document.getElementById('lang-btn');
-  if (btn) btn.textContent = LANG === 'en' ? 'FR' : 'EN';
-}
-function setLang(l) {
-  LANG = (l === 'fr') ? 'fr' : 'en';
-  safeSet(LANG_KEY, LANG);
-  document.documentElement.lang = LANG;
-  applyLangButton();
-  render();
 }
 
 let currentTab = 'teams';
@@ -2506,8 +2465,9 @@ function updateCountdown() {
   if (!el) return;
   const ms = FINAL_DATE.getTime() - Date.now();
   if (ms <= 0) { el.textContent = t('cd.live'); return; }
-  const d = Math.floor(ms / 86400000), h = Math.floor(ms / 3600000) % 24, m = Math.floor(ms / 60000) % 60;
-  el.textContent = t('cd.fmt', { d, h, m });
+  const d = Math.floor(ms / 86400000), h = Math.floor(ms / 3600000) % 24,
+        m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
+  el.textContent = t('cd.fmt', { d, h, m, s });
 }
 
 function renderFooter() {
@@ -3251,12 +3211,6 @@ async function init() {
     searchBtn.dataset.bound = '1';
     searchBtn.addEventListener('click', openSearch);
   }
-  const langBtn = document.getElementById('lang-btn');
-  if (langBtn && !langBtn.dataset.bound) {
-    langBtn.dataset.bound = '1';
-    langBtn.addEventListener('click', () => setLang(LANG === 'en' ? 'fr' : 'en'));
-  }
-  applyLangButton();
 
   startPolling();
 
@@ -3268,8 +3222,7 @@ async function init() {
 }
 
 // Read the admin activation param before anything else renders.
-LANG = (safeGet(LANG_KEY) === 'fr') ? 'fr' : 'en';
-document.documentElement.lang = LANG;
+document.documentElement.lang = 'en';
 applyTheme(currentTheme());
 checkAdminParam();
 
@@ -3281,7 +3234,7 @@ init().catch(err => {
 });
 
 // Tick the live countdown every second (no-ops until the footer exists).
-setInterval(updateCountdown, 30000);
+setInterval(updateCountdown, 1000);
 
 // PWA: register the service worker (https only; silently ignored on file://).
 if ('serviceWorker' in navigator) {
