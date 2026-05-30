@@ -1152,6 +1152,19 @@ img, table { max-width: 100%; }
 .sr-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
 .sr-stat { font-family: ui-monospace, monospace; font-size: 12px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
 
+/* === Compare modal === */
+.compare-modal { max-width: 600px; }
+.compare-body { padding: 8px 22px 24px; }
+.compare-selects { display: flex; align-items: center; gap: 12px; margin: 6px 0 16px; }
+.cmp-select { flex: 1; min-width: 0; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; font-weight: 600; background: var(--paper); color: var(--ink); }
+.cmp-vs { font-family: 'Anton', Impact, sans-serif; color: var(--usa-red); font-size: 16px; }
+.cmp-table { width: 100%; border-collapse: collapse; }
+.cmp-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); padding: 8px 6px; border-bottom: 2px solid var(--line); text-align: center; }
+.cmp-table th:first-child { text-align: left; }
+.cmp-table td { padding: 9px 6px; text-align: center; font-weight: 700; font-size: 14px; border-bottom: 1px solid var(--line); }
+.cmp-table td.cmp-metric { text-align: left; font-weight: 600; font-size: 12.5px; color: var(--muted); }
+.cmp-table td.cmp-win { color: var(--green); background: rgba(22,163,74,0.10); border-radius: 6px; }
+
 /* === Live news ticker === */
 .ticker { background: var(--navy-2); color: #fff; overflow: hidden; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.12); }
 .ticker[hidden] { display: none; }
@@ -1623,6 +1636,7 @@ function renderTeamRanking() {
         <h2 class="section-title">TEAM RANKING</h2>
         <p class="section-subtitle">World Cup Winner · Top 1 Team based on Average PS Bookings per person · ${teams.length} teams competing${sortNote}</p>
         <button id="export-standings" class="copy-btn">🖼️ Export standings</button>
+        <button id="compare-btn" class="copy-btn">⚖️ Compare</button>
       </div>
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="Search by country or team name..." value="${escapeHtml(currentSearch)}" />
@@ -2490,6 +2504,8 @@ function render() {
   if (cardBtn) cardBtn.addEventListener('click', () => generatePlayerCard(cardPerson));
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
+  const compareBtn = document.getElementById('compare-btn');
+  if (compareBtn) compareBtn.addEventListener('click', openCompare);
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2809,6 +2825,95 @@ function openSearch() {
   }));
   renderResults();
   setTimeout(() => { const i = el.querySelector('#search-input'); if (i) i.focus(); }, 50);
+}
+
+// === Compare mode (two teams or two players head-to-head) ===
+function openCompare() {
+  if (document.getElementById('compare-overlay')) return;
+  let mode = 'teams';
+  const better = (a, b) => (a || 0) > (b || 0) ? 0 : (b || 0) > (a || 0) ? 1 : -1; // 0=A,1=B,-1=tie
+  const lower = (a, b) => a < b ? 0 : b < a ? 1 : -1;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay'; el.id = 'compare-overlay';
+  el.innerHTML = `
+    <div class="modal compare-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-block"><h2 class="modal-title">⚖️ COMPARE</h2><div class="modal-subtitle">Head to head</div></div>
+        <button class="modal-close" id="compare-close" aria-label="Close">×</button>
+      </div>
+      <div class="compare-body">
+        <div class="search-chips">
+          <button class="search-chip on" data-m="teams">Teams</button>
+          <button class="search-chip" data-m="players">Players</button>
+        </div>
+        <div class="compare-selects">
+          <select id="cmp-a" class="cmp-select" aria-label="First selection"></select>
+          <span class="cmp-vs">VS</span>
+          <select id="cmp-b" class="cmp-select" aria-label="Second selection"></select>
+        </div>
+        <div id="compare-table"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('#compare-close').addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+
+  const fill = () => {
+    const opts = mode === 'teams' ? sortedTeams.map(t => t.country) : sortedGoldenBoot.map(p => p.name);
+    const a = el.querySelector('#cmp-a'), bb = el.querySelector('#cmp-b');
+    const html = opts.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+    a.innerHTML = html; bb.innerHTML = html;
+    a.selectedIndex = 0; bb.selectedIndex = Math.min(1, opts.length - 1);
+  };
+  const draw = () => {
+    const aV = el.querySelector('#cmp-a').value, bV = el.querySelector('#cmp-b').value;
+    let rows;
+    if (mode === 'teams') {
+      const A = teams.find(t => t.country === aV), B = teams.find(t => t.country === bV);
+      if (!A || !B) return;
+      const rk = c => sortedTeams.findIndex(t => t.country === c) + 1;
+      rows = [
+        ['World Cup rank', `#${rk(aV)}`, `#${rk(bV)}`, lower(rk(aV), rk(bV))],
+        ['Avg PS / person', fmtMoney(A.avg_ps), fmtMoney(B.avg_ps), better(A.avg_ps, B.avg_ps)],
+        ['Total PS', fmtMoney(A.total_ps), fmtMoney(B.total_ps), better(A.total_ps, B.total_ps)],
+        ['Members', A.members, B.members, -1],
+        ['Avg GM', fmtPct(A.avg_gm), fmtPct(B.avg_gm), better(A.avg_gm, B.avg_gm)],
+        ['Avg meetings', fmtNum(A.avg_meetings), fmtNum(B.avg_meetings), better(A.avg_meetings, B.avg_meetings)],
+        ['Avg opps', fmtNum(A.avg_opps), fmtNum(B.avg_opps), better(A.avg_opps, B.avg_opps)]
+      ];
+    } else {
+      const A = people.find(p => p.name === aV), B = people.find(p => p.name === bV);
+      if (!A || !B) return;
+      const gr = n => sortedGoldenBoot.findIndex(p => p.name === n) + 1, pr = n => sortedPlaymaker.findIndex(p => p.name === n) + 1;
+      rows = [
+        ['Team', A.team, B.team, -1],
+        ['Golden Boot rank', `#${gr(aV)}`, `#${gr(bV)}`, lower(gr(aV), gr(bV))],
+        ['PS New Business', fmtMoney(A.ps_nb), fmtMoney(B.ps_nb), better(A.ps_nb, B.ps_nb)],
+        ['Playmaker rank', `#${pr(aV)}`, `#${pr(bV)}`, lower(pr(aV), pr(bV))],
+        ['Opps created', Number(A.opps || 0).toFixed(0), Number(B.opps || 0).toFixed(0), better(A.opps, B.opps)],
+        ['PS Total', fmtMoney(A.ps_total), fmtMoney(B.ps_total), better(A.ps_total, B.ps_total)],
+        ['GM total', fmtPct(A.ps_total_gm), fmtPct(B.ps_total_gm), better(A.ps_total_gm, B.ps_total_gm)],
+        ['Meetings / wk', fmtNum(A.meetings), fmtNum(B.meetings), better(A.meetings, B.meetings)]
+      ];
+    }
+    el.querySelector('#compare-table').innerHTML = `
+      <table class="cmp-table">
+        <thead><tr><th></th><th>${escapeHtml(aV)}</th><th>${escapeHtml(bV)}</th></tr></thead>
+        <tbody>${rows.map(r => `<tr><td class="cmp-metric">${r[0]}</td>
+          <td class="${r[3] === 0 ? 'cmp-win' : ''}">${r[1]}</td>
+          <td class="${r[3] === 1 ? 'cmp-win' : ''}">${r[2]}</td></tr>`).join('')}</tbody>
+      </table>`;
+  };
+  el.querySelectorAll('.search-chip').forEach(c => c.addEventListener('click', () => {
+    mode = c.dataset.m; el.querySelectorAll('.search-chip').forEach(x => x.classList.toggle('on', x === c)); fill(); draw();
+  }));
+  el.querySelector('#cmp-a').addEventListener('change', draw);
+  el.querySelector('#cmp-b').addEventListener('change', draw);
+  fill(); draw();
 }
 
 function renderLoginScreen(errorMsg) {
