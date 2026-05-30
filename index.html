@@ -1166,6 +1166,7 @@ let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal
 // === STATE ===
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
+let cardPerson = null; // person currently shown in My Position (for the shareable card)
 let currentSearch = '';
 let positionQuery = '';
 let openTeamModal = null; // country name si modal ouverte
@@ -1952,6 +1953,7 @@ function renderMyPosition() {
 }
 
 function renderPositionDetails(person) {
+  cardPerson = person; // remember for the shareable card
   const goldenRank = sortedGoldenBoot.findIndex(p => p.name === person.name) + 1;
   const playmakerRank = sortedPlaymaker.findIndex(p => p.name === person.name) + 1;
   const totalRank = sortedPSTotal.findIndex(p => p.name === person.name) + 1;
@@ -2020,8 +2022,97 @@ function renderPositionDetails(person) {
           🌱 You are eligible for the <strong>Rookie of the Year</strong> award (less than 1 year at Devoteam)
         </div>
       ` : ''}
+      <button id="download-card" class="copy-btn" style="margin-top:18px">🪪 Download my player card</button>
     </div>
   `;
+}
+
+// === Shareable player card (PNG via canvas) ===
+function generatePlayerCard(person) {
+  if (!person) return;
+  const img = new Image();
+  img.onload = () => drawPlayerCard(person, img);
+  img.onerror = () => drawPlayerCard(person, null);
+  img.src = LOGO_DATA_URI || '';
+  if (!LOGO_DATA_URI) drawPlayerCard(person, null);
+}
+
+function drawPlayerCard(person, logo) {
+  const W = 760, H = 1080, s = 2; // 2x for crisp output
+  const cv = document.createElement('canvas');
+  cv.width = W * s; cv.height = H * s;
+  const ctx = cv.getContext('2d');
+  ctx.scale(s, s);
+  const color = colorForTeam(person.team);
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+
+  // Background
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#2D3550'); g.addColorStop(0.5, '#1E2A78'); g.addColorStop(1, '#131a4d');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // diagonal stripes
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 2;
+  for (let i = -H; i < W; i += 26) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke(); }
+  // outer frame
+  ctx.strokeStyle = color; ctx.lineWidth = 8; rr(16, 16, W - 32, H - 32, 26); ctx.stroke();
+  // flag banner
+  const bw = (W - 56) / 3;
+  ['#C8102E', '#FFFFFF', '#006847'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
+
+  // logo
+  if (logo) { const lw = 120, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 66, lw, lh); }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F2C75C'; ctx.font = '700 22px Inter, sans-serif';
+  ctx.fillText('DEVOTEAM WORLD CUP', W / 2, 220);
+  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = '600 13px monospace';
+  ctx.fillText('SALES CHALLENGE 2026', W / 2, 244);
+
+  // name + team
+  ctx.fillStyle = '#fff';
+  let name = person.name.toUpperCase();
+  ctx.font = '700 44px "Arial Narrow", Impact, sans-serif';
+  if (ctx.measureText(name).width > W - 80) ctx.font = '700 32px "Arial Narrow", Impact, sans-serif';
+  ctx.fillText(name, W / 2, 312);
+  ctx.fillStyle = color === '#FFFFFF' ? '#F2C75C' : '#F2C75C';
+  ctx.font = '700 18px Inter, sans-serif';
+  ctx.fillText(person.team.toUpperCase() + (person.is_rookie ? '  ·  🌱 ROOKIE' : ''), W / 2, 342);
+
+  // stat rows
+  const gRank = sortedGoldenBoot.findIndex(p => p.name === person.name) + 1;
+  const pRank = sortedPlaymaker.findIndex(p => p.name === person.name) + 1;
+  const tRank = sortedPSTotal.findIndex(p => p.name === person.name) + 1;
+  const rows = [
+    ['⚽ GOLDEN BOOT', gRank ? '#' + gRank : '—', fmtMoney(person.ps_nb) + ' NB'],
+    ['🎯 PLAYMAKER', pRank ? '#' + pRank : '—', Number(person.opps || 0).toFixed(0) + ' opps'],
+    ['💰 PS TOTAL', fmtMoney(person.ps_total), '#' + tRank + ' overall'],
+    ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : 'on target'],
+    ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : 'on target']
+  ];
+  let y = 392;
+  rows.forEach(r => {
+    rr(40, y, W - 80, 96, 16); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill();
+    rr(40, y, 6, 96, 3); ctx.fillStyle = color; ctx.fill();
+    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 16px Inter, sans-serif';
+    ctx.fillText(r[0], 64, y + 36);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 14px Inter, sans-serif';
+    ctx.fillText(r[2], 64, y + 66);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#F2C75C'; ctx.font = '700 40px "Arial Narrow", Impact, sans-serif';
+    ctx.fillText(r[1], W - 64, y + 58);
+    y += 110;
+  });
+
+  // footer
+  ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 14px Inter, sans-serif';
+  ctx.fillText('Final in Paris · 9 July 2026 · Victoria Paris (l’Arc)', W / 2, H - 46);
+
+  cv.toBlob(blob => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = person.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-world-cup-card.png';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }, 'image/png');
 }
 
 function renderTeamModal() {
@@ -2154,6 +2245,8 @@ function render() {
   if (!suppressAnim && currentTab === 'spotlight') animateCountUps();
   const copyBtn = document.getElementById('copy-commentary');
   if (copyBtn) copyBtn.addEventListener('click', copyCommentary);
+  const cardBtn = document.getElementById('download-card');
+  if (cardBtn) cardBtn.addEventListener('click', () => generatePlayerCard(cardPerson));
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
