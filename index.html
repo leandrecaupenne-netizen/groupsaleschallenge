@@ -1089,6 +1089,12 @@ img, table { max-width: 100%; }
 /* === Confetti === */
 .confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1200; }
 
+/* === Animated numbers (value changed since last refresh) === */
+.animnum { font-variant-numeric: tabular-nums; transition: color 0.2s; }
+.animnum.animnum-changed { animation: numPulse 0.9s ease; }
+@keyframes numPulse { 0% { color: var(--gold); text-shadow: 0 0 12px rgba(242,199,92,0.7); } 100% { color: inherit; text-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .animnum.animnum-changed { animation: none; } }
+
 /* === Rules & Awards modal === */
 .rules-modal { max-width: 640px; }
 .rules-body { padding: 8px 24px 28px; }
@@ -1414,6 +1420,45 @@ function setSyncWarning(show) {
   if (warn) warn.classList.toggle('show', !!show);
 }
 
+// === Animate numbers that change between refreshes ===
+let prevValues = {};
+function fmtByType(v, fmt) {
+  if (fmt === 'money') return fmtMoney(v);
+  if (fmt === 'pct') return fmtPct(v);
+  if (fmt === 'int') return Math.round(v).toFixed(0);
+  return fmtNum(v);
+}
+function fmtByTypeAnim(v, fmt) {
+  if (fmt === 'money') return fmtMoney(v);
+  if (fmt === 'pct') return `${(v * 100).toFixed(1)}%`;
+  if (fmt === 'int') return Math.round(v).toFixed(0);
+  return v.toFixed(1);
+}
+// Returns a span that animfrom->to when its value changes vs the last render.
+function animNum(key, value, fmt) {
+  return `<span class="animnum" data-akey="${escapeHtml(key)}" data-ato="${value}" data-afmt="${fmt}">${fmtByType(value, fmt)}</span>`;
+}
+function runAnimNums() {
+  document.querySelectorAll('.animnum').forEach(el => {
+    const key = el.getAttribute('data-akey');
+    const to = parseFloat(el.getAttribute('data-ato'));
+    const fmt = el.getAttribute('data-afmt');
+    const prev = prevValues[key];
+    prevValues[key] = to;
+    if (prev === undefined || prev === to || !isFinite(to)) { el.textContent = fmtByType(to, fmt); return; }
+    el.classList.add('animnum-changed');
+    const dur = 800, start = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      el.textContent = fmtByTypeAnim(prev + (to - prev) * e, fmt);
+      if (t < 1) requestAnimationFrame(step);
+      else { el.textContent = fmtByType(to, fmt); setTimeout(() => el.classList.remove('animnum-changed'), 600); }
+    };
+    requestAnimationFrame(step);
+  });
+}
+
 // Animate [data-countup] numbers from 0 to their value, respecting their format.
 // Uses dash-free formatters so the zero frame shows "0"/"0.0%" rather than "—".
 function animateCountUps() {
@@ -1468,7 +1513,7 @@ function renderPodiumCard(team, rank, medal, position) {
       <div class="podium-medal">${medal}</div>
       <div class="podium-rank">#${rank}</div>
       <div class="podium-team-name">${escapeHtml(team.country)}</div>
-      <div class="podium-stat-main">${fmtMoney(team.avg_ps)}</div>
+      <div class="podium-stat-main">${animNum('pod:' + team.country, team.avg_ps, 'money')}</div>
       <div class="podium-stat-label">Avg PS Bookings per person</div>
       <div class="podium-stat-meta">
         <span>👥 ${team.members}</span>
@@ -1544,7 +1589,7 @@ function renderTeamRanking() {
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>
               <div>
-                <div class="tt-money tt-money-main">${fmtMoney(t.avg_ps)}</div>
+                <div class="tt-money tt-money-main">${animNum('tt:' + t.country, t.avg_ps, 'money')}</div>
                 <div class="tt-money-sub">Total: ${fmtMoney(t.total_ps)}</div>
               </div>
               <div class="tt-stat tt-col-meet">${fmtPct(t.avg_gm)}</div>
@@ -1568,7 +1613,7 @@ function renderGoldenBoot() {
         <p class="section-subtitle">Most Goals · Top 5 Salespeople based on PS Bookings New Business</p>
       </div>
       <div class="individuals-grid">
-        ${top5.map((p, i) => renderIndivCard(p, i+1, fmtMoney(p.ps_nb), 'PS Bookings (NB)', [
+        ${top5.map((p, i) => renderIndivCard(p, i+1, animNum('gb:' + p.name, p.ps_nb, 'money'), 'PS Bookings (NB)', [
           `GM ${fmtPct(p.ps_nb_gm)}`,
           `${fmtNum(p.meetings)} meet/wk`
         ], 'golden')).join('')}
@@ -1586,7 +1631,7 @@ function renderPlaymaker() {
         <p class="section-subtitle">Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, &gt; €50K)</p>
       </div>
       <div class="individuals-grid">
-        ${top5.map((p, i) => renderIndivCard(p, i+1, Number(p.opps||0).toFixed(0), 'Opportunities Created', [
+        ${top5.map((p, i) => renderIndivCard(p, i+1, animNum('pm:' + p.name, p.opps, 'int'), 'Opportunities Created', [
           `${fmtNum(p.meetings)} meet/wk`,
           `${fmtMoney(p.ps_total)} PS total`
         ], 'playmaker')).join('')}
@@ -2301,6 +2346,7 @@ function render() {
   document.getElementById('last-update').textContent = `Last updated: ${formatDate(updated_at)} · ${period}`;
   updateCountdown();
   updateTicker();
+  runAnimNums();
 
   // Count-up the spotlight stats on first view / tab change (not on background polls).
   if (!suppressAnim && currentTab === 'spotlight') animateCountUps();
