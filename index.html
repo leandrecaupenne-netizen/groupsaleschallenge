@@ -1054,24 +1054,26 @@ img, table { max-width: 100%; }
 .tv-close { background: rgba(255,255,255,0.12); color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; }
 .tv-close:hover { background: rgba(255,255,255,0.28); }
 .tv-body { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 1; }
-.tv-title { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 6vw, 76px); line-height: 1; text-align: center; }
-.tv-sub { text-align: center; color: rgba(255,255,255,0.7); font-size: clamp(12px, 1.6vw, 20px); letter-spacing: 0.08em; text-transform: uppercase; margin: 10px 0 3vh; }
-.tv-list { display: flex; flex-direction: column; gap: 1.4vh; max-width: 1100px; width: 100%; margin: 0 auto; }
+/* TV fonts scale with vmin (the SMALLER of width/height) so 5 rows still fit on
+   wide-but-short screens (e.g. 720p projectors), not just tall ones. */
+.tv-title { font-family: 'Anton', Impact, sans-serif; font-size: clamp(28px, 7vmin, 76px); line-height: 1; text-align: center; }
+.tv-sub { text-align: center; color: rgba(255,255,255,0.7); font-size: clamp(12px, 2vmin, 20px); letter-spacing: 0.08em; text-transform: uppercase; margin: 1vh 0 2.4vh; }
+.tv-list { display: flex; flex-direction: column; gap: 1.2vh; max-width: 1100px; width: 100%; margin: 0 auto; }
 .tv-awards { display: flex; flex-wrap: wrap; gap: 4vw; justify-content: center; max-width: 1200px; margin: 0 auto; }
 .tv-awcol { flex: 1 1 380px; min-width: 0; }
-.tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3vw, 34px); color: var(--gold); text-align: center; margin-bottom: 1.6vh; letter-spacing: 0.02em; }
-.tv-awcol .tv-list { gap: 1.1vh; }
+.tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 34px); color: var(--gold); text-align: center; margin-bottom: 1.4vh; letter-spacing: 0.02em; }
+.tv-awcol .tv-list { gap: 1vh; }
 .tv-row {
   display: flex; align-items: center; gap: 3vw;
   background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; padding: 1.6vh 2.4vw;
+  border-radius: 14px; padding: 1.3vh 2.4vw;
 }
 .tv-row.lead { background: linear-gradient(90deg, rgba(242,199,92,0.28), rgba(242,199,92,0.06)); border-color: rgba(242,199,92,0.6); }
-.tv-pos { font-size: clamp(26px, 4vw, 52px); min-width: 1.4em; text-align: center; }
-.tv-name { flex: 1; font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3vw, 40px); line-height: 1.05; }
+.tv-pos { font-size: clamp(24px, 4.5vmin, 52px); min-width: 1.4em; text-align: center; }
+.tv-name { flex: 1; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
 .tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
-.tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(24px, 3.6vw, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
+.tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
 .tv-dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 2; padding-top: 2vh; }
 .tv-dots span { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.15s, transform 0.15s; }
 .tv-dots span:hover { transform: scale(1.2); }
@@ -3468,7 +3470,7 @@ function tvPanelHTML(kind) {
     const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
       .sort((a, b) => ((b.yellow_meetings ? 1 : 0) + (b.yellow_gm ? 1 : 0)) - ((a.yellow_meetings ? 1 : 0) + (a.yellow_gm ? 1 : 0)) || (a.meetings || 0) - (b.meetings || 0));
     const n = union.length;
-    const rows = union.slice(0, 6).map(p => {
+    const rows = union.slice(0, 5).map(p => {
       const bits = [];
       if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk`);
       if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)}`);
