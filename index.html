@@ -1124,6 +1124,19 @@ img, table { max-width: 100%; }
 .var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
 .var-more { padding: 10px 6px; color: var(--muted); font-size: 12px; font-style: italic; border-top: 1px dashed var(--line); }
 
+/* === Clean Sheet / Fair Play === */
+.clean-sheet { margin-top: 22px; padding: 18px; border: 1px solid var(--line); border-left: 5px solid var(--green); border-radius: 12px; background: var(--paper); }
+.cs-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.cs-title { font-family: 'Anton', Impact, sans-serif; font-size: 20px; letter-spacing: 0.02em; color: var(--ink); margin: 0; }
+.cs-count { font-size: 13px; font-weight: 700; color: var(--green); background: rgba(22,163,74,0.12); padding: 4px 10px; border-radius: 99px; }
+.cs-sub { font-size: 13px; color: var(--muted); margin: 6px 0 14px; }
+.cs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.cs-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(22,163,74,0.06); border: 1px solid rgba(22,163,74,0.18); border-radius: 10px; }
+.cs-rank { font-weight: 800; font-size: 14px; min-width: 26px; text-align: center; }
+.cs-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-name em { display: block; font-style: normal; font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; font-family: ui-monospace, monospace; }
+.cs-val { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700; color: var(--green); white-space: nowrap; }
+
 /* === Rank movement badges ▲▼ === */
 .mv { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; font-family: ui-monospace, monospace; vertical-align: middle; letter-spacing: 0.02em; }
 .mv-up { color: var(--green); }
@@ -2099,6 +2112,9 @@ function renderVAR() {
   const lowMeet = people.filter(p => p.yellow_meetings).sort((a, b) => (a.meetings || 0) - (b.meetings || 0));
   const lowGm = people.filter(p => p.yellow_gm).sort((a, b) => (a.ps_total_gm || 0) - (b.ps_total_gm || 0));
   const names = new Set(); lowMeet.forEach(p => names.add(p.name)); lowGm.forEach(p => names.add(p.name));
+  // Clean Sheet: players respecting every rule (no cards) — the positive side of the VAR.
+  const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
+  const topClean = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 8);
 
   const row = (p, val) => `
     <div class="var-row">
@@ -2124,6 +2140,21 @@ function renderVAR() {
       <div class="var-grid">
         ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, "No cards here — everyone's hitting their meetings. ✅")}
         ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, 'No cards here — margins are healthy. ✅')}
+      </div>
+      <div class="clean-sheet">
+        <div class="cs-head">
+          <h3 class="cs-title">🧤 Clean Sheet — Fair Play</h3>
+          <span class="cs-count">${clean.length} player${clean.length === 1 ? '' : 's'} with zero cards</span>
+        </div>
+        <p class="cs-sub">5+ meetings/week and Gross Margin ≥ 25% — the defensive wall. 🛡️ Top performers playing fully by the rules:</p>
+        ${topClean.length
+          ? `<div class="cs-list">${topClean.map((p, i) => `
+              <div class="cs-chip">
+                <span class="cs-rank">${['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))}</span>
+                <span class="cs-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+                <span class="cs-val">${fmtMoney(p.ps_nb)}</span>
+              </div>`).join('')}</div>`
+          : `<div class="no-result">No clean sheets yet — everyone has at least one card.</div>`}
       </div>
     </div>
   `;
