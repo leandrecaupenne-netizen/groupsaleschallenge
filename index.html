@@ -1787,6 +1787,7 @@ function nationsRanking() {
     label: VT_REGION_LABELS[g.region] || g.region,
     teams: g.teams,
     people: g.people,
+    total_ps: g.total_ps,
     avg_ps: g.people ? g.total_ps / g.people : 0,
     avg_gm: g.people ? g.gmw / g.people : 0
   })).sort((a, b) => b.avg_ps - a.avg_ps);
@@ -3406,6 +3407,7 @@ function openCompare() {
       <div class="compare-body">
         <div class="search-chips">
           <button class="search-chip on" data-m="teams">Teams</button>
+          <button class="search-chip" data-m="nations">Nations</button>
           <button class="search-chip" data-m="players">Players</button>
         </div>
         <div class="compare-selects">
@@ -3433,7 +3435,9 @@ function openCompare() {
   document.addEventListener('keydown', onKey);
 
   let comboA, comboB;
-  const optionsFor = () => mode === 'teams' ? sortedTeams.map(t => t.country) : sortedGoldenBoot.map(p => p.name);
+  const optionsFor = () => mode === 'teams' ? sortedTeams.map(t => t.country)
+    : mode === 'nations' ? nationsRanking().map(n => n.label)
+    : sortedGoldenBoot.map(p => p.name);
   const fill = () => {
     const opts = optionsFor();
     comboA.setValue(opts[0] || '');
@@ -3455,6 +3459,19 @@ function openCompare() {
         ['Avg GM', fmtPct(A.avg_gm), fmtPct(B.avg_gm), better(A.avg_gm, B.avg_gm)],
         ['Avg meetings', fmtNum(A.avg_meetings), fmtNum(B.avg_meetings), better(A.avg_meetings, B.avg_meetings)],
         ['Avg opps', fmtNum(A.avg_opps), fmtNum(B.avg_opps), better(A.avg_opps, B.avg_opps)]
+      ];
+    } else if (mode === 'nations') {
+      const nations = nationsRanking();
+      const A = nations.find(n => n.label === aV), B = nations.find(n => n.label === bV);
+      if (!A || !B) return hint('Type and pick two nations to compare.');
+      const rk = lbl => nations.findIndex(n => n.label === lbl) + 1;
+      rows = [
+        ['Nations rank', `#${rk(aV)}`, `#${rk(bV)}`, lower(rk(aV), rk(bV))],
+        ['Avg PS / person', fmtMoney(A.avg_ps), fmtMoney(B.avg_ps), better(A.avg_ps, B.avg_ps)],
+        ['Total PS', fmtMoney(A.total_ps), fmtMoney(B.total_ps), better(A.total_ps, B.total_ps)],
+        ['Avg GM', fmtPct(A.avg_gm), fmtPct(B.avg_gm), better(A.avg_gm, B.avg_gm)],
+        ['Teams', A.teams, B.teams, -1],
+        ['People', A.people, B.people, -1]
       ];
     } else {
       const A = people.find(p => p.name === aV), B = people.find(p => p.name === bV);
