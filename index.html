@@ -1031,6 +1031,11 @@ img, table { max-width: 100%; }
 .tv-prev { left: 2vw; }
 .tv-next { right: 2vw; }
 @media (max-width: 600px) { .tv-nav { width: 44px; height: 44px; font-size: 26px; } }
+/* "Scan to open" QR in the corner */
+.tv-qr { position: absolute; right: 2.5vw; bottom: 2.5vw; z-index: 2; display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.95); padding: 10px 14px 10px 10px; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.tv-qr-img svg { display: block; width: 96px; height: 96px; }
+.tv-qr-label { font-family: 'Anton', Impact, sans-serif; font-size: 14px; line-height: 1.2; color: var(--navy); letter-spacing: 0.02em; }
+@media (max-width: 600px) { .tv-qr-img svg { width: 70px; height: 70px; } .tv-qr-label { font-size: 11px; } }
 .tv-anim { animation: tvFade 0.6s ease both; }
 @keyframes tvFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tv-anim { animation: none; } }
@@ -2517,6 +2522,33 @@ let tvMode = false, tvPanel = 0, tvTimer = null;
 const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight'];
 const TV_ROTATE_MS = 10000; // 10s per panel
 
+// Lazy-load the vendored QR library (only when TV mode is used) and build the
+// QR for this site's URL once, then refresh the TV so it appears.
+let tvQrSvg = null, qrLibPromise = null;
+function ensureQrLib() {
+  if (window.qrcode) return Promise.resolve(window.qrcode);
+  if (qrLibPromise) return qrLibPromise;
+  qrLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'qrcode.js';
+    s.onload = () => resolve(window.qrcode);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return qrLibPromise;
+}
+function buildTvQr() {
+  if (tvQrSvg) { renderTV(); return; }
+  ensureQrLib().then(qrcode => {
+    try {
+      const url = location.origin + location.pathname; // clean URL, no ?tv/hash
+      const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+      tvQrSvg = qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true });
+      if (tvMode) renderTV();
+    } catch (e) { /* QR is optional */ }
+  }).catch(() => {});
+}
+
 function startTvTimer() {
   clearInterval(tvTimer);
   tvTimer = setInterval(() => { tvPanel = (tvPanel + 1) % TV_PANELS.length; renderTV(); }, TV_ROTATE_MS);
@@ -2546,6 +2578,7 @@ function enterTV() {
     if (rfs) rfs.call(el).catch(() => {});
   } catch (e) {}
   renderTV();
+  buildTvQr();      // lazy-load + show the "scan to open" QR
   startTvTimer();
 }
 
@@ -2611,6 +2644,7 @@ function renderTV() {
       <button class="tv-nav tv-next" id="tv-next" aria-label="Next">›</button>
       <div class="tv-body tv-anim">${tvPanelHTML(TV_PANELS[tvPanel])}</div>
       <div class="tv-dots">${TV_PANELS.map((_, i) => `<span class="${i === tvPanel ? 'on' : ''}" data-i="${i}"></span>`).join('')}</div>
+      ${tvQrSvg ? `<div class="tv-qr"><div class="tv-qr-img">${tvQrSvg}</div><div class="tv-qr-label">Scan to open<br/>on your phone</div></div>` : ''}
     </div>`;
   const c = document.getElementById('tv-close');
   if (c) c.addEventListener('click', exitTV);
