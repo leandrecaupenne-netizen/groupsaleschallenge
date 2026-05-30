@@ -1406,6 +1406,9 @@ let vartimeFilter = 'all'; // admin VAR TIME view: 'all' | 'pending'
 let vartimeRegion = 'all'; // VAR TIME country/region filter
 let vartimeTeam = 'all';   // VAR TIME entity (team) filter
 let vartimeSearch = '';    // VAR TIME player name search
+let varRegion = 'all';     // VAR Room country/region filter
+let varTeam = 'all';       // VAR Room entity (team) filter
+let varSearch = '';        // VAR Room player name search
 let openTeamModal = null; // country name si modal ouverte
 let openNationModal = null; // region key when a nation drilldown modal is open
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
@@ -2131,12 +2134,39 @@ function renderSpotlight() {
 // === VAR Room (yellow cards) ===
 function renderVAR() {
   const CAP = 12;
-  const lowMeet = people.filter(p => p.yellow_meetings).sort((a, b) => (a.meetings || 0) - (b.meetings || 0));
-  const lowGm = people.filter(p => p.yellow_gm).sort((a, b) => (a.ps_total_gm || 0) - (b.ps_total_gm || 0));
+  // Same filters as elsewhere: country (region) + entity (team) + name search.
+  // They scope the cards AND the clean sheet together.
+  const regionsPresent = VT_REGION_ORDER.filter(r => people.some(p => regionOf(p.team) === r));
+  const teamsPresent = [...new Set(people
+    .filter(p => varRegion === 'all' || regionOf(p.team) === varRegion)
+    .map(p => p.team))].sort();
+  const q = varSearch.trim().toLowerCase();
+  const filtersActive = varRegion !== 'all' || varTeam !== 'all' || !!q;
+  const match = p => (varRegion === 'all' || regionOf(p.team) === varRegion) &&
+    (varTeam === 'all' || p.team === varTeam) &&
+    (!q || p.name.toLowerCase().includes(q));
+  const pool = people.filter(match);
+
+  const lowMeet = pool.filter(p => p.yellow_meetings).sort((a, b) => (a.meetings || 0) - (b.meetings || 0));
+  const lowGm = pool.filter(p => p.yellow_gm).sort((a, b) => (a.ps_total_gm || 0) - (b.ps_total_gm || 0));
   const names = new Set(); lowMeet.forEach(p => names.add(p.name)); lowGm.forEach(p => names.add(p.name));
   // Clean Sheet: players respecting every rule (no cards) — the positive side of the VAR.
-  const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
+  const clean = pool.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
   const topClean = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 8);
+
+  const filterBar = `
+    <div class="vt-controls">
+      <input type="text" id="var-search" class="search-input vt-search" placeholder="Search a player by name…" value="${escapeHtml(varSearch)}" />
+      <select id="var-region" class="vt-select" aria-label="Filter by country">
+        <option value="all">🌐 All countries</option>
+        ${regionsPresent.map(r => `<option value="${r}" ${varRegion === r ? 'selected' : ''}>${VT_REGION_LABELS[r] || r}</option>`).join('')}
+      </select>
+      <select id="var-team" class="vt-select" aria-label="Filter by entity">
+        <option value="all">🏢 All entities</option>
+        ${teamsPresent.map(tm => `<option value="${escapeHtml(tm)}" ${varTeam === tm ? 'selected' : ''}>${escapeHtml(tm)}</option>`).join('')}
+      </select>
+      ${filtersActive ? `<button id="var-clear" class="vt-reset" title="Clear filters">↺ Clear</button>` : ''}
+    </div>`;
 
   const row = (p, val) => `
     <div class="var-row">
@@ -2157,16 +2187,17 @@ function renderVAR() {
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">${t('var.title')}</h2>
-        <p class="section-subtitle">${t('var.sub', { n: names.size, s: names.size === 1 ? '' : 's' })}</p>
+        <p class="section-subtitle">${t('var.sub', { n: names.size, s: names.size === 1 ? '' : 's' })}${filtersActive ? ' · filtered' : ''}</p>
       </div>
+      ${filterBar}
       <div class="var-grid">
-        ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, "No cards here — everyone's hitting their meetings. ✅")}
-        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, 'No cards here — margins are healthy. ✅')}
+        ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, filtersActive ? 'No cards here for this filter. ✅' : "No cards here — everyone's hitting their meetings. ✅")}
+        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, filtersActive ? 'No cards here for this filter. ✅' : 'No cards here — margins are healthy. ✅')}
       </div>
       <div class="clean-sheet">
         <div class="cs-head">
           <h3 class="cs-title">🧤 Clean Sheet — Fair Play</h3>
-          <span class="cs-count">${clean.length} player${clean.length === 1 ? '' : 's'} with zero cards</span>
+          <span class="cs-count">${clean.length} player${clean.length === 1 ? '' : 's'} with zero cards${filtersActive ? ' (filtered)' : ''}</span>
         </div>
         <p class="cs-sub">5+ meetings/week and Gross Margin ≥ 25% — the defensive wall. 🛡️ Top performers playing fully by the rules:</p>
         ${topClean.length
@@ -2176,7 +2207,7 @@ function renderVAR() {
                 <span class="cs-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
                 <span class="cs-val">${fmtMoney(p.ps_nb)}</span>
               </div>`).join('')}</div>`
-          : `<div class="no-result">No clean sheets yet — everyone has at least one card.</div>`}
+          : `<div class="no-result">${filtersActive ? 'No clean sheets match this filter.' : 'No clean sheets yet — everyone has at least one card.'}</div>`}
       </div>
     </div>
   `;
@@ -2982,6 +3013,24 @@ function render() {
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
   document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
+
+  // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
+  if (currentTab === 'var') {
+    const reRender = () => { const y = window.scrollY; render(); window.scrollTo(0, y); };
+    const vRegion = document.getElementById('var-region');
+    if (vRegion) vRegion.addEventListener('change', e => { varRegion = e.target.value; varTeam = 'all'; reRender(); });
+    const vTeam = document.getElementById('var-team');
+    if (vTeam) vTeam.addEventListener('change', e => { varTeam = e.target.value; reRender(); });
+    const vSearch = document.getElementById('var-search');
+    if (vSearch) vSearch.addEventListener('input', e => {
+      varSearch = e.target.value;
+      const y = window.scrollY; render(); window.scrollTo(0, y);
+      const ni = document.getElementById('var-search');
+      if (ni) { ni.focus(); ni.setSelectionRange(varSearch.length, varSearch.length); }
+    });
+    const vClear = document.getElementById('var-clear');
+    if (vClear) vClear.addEventListener('click', () => { varRegion = 'all'; varTeam = 'all'; varSearch = ''; reRender(); });
+  }
 
   // Admin VAR TIME: verdict buttons, filter, copy, reset (re-render, keep scroll)
   if (currentTab === 'vartime') {
