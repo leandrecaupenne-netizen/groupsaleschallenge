@@ -1103,6 +1103,15 @@ img, table { max-width: 100%; }
 /* === Confetti === */
 .confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1200; }
 
+/* === Team modal contribution chart === */
+.contrib-chart { margin: 0 0 22px; display: flex; flex-direction: column; gap: 7px; }
+.contrib-row { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 10px; }
+.contrib-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.contrib-bar { height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.contrib-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--c), var(--gold)); min-width: 2px; }
+.contrib-val { font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: right; }
+@media (max-width: 600px) { .contrib-row { grid-template-columns: 110px 1fr 34px; } .contrib-name { font-size: 11px; } }
+
 /* === Animated numbers (value changed since last refresh) === */
 .animnum { font-variant-numeric: tabular-nums; transition: color 0.2s; }
 .animnum.animnum-changed { animation: numPulse 0.9s ease; }
@@ -2283,6 +2292,22 @@ function renderTeamModal() {
         </div>
 
         <div class="modal-body">
+          ${(() => {
+            const totalPs = members.reduce((s, m) => s + Math.max(0, m.ps_total || 0), 0) || team.total_ps || 1;
+            const c = colorForTeam(team.country);
+            return `
+            <h3 class="modal-section-title">📊 Squad contribution to team PS Total</h3>
+            <div class="contrib-chart" style="--c:${c}">
+              ${members.map(m => {
+                const share = Math.max(0, m.ps_total || 0) / totalPs * 100;
+                return `<div class="contrib-row">
+                  <span class="contrib-name">${escapeHtml(m.name)}</span>
+                  <div class="contrib-bar"><span style="width:${share.toFixed(1)}%"></span></div>
+                  <span class="contrib-val">${share.toFixed(0)}%</span>
+                </div>`;
+              }).join('')}
+            </div>`;
+          })()}
           <h3 class="modal-section-title">⚽ Players · sorted by contribution to team total</h3>
           <div class="members-table">
             <div class="members-table-header">
