@@ -3653,7 +3653,11 @@ function openSearch() {
 // === Compare mode (two teams or two players head-to-head) ===
 function openCompare() {
   if (document.getElementById('compare-overlay')) return;
-  let mode = 'teams';
+  // Open on the mode that matches where you clicked from: the current Team Ranking
+  // sub-view (Teams / Nations / Players), or Players when on the My Position tab.
+  let mode = currentTab === 'position' ? 'players'
+    : currentTab === 'teams' ? teamView
+    : 'teams';
   const cleanups = []; // listeners to remove when the modal closes (combo outside-click)
   const better = (a, b) => (a || 0) > (b || 0) ? 0 : (b || 0) > (a || 0) ? 1 : -1; // 0=A,1=B,-1=tie
   const lower = (a, b) => a < b ? 0 : b < a ? 1 : -1;
@@ -3667,9 +3671,9 @@ function openCompare() {
       </div>
       <div class="compare-body">
         <div class="search-chips">
-          <button class="search-chip on" data-m="teams">Teams</button>
-          <button class="search-chip" data-m="nations">Nations</button>
-          <button class="search-chip" data-m="players">Players</button>
+          <button class="search-chip${mode === 'teams' ? ' on' : ''}" data-m="teams">Teams</button>
+          <button class="search-chip${mode === 'nations' ? ' on' : ''}" data-m="nations">Nations</button>
+          <button class="search-chip${mode === 'players' ? ' on' : ''}" data-m="players">Players</button>
         </div>
         <div class="compare-selects">
           <div class="cmp-combo" id="combo-a">
