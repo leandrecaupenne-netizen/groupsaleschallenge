@@ -32,6 +32,20 @@
   --silver: #9CA3AF;
   --bronze: #B45309;
 }
+/* Dark mode: flip the neutral surfaces; brand accents (navy/gold/red/green) stay. */
+:root[data-theme="dark"] {
+  --cream: #0E1322;
+  --paper: #18203A;
+  --ink: #E8ECF5;
+  --ink-2: #C2C9D6;
+  --muted: #93A0B5;
+  --line: #2A3350;
+}
+:root[data-theme="dark"] .teams-table-row:hover { background: rgba(255,255,255,0.04); }
+:root[data-theme="dark"] .search-input,
+:root[data-theme="dark"] .login-input { background: var(--paper); color: var(--ink); }
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .login-card { box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -1107,6 +1121,28 @@ img, table { max-width: 100%; }
 .th-sort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
 .th-sort:hover { color: var(--usa-red); }
 
+/* === Filter chips (search + team region) === */
+.search-chips, .region-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.search-chip, .region-chip {
+  padding: 7px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--paper); color: var(--ink-2); font-weight: 700; font-size: 12.5px; cursor: pointer;
+  transition: all 0.15s;
+}
+.search-chip:hover, .region-chip:hover { border-color: var(--usa-red); }
+.search-chip.on, .region-chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* === Global search modal === */
+.search-modal { max-width: 560px; }
+.search-modal-body { padding: 8px 22px 24px; }
+.search-modal-body .search-input { width: 100%; }
+.search-results { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+.search-result { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left;
+  padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; transition: background 0.12s; }
+.search-result:hover { background: var(--cream); }
+.sr-name { font-weight: 700; font-size: 14px; }
+.sr-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+.sr-stat { font-family: ui-monospace, monospace; font-size: 12px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
+
 /* === Live news ticker === */
 .ticker { background: var(--navy-2); color: #fff; overflow: hidden; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.12); }
 .ticker[hidden] { display: none; }
@@ -1142,6 +1178,8 @@ img, table { max-width: 100%; }
   <div class="header-status" id="header-status">
     <div class="last-update" id="last-update">Loading...</div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
+    <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
     <button id="tv-btn" class="refresh-btn tv-btn" title="TV / projection mode" aria-label="TV mode">📺</button>
     <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
@@ -1194,6 +1232,7 @@ let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal
 // === STATE ===
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
+let teamRegion = 'all'; // team table region filter
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
 let currentSearch = '';
 let positionQuery = '';
@@ -1543,9 +1582,20 @@ function renderTabs() {
   `;
 }
 
+function regionOf(c) {
+  c = String(c || '');
+  if (c.startsWith('FR') || c === 'Devoteam France') return 'FR';
+  if (c.startsWith('ES')) return 'ES';
+  if (['DENMARK', 'NORWAY', 'SWEDEN'].indexOf(c.toUpperCase()) !== -1) return 'NORDICS';
+  return 'OTHER';
+}
 function renderTeamRanking() {
   const search = currentSearch.trim().toLowerCase();
-  const filtered = sortedTeams.filter(t => !search || t.country.toLowerCase().includes(search));
+  const filtered = sortedTeams.filter(t =>
+    (!search || t.country.toLowerCase().includes(search)) &&
+    (teamRegion === 'all' || regionOf(t.country) === teamRegion));
+  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
+  const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
 
   // Reorder rows by the chosen column; the # always stays the official World Cup
   // rank (average PS per person), so you can spot e.g. "#9 overall, #1 in GM".
@@ -1567,6 +1617,7 @@ function renderTeamRanking() {
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="Search by country or team name..." value="${escapeHtml(currentSearch)}" />
       </div>
+      ${regionChips}
       <div class="teams-table">
         <div class="teams-table-header">
           <div>RANK</div>
@@ -2375,6 +2426,10 @@ function render() {
       render();
     });
   });
+  // Team region filter chips
+  document.querySelectorAll('.region-chip').forEach(c => {
+    c.addEventListener('click', () => { teamRegion = c.dataset.region; render(); });
+  });
 
   const teamSearch = document.getElementById('team-search');
   if (teamSearch) {
@@ -2479,6 +2534,27 @@ function logout() {
   safeRemove(CONFIG.SESSION_KEY);
   safeRemove(CONFIG.PWD_KEY);
   location.reload();
+}
+
+// === Dark mode ===
+const THEME_KEY = 'devoteam_wc_theme_v1';
+function applyTheme(theme) {
+  const dark = theme === 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : '';
+  const btn = document.getElementById('theme-btn');
+  if (btn) { btn.textContent = dark ? '☀️' : '🌙'; btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode'; }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0E1322' : '#1E2A78');
+}
+function currentTheme() {
+  const saved = safeGet(THEME_KEY);
+  if (saved === 'dark' || saved === 'light') return saved;
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  safeSet(THEME_KEY, next);
+  applyTheme(next);
 }
 
 // === LIVE: admin (manual-refresh) gating ===
@@ -2590,6 +2666,64 @@ function openRules() {
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#rules-close').addEventListener('click', close);
   document.addEventListener('keydown', onKey);
+}
+
+// === Global player search (with tenure / rookie filters) ===
+function openSearch() {
+  if (document.getElementById('search-overlay')) return;
+  let query = '', filter = 'all';
+  const el = document.createElement('div');
+  el.className = 'modal-overlay'; el.id = 'search-overlay';
+  const chips = [['all', 'All'], ['rookie', '🌱 Rookies'], ['year', 'Over a year'], ['under', '< 1 year']];
+  el.innerHTML = `
+    <div class="modal search-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-block"><h2 class="modal-title">🔍 FIND A PLAYER</h2>
+          <div class="modal-subtitle">Search all ${people.length} salespeople</div></div>
+        <button class="modal-close" id="search-close" aria-label="Close">×</button>
+      </div>
+      <div class="search-modal-body">
+        <input type="text" id="search-input" class="search-input" placeholder="Type a name…" autocomplete="off" />
+        <div class="search-chips">${chips.map(c => `<button class="search-chip${c[0] === 'all' ? ' on' : ''}" data-f="${c[0]}">${c[1]}</button>`).join('')}</div>
+        <div class="search-results" id="search-results"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('#search-close').addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  const matchFilter = p => {
+    if (filter === 'rookie') return p.is_rookie;
+    if (filter === 'year') return String(p.tenure) === 'Over a year';
+    if (filter === 'under') return /months|</.test(String(p.tenure || ''));
+    return true;
+  };
+  const renderResults = () => {
+    const q = query.trim().toLowerCase();
+    let list = people.filter(p => matchFilter(p) && (!q || p.name.toLowerCase().includes(q)))
+      .sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
+    const total = list.length; list = list.slice(0, 40);
+    const box = el.querySelector('#search-results');
+    box.innerHTML = list.length ? (list.map(p => {
+      const gRank = sortedGoldenBoot.findIndex(x => x.name === p.name) + 1;
+      return `<button class="search-result" data-name="${escapeHtml(p.name)}">
+        <span class="sr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+        <span class="sr-stat">${fmtMoney(p.ps_nb)} NB${gRank ? ` · GB #${gRank}` : ''}</span></button>`;
+    }).join('') + (total > 40 ? `<div class="var-more">+ ${total - 40} more — refine your search</div>` : ''))
+      : `<div class="no-result">No player found.</div>`;
+    box.querySelectorAll('.search-result').forEach(btn => btn.addEventListener('click', () => {
+      positionQuery = btn.dataset.name; currentTab = 'position'; setTabUrl('position'); close(); render(); window.scrollTo(0, 0);
+    }));
+  };
+  el.querySelector('#search-input').addEventListener('input', e => { query = e.target.value; renderResults(); });
+  el.querySelectorAll('.search-chip').forEach(c => c.addEventListener('click', () => {
+    filter = c.dataset.f; el.querySelectorAll('.search-chip').forEach(x => x.classList.toggle('on', x === c)); renderResults();
+  }));
+  renderResults();
+  setTimeout(() => { const i = el.querySelector('#search-input'); if (i) i.focus(); }, 50);
 }
 
 function renderLoginScreen(errorMsg) {
@@ -2864,6 +2998,16 @@ async function init() {
     rulesBtn.dataset.bound = '1';
     rulesBtn.addEventListener('click', openRules);
   }
+  const themeBtn = document.getElementById('theme-btn');
+  if (themeBtn && !themeBtn.dataset.bound) {
+    themeBtn.dataset.bound = '1';
+    themeBtn.addEventListener('click', toggleTheme);
+  }
+  const searchBtn = document.getElementById('search-btn');
+  if (searchBtn && !searchBtn.dataset.bound) {
+    searchBtn.dataset.bound = '1';
+    searchBtn.addEventListener('click', openSearch);
+  }
 
   startPolling();
 
@@ -2875,6 +3019,7 @@ async function init() {
 }
 
 // Read the admin activation param before anything else renders.
+applyTheme(currentTheme());
 checkAdminParam();
 
 // Never leave a silent blank page: surface any unexpected init error.
