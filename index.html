@@ -2778,17 +2778,54 @@ function downloadCanvas(cv, filename) {
   }, 'image/png');
 }
 
-// Flag stripe colours per nation/region — used to theme the Nations export bar
-// after the #1 country (e.g. France #1 → blue/white/red).
+// Region-level flag stripes — used to theme the Nations export bar after the #1
+// region (e.g. France #1 → blue/white/red).
 const FLAG_STRIPES = {
   FR: ['#0055A4', '#FFFFFF', '#EF4135'],      // France
   ES: ['#AA151B', '#F1BF00', '#AA151B'],      // Spain
   DE: ['#222222', '#DD0000', '#FFCE00'],      // Germany
   BENELUX: ['#222222', '#FAE042', '#EF3340'], // Belgium
   PT: ['#006847', '#FFD200', '#DA291C'],      // Portugal
-  NORDICS: ['#00205B', '#FFFFFF', '#C8102E'], // Nordic cross
+  NORDICS: ['#006AA7', '#FECC02', '#006AA7'], // Nordic — Swedish blue/gold (not France-like)
   OTHER: ['#C8102E', '#FFFFFF', '#006847']    // brand default
 };
+// Country-level flag stripes, so an individual's export shows THEIR country
+// (a Dane gets Danish red/white, not the generic Nordic palette).
+const COUNTRY_FLAGS = {
+  FRANCE: ['#0055A4', '#FFFFFF', '#EF4135'],
+  DENMARK: ['#C60C30', '#FFFFFF', '#C60C30'],
+  NORWAY: ['#BA0C2F', '#FFFFFF', '#00205B'],
+  SWEDEN: ['#006AA7', '#FECC02', '#006AA7'],
+  FINLAND: ['#FFFFFF', '#003580', '#FFFFFF'],
+  ICELAND: ['#02529C', '#FFFFFF', '#DC1E35'],
+  NETHERLANDS: ['#AE1C28', '#FFFFFF', '#21468B'],
+  HOLLAND: ['#AE1C28', '#FFFFFF', '#21468B'],
+  BELGIUM: ['#2A2A2A', '#FAE042', '#EF3340'],
+  LUXEMBOURG: ['#ED2939', '#FFFFFF', '#00A1DE'],
+  SPAIN: ['#AA151B', '#F1BF00', '#AA151B'],
+  PORTUGAL: ['#006847', '#FFD200', '#DA291C'],
+  GERMANY: ['#2A2A2A', '#DD0000', '#FFCE00'],
+  ITALY: ['#008C45', '#FFFFFF', '#CD212A'],
+  SWITZERLAND: ['#D52B1E', '#FFFFFF', '#D52B1E'],
+  AUSTRIA: ['#ED2939', '#FFFFFF', '#ED2939'],
+  POLAND: ['#FFFFFF', '#DC143C', '#FFFFFF'],
+  HUNGARY: ['#CD2A3E', '#FFFFFF', '#436F4D'],
+  IRELAND: ['#169B62', '#FFFFFF', '#FF883E'],
+  ROMANIA: ['#002B7F', '#FCD116', '#CE1126'],
+  GREECE: ['#0D5EAF', '#FFFFFF', '#0D5EAF'],
+  SLOVAKIA: ['#FFFFFF', '#0B4EA2', '#EE1C25'],
+  CZECHIA: ['#11457E', '#FFFFFF', '#D7141A'],
+  CROATIA: ['#171796', '#FFFFFF', '#FF0000'],
+  UK: ['#012169', '#FFFFFF', '#C8102E'],
+  USA: ['#3C3B6E', '#FFFFFF', '#B22234'],
+  MEXICO: ['#006847', '#FFFFFF', '#CE1126']
+};
+// Stripes for a team/individual: their exact country if known, otherwise the
+// region (handles entity names like "FR - M Cloud" → France).
+function flagForTeam(team) {
+  const u = String(team || '').toUpperCase().trim();
+  return COUNTRY_FLAGS[u] || FLAG_STRIPES[regionOf(team)] || FLAG_STRIPES.OTHER;
+}
 
 // === Export the full standings as a PNG ===
 function generateStandingsImage() {
@@ -2809,7 +2846,7 @@ function drawStandings(logo) {
   // Theme the top bar after the leader's flag: the #1 nation (Nations) or the
   // #1 player's country/region (Players). Teams keep the brand stripe.
   const stripes = (isNations && nr[0]) ? (FLAG_STRIPES[nr[0].region] || FLAG_STRIPES.OTHER)
-    : (isPlayers && sortedPSTotal[0]) ? (FLAG_STRIPES[regionOf(sortedPSTotal[0].team)] || FLAG_STRIPES.OTHER)
+    : (isPlayers && sortedPSTotal[0]) ? flagForTeam(sortedPSTotal[0].team)
     : ['#C8102E', '#FFFFFF', '#006847'];
   const heading = isNations ? '🌍 NATIONS RANKING' : isPlayers ? '👤 PLAYER RANKING' : '🏆 TEAM RANKING';
   const footMetric = isPlayers ? 'PS Bookings Total' : 'Avg PS Bookings / person';
