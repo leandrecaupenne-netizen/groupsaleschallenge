@@ -3562,6 +3562,21 @@ function openRules() {
 }
 
 // === Global player search (with tenure / rookie filters) ===
+// Scroll so the current tab's content sits just below the sticky header + tab
+// bar — used after picking a player so the result is visible, not hidden under
+// the hero podium (users don't intuitively scroll down to find it).
+function scrollToMainContent(behavior) {
+  requestAnimationFrame(() => {
+    const section = document.querySelector('#app .section');
+    if (!section) { window.scrollTo(0, 0); return; }
+    const header = document.querySelector('.app-header');
+    const tabs = document.querySelector('.tabs-bar');
+    const offset = (header ? header.offsetHeight : 0) + (tabs ? tabs.offsetHeight : 0) + 8;
+    const y = section.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, y), behavior: behavior || 'smooth' });
+  });
+}
+
 function openSearch() {
   if (document.getElementById('search-overlay')) return;
   let query = '', filter = 'all';
@@ -3608,7 +3623,8 @@ function openSearch() {
     }).join('') + (total > 40 ? `<div class="var-more">+ ${total - 40} more — refine your search</div>` : ''))
       : `<div class="no-result">No player found.</div>`;
     box.querySelectorAll('.search-result').forEach(btn => btn.addEventListener('click', () => {
-      positionQuery = btn.dataset.name; currentTab = 'position'; setTabUrl('position'); close(); render(); window.scrollTo(0, 0);
+      positionQuery = btn.dataset.name; currentTab = 'position'; setTabUrl('position'); close(); render();
+      scrollToMainContent(); // land on the result, not back on the podium
     }));
   };
   el.querySelector('#search-input').addEventListener('input', e => { query = e.target.value; renderResults(); });
