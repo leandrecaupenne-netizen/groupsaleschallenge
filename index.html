@@ -1128,6 +1128,7 @@ img, table { max-width: 100%; }
 .rules-modal { max-width: 640px; }
 .rules-body { padding: 8px 24px 28px; }
 .rules-h { font-family: 'Anton', Impact, sans-serif; font-size: 18px; letter-spacing: 0.03em; color: var(--navy); margin: 20px 0 8px; }
+.rules-p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
 .rules-list { margin: 0; padding-left: 20px; }
 .rules-list li { margin: 7px 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
 .rules-foot { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
@@ -1171,6 +1172,36 @@ img, table { max-width: 100%; }
 .cmp-opt { padding: 10px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cmp-opt:hover, .cmp-opt.active { background: rgba(200,16,46,0.09); }
 .cmp-empty { color: var(--muted); cursor: default; font-weight: 500; }
+
+/* === Admin VAR TIME === */
+.vt-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 6px; }
+.vt-pill { font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 99px; background: rgba(0,0,0,0.05); color: var(--ink-2); }
+.vt-pill.total { background: var(--navy); color: #fff; }
+.vt-pill.yellow { background: rgba(242,199,92,0.28); color: #8a6d1f; }
+.vt-pill.red { background: rgba(200,16,46,0.14); color: var(--usa-red); }
+.vt-pill.excused { background: rgba(22,163,74,0.14); color: var(--green); }
+.vt-reset { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 11px; border-radius: 8px; border: 1px solid var(--line); background: transparent; cursor: pointer; }
+.vt-reset:hover { color: var(--usa-red); border-color: var(--usa-red); }
+.vt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 10px; }
+.vt-card { background: var(--paper); border: 1px solid var(--line); border-left: 5px solid #9aa1ac; border-radius: 12px; padding: 14px 16px; }
+.vt-card.v-yellow { border-left-color: var(--gold); }
+.vt-card.v-red { border-left-color: var(--usa-red); }
+.vt-card.v-excused { border-left-color: var(--green); }
+.vt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.vt-who { display: flex; flex-direction: column; min-width: 0; }
+.vt-name { font-weight: 800; font-size: 15px; color: var(--ink); }
+.vt-team { font-size: 11px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; font-family: ui-monospace, monospace; }
+.vt-double { font-size: 11px; font-weight: 800; color: var(--usa-red); background: rgba(200,16,46,0.1); padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
+.vt-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.vt-reason { font-size: 12px; font-weight: 600; color: var(--ink-2); background: rgba(242,199,92,0.16); padding: 4px 9px; border-radius: 6px; }
+.vt-verdicts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.vt-verdict { font-size: 11.5px; font-weight: 700; padding: 8px 3px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink-2); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; white-space: nowrap; }
+.vt-verdict:hover { border-color: var(--ink-2); }
+.vt-verdict.on.pending { background: #6b7280; border-color: #6b7280; color: #fff; }
+.vt-verdict.on.yellow { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+.vt-verdict.on.red { background: var(--usa-red); border-color: var(--usa-red); color: #fff; }
+.vt-verdict.on.excused { background: var(--green); border-color: var(--green); color: #fff; }
+@media (max-width: 480px) { .vt-verdict { font-size: 10.5px; padding: 8px 2px; } }
 .cmp-vs { font-family: 'Anton', Impact, sans-serif; color: var(--usa-red); font-size: 16px; }
 .cmp-table { width: 100%; border-collapse: collapse; }
 .cmp-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); padding: 8px 6px; border-bottom: 2px solid var(--line); text-align: center; }
@@ -1309,6 +1340,7 @@ let teamRegion = 'all'; // team table region filter
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
 let currentSearch = '';
 let positionQuery = '';
+let vartimeFilter = 'all'; // admin VAR TIME view: 'all' | 'pending'
 let openTeamModal = null; // country name si modal ouverte
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
@@ -1650,9 +1682,13 @@ const TABS = [
 ];
 
 function renderTabs() {
+  // The admin-only "VAR TIME" review tab is appended when admin mode is active.
+  const tabs = isAdmin()
+    ? [...TABS, { id: 'vartime', label: 'VAR TIME 🟥', tip: 'Admin · Friday review of players outside the rules' }]
+    : TABS;
   return `
     <div class="tabs-bar">
-      ${TABS.map(tb => {
+      ${tabs.map(tb => {
         const label = I18N.en['tab.' + tb.id] ? t('tab.' + tb.id) : tb.label;
         return `<button class="tab-btn ${currentTab === tb.id ? 'active' : ''}" data-tab="${tb.id}" title="${escapeHtml(tb.tip || '')}">${label}</button>`;
       }).join('')}
@@ -1980,6 +2016,77 @@ function renderVAR() {
       </div>
     </div>
   `;
+}
+
+// === Admin "VAR TIME": Friday review of rule-breakers + verdicts ===
+// Decisions are stored locally on the admin's device (data from the Sheet is
+// read-only) — perfect as animation notes for the weekly VAR session.
+const VAR_KEY = 'devoteam_wc_var_verdicts_v1';
+const VERDICT_META = {
+  pending: { icon: '⏳', label: 'Pending' },
+  yellow:  { icon: '🟨', label: 'Yellow' },
+  red:     { icon: '🟥', label: 'Red' },
+  excused: { icon: '✅', label: 'Excused' }
+};
+function getVerdicts() { try { return JSON.parse(safeGet(VAR_KEY) || '{}'); } catch { return {}; } }
+function setVerdict(name, verdict) {
+  const v = getVerdicts();
+  if (verdict === 'pending') delete v[name]; else v[name] = { verdict, ts: Date.now() };
+  safeSet(VAR_KEY, JSON.stringify(v));
+}
+function varBreakers() {
+  const verdicts = getVerdicts();
+  return people.filter(p => p.yellow_meetings || p.yellow_gm).map(p => {
+    const reasons = [];
+    if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} meetings/wk (needs 5)`);
+    if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)} (needs 25%)`);
+    return { p, reasons, verdict: (verdicts[p.name] && verdicts[p.name].verdict) || 'pending' };
+  }).sort((a, b) => b.reasons.length - a.reasons.length || (a.p.meetings || 0) - (b.p.meetings || 0));
+}
+
+function renderVarTime() {
+  const breakers = varBreakers();
+  const count = v => breakers.filter(b => b.verdict === v).length;
+  const counts = { total: breakers.length, pending: count('pending'), yellow: count('yellow'), red: count('red'), excused: count('excused') };
+  const list = vartimeFilter === 'pending' ? breakers.filter(b => b.verdict === 'pending') : breakers;
+
+  const verdictBtns = (b) => Object.keys(VERDICT_META).map(k =>
+    `<button class="vt-verdict ${b.verdict === k ? 'on ' + k : ''}" data-name="${escapeHtml(b.p.name)}" data-verdict="${k}">${VERDICT_META[k].icon} ${VERDICT_META[k].label}</button>`
+  ).join('');
+
+  const card = (b) => `
+    <div class="vt-card v-${b.verdict}">
+      <div class="vt-card-head">
+        <div class="vt-who"><span class="vt-name">${escapeHtml(b.p.name)}</span><span class="vt-team">${escapeHtml(b.p.team)}</span></div>
+        ${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes 🟥</span>' : ''}
+      </div>
+      <div class="vt-reasons">${b.reasons.map(r => `<span class="vt-reason">🟨 ${escapeHtml(r)}</span>`).join('')}</div>
+      <div class="vt-verdicts">${verdictBtns(b)}</div>
+    </div>`;
+
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">🟥 VAR TIME</h2>
+        <p class="section-subtitle">Admin · Friday review of players outside the rules — set a verdict to drive the animation. Saved on this device.</p>
+        <button id="vt-copy" class="copy-btn">📋 Copy review</button>
+      </div>
+      <div class="vt-summary">
+        <span class="vt-pill total">${counts.total} under review</span>
+        <span class="vt-pill pending">⏳ ${counts.pending} pending</span>
+        <span class="vt-pill yellow">🟨 ${counts.yellow}</span>
+        <span class="vt-pill red">🟥 ${counts.red}</span>
+        <span class="vt-pill excused">✅ ${counts.excused}</span>
+        <button class="vt-reset" id="vt-reset" title="Clear all verdicts">↺ Reset</button>
+      </div>
+      <div class="search-chips">
+        <button class="search-chip vt-filter ${vartimeFilter === 'all' ? 'on' : ''}" data-f="all">All (${counts.total})</button>
+        <button class="search-chip vt-filter ${vartimeFilter === 'pending' ? 'on' : ''}" data-f="pending">Pending (${counts.pending})</button>
+      </div>
+      ${list.length
+        ? `<div class="vt-list">${list.map(card).join('')}</div>`
+        : `<div class="no-result">${counts.total === 0 ? '✅ Nobody is breaking the rules right now — clean sheet!' : 'All reviewed — no pending cases. ✅'}</div>`}
+    </div>`;
 }
 
 function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flashType) {
@@ -2544,6 +2651,7 @@ function render() {
     case 'awards': content = renderSpecialAwards(); break;
     case 'var': content = renderVAR(); break;
     case 'position': content = renderMyPosition(); break;
+    case 'vartime': content = isAdmin() ? renderVarTime() : renderTeamRanking(); break;
   }
 
   document.getElementById('app').innerHTML = `
@@ -2569,6 +2677,32 @@ function render() {
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
   document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
+
+  // Admin VAR TIME: verdict buttons, filter, copy, reset (re-render, keep scroll)
+  if (currentTab === 'vartime') {
+    const reRender = () => { const y = window.scrollY; render(); window.scrollTo(0, y); };
+    document.querySelectorAll('.vt-verdict').forEach(btn => btn.addEventListener('click', () => {
+      setVerdict(btn.dataset.name, btn.dataset.verdict); reRender();
+    }));
+    document.querySelectorAll('.vt-filter').forEach(btn => btn.addEventListener('click', () => {
+      vartimeFilter = btn.dataset.f; reRender();
+    }));
+    const reset = document.getElementById('vt-reset');
+    if (reset) reset.addEventListener('click', () => {
+      if (confirm('Clear all VAR verdicts on this device?')) { safeRemove(VAR_KEY); reRender(); }
+    });
+    const copy = document.getElementById('vt-copy');
+    if (copy) copy.addEventListener('click', () => {
+      const b = varBreakers();
+      const c = v => b.filter(x => x.verdict === v).length;
+      const head = `🟥 VAR TIME — ${period || 'Sales Challenge'}\n${b.length} under review · ${c('pending')} pending · 🟨 ${c('yellow')} · 🟥 ${c('red')} · ✅ ${c('excused')}\n`;
+      const lines = b.map(x => `${VERDICT_META[x.verdict].icon} ${x.p.name} (${x.p.team}) — ${x.reasons.join('; ')}`);
+      const text = head + '\n' + lines.join('\n');
+      navigator.clipboard?.writeText(text).then(() => {
+        copy.textContent = '✓ Copied'; setTimeout(() => { copy.textContent = '📋 Copy review'; }, 1500);
+      }).catch(() => {});
+    });
+  }
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2810,6 +2944,8 @@ function openRules() {
         <button class="modal-close" id="rules-close" aria-label="Close">×</button>
       </div>
       <div class="modal-body rules-body">
+        <h3 class="rules-h">📅 The Challenge</h3>
+        <p class="rules-p">Runs from <b>1 June</b> to <b>3 July 2026</b> (01/06 → 03/07). Grand Final &amp; award ceremony in Paris, <b>9 July</b>, at Victoria Paris (l'Arc).</p>
         <h3 class="rules-h">🏆 Main rankings</h3>
         <ul class="rules-list">
           <li><b>World Cup Winner (Team Ranking)</b> — top team by <i>average PS Bookings per person</i>.</li>
@@ -2823,13 +2959,14 @@ function openRules() {
           <li><b>🤖 AI Play</b> — most impactful AI deal, picked by the AI Agency.</li>
           <li><b>⚡ Transformative Deal</b> — selected by Group Sales for strategic impact.</li>
         </ul>
-        <h3 class="rules-h">🟨 VAR — discipline</h3>
+        <h3 class="rules-h">🟨 The rules — monitored weekly by the VAR</h3>
+        <p class="rules-p">Every <b>Friday</b>, the VAR reviews who's playing by the rules. Break one and you pick up a <b>yellow card</b> — two yellows make a <b>red</b>.</p>
         <ul class="rules-list">
-          <li><b>Yellow card</b> if fewer than <b>5 meetings/week</b>.</li>
-          <li><b>Yellow card</b> if Gross Margin is <b>below 25%</b>.</li>
-          <li>Two yellows make a <b>red</b> — keep your stats clean!</li>
+          <li><b>5 meetings per week</b> (average). <i>You need to be able to run 5km during a match 🏃</i></li>
+          <li><b>Gross Margin ≥ 25%</b> (average). <i>We're not just kicking the ball, we're aiming for the goal 🥅</i></li>
+          <li><b>Opportunities</b> count from <b>Stage 2</b> onwards, excluding deals under <b>€50K</b>.</li>
         </ul>
-        <div class="rules-foot">Challenge: 1 June → 3 July 2026 · Final &amp; ceremony in Paris, 9 July (Victoria Paris — l'Arc).</div>
+        <div class="rules-foot">🟥 Monitored weekly by the VAR · Challenge 1 June → 3 July 2026 · Final in Paris, 9 July.</div>
       </div>
     </div>`;
   document.body.appendChild(el);
