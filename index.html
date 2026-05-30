@@ -369,6 +369,16 @@ input { font-family: inherit; }
 .nation-row.top-2 { background: rgba(156,163,175,0.10); }
 .nation-row.top-3 { background: rgba(180,83,9,0.08); }
 .nt-name { font-weight: 800; font-size: 16px; color: var(--ink); }
+.nation-row-click { cursor: pointer; transition: background 0.12s; }
+.nation-row-click:hover { background: var(--cream); }
+.nation-row-click .click-hint { font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+.nation-teams-table .members-table-header,
+.nation-teams-table .members-table-row { grid-template-columns: 50px 1.4fr 110px 110px 80px 80px; }
+.nation-team-row { cursor: pointer; }
+@media (max-width: 800px) {
+  .nation-teams-table .members-table-header,
+  .nation-teams-table .members-table-row { grid-template-columns: 40px 1fr 90px 70px; }
+}
 @media (max-width: 640px) {
   .nation-row { grid-template-columns: 50px 1.4fr 1fr 64px; gap: 8px; padding: 12px; }
   .nt-col-teams, .nt-col-ppl { display: none; }
@@ -1395,6 +1405,8 @@ let vartimeRegion = 'all'; // VAR TIME country/region filter
 let vartimeTeam = 'all';   // VAR TIME entity (team) filter
 let vartimeSearch = '';    // VAR TIME player name search
 let openTeamModal = null; // country name si modal ouverte
+let openNationModal = null; // region key when a nation drilldown modal is open
+let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
 let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
@@ -1782,15 +1794,16 @@ function nationsRanking() {
 
 function renderNationsTable() {
   const nations = nationsRanking();
+  const clickHint = t('teams.clickHint');
   return `
     <div class="nations-table">
       <div class="nation-row nation-head">
         <span>RANK</span><span>NATION</span><span class="nt-col-teams">TEAMS</span><span class="nt-col-ppl">PEOPLE</span><span>AVG PS / PERSON</span><span class="nt-col-gm">AVG GM</span>
       </div>
       ${nations.map((n, i) => `
-        <div class="nation-row ${i < 3 ? 'top-' + (i + 1) : ''}">
+        <div class="nation-row nation-row-click ${i < 3 ? 'top-' + (i + 1) : ''}" data-nation="${escapeHtml(n.region)}">
           <div class="tt-rank ${i < 3 ? 'top-' + (i + 1) : ''}">${['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))}</div>
-          <div class="nt-name">${n.label}</div>
+          <div class="nt-name">${n.label}<div class="click-hint">${clickHint}</div></div>
           <div class="tt-stat nt-col-teams">${n.teams}</div>
           <div class="tt-stat nt-col-ppl">${n.people}</div>
           <div class="tt-money tt-money-main">${animNum('nt:' + n.region, n.avg_ps, 'money')}</div>
@@ -2765,6 +2778,115 @@ function renderTeamModal() {
   `;
 }
 
+// Nation drilldown — same logic as the team modal, one level up: the teams that
+// make up the nation (ranked by avg PS) plus the players who contributed most.
+function renderNationModal() {
+  if (!openNationModal) return '';
+  const nations = nationsRanking();
+  const idx = nations.findIndex(n => n.region === openNationModal);
+  if (idx === -1) return '';
+  const n = nations[idx];
+  const natTeams = sortedTeams.filter(x => regionOf(x.country) === openNationModal); // already sorted by avg PS
+  const natPeople = people.filter(p => regionOf(p.team) === openNationModal)
+    .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
+  const TOPN = 15;
+  const topPeople = natPeople.slice(0, TOPN);
+
+  return `
+    <div class="modal-overlay" id="nation-overlay">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-rank-badge">#${idx + 1}</div>
+          <div class="modal-title-block">
+            <h2 class="modal-title">${n.label}</h2>
+            <div class="modal-subtitle">NATION · ${n.teams} teams · ${n.people} people · Ranked ${idx + 1} of ${nations.length}</div>
+          </div>
+          <button class="modal-close" id="nation-close-btn" aria-label="Close">×</button>
+        </div>
+
+        <div class="modal-summary">
+          <div class="modal-summary-item">
+            <div class="modal-summary-value">${fmtMoney(n.avg_ps)}</div>
+            <div class="modal-summary-label">Avg PS / person</div>
+          </div>
+          <div class="modal-summary-item">
+            <div class="modal-summary-value">${fmtPct(n.avg_gm)}</div>
+            <div class="modal-summary-label">Avg GM</div>
+          </div>
+          <div class="modal-summary-item">
+            <div class="modal-summary-value">${n.teams}</div>
+            <div class="modal-summary-label">Teams</div>
+          </div>
+          <div class="modal-summary-item">
+            <div class="modal-summary-value">${n.people}</div>
+            <div class="modal-summary-label">People</div>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <h3 class="modal-section-title">🏆 Teams · sorted by avg PS per person</h3>
+          <div class="members-table nation-teams-table">
+            <div class="members-table-header">
+              <div>RANK</div>
+              <div>TEAM</div>
+              <div>AVG PS</div>
+              <div>TOTAL PS</div>
+              <div class="col-gm">GM</div>
+              <div class="col-meet">PEOPLE</div>
+            </div>
+            ${natTeams.map((tm, i) => `
+              <div class="members-table-row nation-team-row" data-nteam="${escapeHtml(tm.country)}">
+                <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>
+                <div>
+                  <div class="member-name">${escapeHtml(tm.country)}</div>
+                  <div class="member-tenure">tap to view squad →</div>
+                </div>
+                <div class="member-stat">${fmtMoney(tm.avg_ps)}</div>
+                <div class="member-stat">${fmtMoney(tm.total_ps)}</div>
+                <div class="member-stat col-gm">${fmtPct(tm.avg_gm)}</div>
+                <div class="member-stat col-meet">${tm.members}</div>
+              </div>`).join('')}
+          </div>
+
+          <h3 class="modal-section-title">⚽ Top contributors${natPeople.length > TOPN ? ` · top ${TOPN} of ${natPeople.length}` : ''}</h3>
+          <div class="members-table">
+            <div class="members-table-header">
+              <div>RANK</div>
+              <div>PLAYER</div>
+              <div>PS TOTAL</div>
+              <div>PS NB</div>
+              <div class="col-gm">GM</div>
+              <div class="col-meet">MEET/WK</div>
+              <div class="col-opps">OPPS · CARDS</div>
+            </div>
+            ${topPeople.map((m, i) => {
+              const cards = [];
+              if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
+              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(m.ps_total_gm)})">🟨</span>`);
+              return `
+                <div class="members-table-row">
+                  <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>
+                  <div>
+                    <div class="member-name">${escapeHtml(m.name)}</div>
+                    <div class="member-tenure">${escapeHtml(m.team)}</div>
+                  </div>
+                  <div class="member-stat">${fmtMoney(m.ps_total)}</div>
+                  <div class="member-stat">${fmtMoney(m.ps_nb)}</div>
+                  <div class="member-stat col-gm">${fmtPct(m.ps_total_gm)}</div>
+                  <div class="member-stat col-meet">${fmtNum(m.meetings)}</div>
+                  <div class="col-opps">
+                    <span class="member-stat">${Number(m.opps || 0).toFixed(0)} opps</span>
+                    <span class="member-cards">${cards.join('')}</span>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // Live countdown to the Paris final (9 July 2026).
 const FINAL_DATE = new Date('2026-07-09T19:00:00+02:00');
 function updateCountdown() {
@@ -2839,6 +2961,7 @@ function render() {
     ${content}
     ${renderFooter()}
     ${renderTeamModal()}
+    ${renderNationModal()}
   `;
 
   // Update last update
@@ -2976,17 +3099,53 @@ function render() {
     });
   });
 
-  // Fermeture du modal
+  // Click sur une row de nation → ouvre le drilldown nation
+  document.querySelectorAll('.nation-row-click[data-nation]').forEach(row => {
+    row.addEventListener('click', () => {
+      openNationModal = row.dataset.nation;
+      render();
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  // Inside the nation modal, clicking a team drills down to that team's squad
+  // and remembers the nation, so closing the team modal returns to the nation.
+  document.querySelectorAll('.nation-team-row[data-nteam]').forEach(row => {
+    row.addEventListener('click', () => {
+      nationReturnTo = openNationModal;
+      openNationModal = null;
+      openTeamModal = row.dataset.nteam;
+      render();
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  // Fermeture du modal équipe (retour à la nation si on venait de là)
   const closeBtn = document.getElementById('modal-close-btn');
   const overlay = document.getElementById('modal-overlay');
   const closeModal = () => {
     openTeamModal = null;
-    document.body.style.overflow = '';
+    if (nationReturnTo) { openNationModal = nationReturnTo; nationReturnTo = null; }
+    else { document.body.style.overflow = ''; }
     render();
   };
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (overlay) overlay.addEventListener('click', e => {
     if (e.target === overlay) closeModal();
+  });
+
+  // Fermeture du modal nation
+  const nClose = document.getElementById('nation-close-btn');
+  const nOverlay = document.getElementById('nation-overlay');
+  const closeNation = () => {
+    openNationModal = null;
+    nationReturnTo = null;
+    document.body.style.overflow = '';
+    render();
+  };
+  if (nClose) nClose.addEventListener('click', closeNation);
+  if (nOverlay) nOverlay.addEventListener('click', e => {
+    if (e.target === nOverlay) closeNation();
   });
 }
 
@@ -2999,9 +3158,9 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { exitTV(); return; }
     return;
   }
-  if (e.key === 'Escape' && openTeamModal) {
-    openTeamModal = null;
-    document.body.style.overflow = '';
+  if (e.key === 'Escape' && (openTeamModal || openNationModal)) {
+    if (openTeamModal && nationReturnTo) { openTeamModal = null; openNationModal = nationReturnTo; nationReturnTo = null; }
+    else { openTeamModal = null; openNationModal = null; nationReturnTo = null; document.body.style.overflow = ''; }
     render();
   }
 });
