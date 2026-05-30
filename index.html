@@ -1003,6 +1003,8 @@ img, table { max-width: 100%; }
 /* === TV / projection mode === */
 .tv-btn { background: rgba(255,255,255,0.1); color: var(--gold); width: 32px; height: 32px; border-radius: 50%; font-size: 15px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 .tv-btn:hover { background: rgba(255,255,255,0.25); }
+.lang-btn { background: rgba(255,255,255,0.1); color: var(--gold); width: 32px; height: 32px; border-radius: 50%; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.lang-btn:hover { background: rgba(255,255,255,0.25); }
 .tv-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: radial-gradient(circle at 50% 0%, #2D3550 0%, #1E2A78 55%, #131a4d 100%);
@@ -1200,6 +1202,7 @@ img, table { max-width: 100%; }
   <div class="header-status" id="header-status">
     <div class="last-update" id="last-update">Loading...</div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <button id="lang-btn" class="refresh-btn lang-btn" title="Français / English" aria-label="Switch language">FR</button>
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
     <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
@@ -1252,6 +1255,76 @@ let teams = [], people = [], updated_at = null, period = '', challenge_dates = {
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
 
 // === STATE ===
+// === i18n (English / French) — football brand terms stay English by design ===
+const LANG_KEY = 'devoteam_wc_lang_v1';
+let LANG = 'en';
+const I18N = {
+  en: {
+    'tab.teams': 'Team Ranking', 'tab.spotlight': 'Players of the Moment ⭐', 'tab.awards': 'Special Awards',
+    'tab.var': 'VAR Room 🟨', 'tab.position': 'My Position 🔍',
+    'teams.sub': 'World Cup Winner · Top 1 Team based on Average PS Bookings per person · {n} teams competing',
+    'teams.searchPh': 'Search by country or team name...',
+    'btn.export': '🖼️ Export standings', 'btn.compare': '⚖️ Compare', 'btn.copy': '📋 Copy commentary', 'btn.card': '🪪 Download my player card',
+    'spotlight.title': '⭐ PLAYERS OF THE MOMENT', 'spotlight.sub': "This matchday's standout performances — five players catching the eye right now",
+    'awards.title': 'SPECIAL AWARDS', 'awards.sub': '4 awards · Some data-driven, some judged by panel',
+    'var.title': '🟨 VAR ROOM', 'var.sub': 'Discipline watch · {n} player{s} currently on a yellow card · Two yellows = a red',
+    'pos.title': '🔍 MY POSITION', 'pos.sub': 'Type your name to find your ranking in the Sales Challenge', 'pos.searchPh': 'Type your name (e.g. Vincent CHEVALIER)',
+    'pos.start': 'Start typing your name above ↑', 'pos.none': 'No salesperson found with that name. Check spelling or try last name only.',
+    'login.sub': 'Sales Challenge 2026 — Internal Access', 'login.ph': 'Enter access code', 'login.btn': 'ACCESS THE LEADERBOARD',
+    'login.bad': 'Incorrect access code. Try again.', 'login.err': 'Could not reach the server. Check your connection and retry.', 'login.checking': 'CHECKING...',
+    'load.title': 'KICK-OFF', 'load.sub': 'Loading the live leaderboard…',
+    'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
+    'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
+    'hero.eyebrow': '🏆 WORLD CUP WINNER · CURRENT LEADERBOARD', 'hero.title': 'Who will lift the trophy?',
+    'hero.desc': "Top 1 Team based on Average Total PS Bookings per person. Challenge runs from June 1st to July 3rd. Award ceremony in Paris, July 9th at Victoria Paris (l'Arc).",
+    'th.rank': 'RANK', 'th.team': 'TEAM', 'th.members': 'MEMBERS', 'th.avgps': 'AVG PS / PERSON', 'th.avggm': 'AVG GM', 'th.avgmeet': 'AVG MEET', 'th.avgopps': 'AVG OPPS',
+    'teams.clickHint': '→ click to see members', 'teams.noresult': 'No teams match your search.',
+    'golden.sub': 'Most Goals · Top 5 Salespeople based on PS Bookings New Business',
+    'playmaker.sub': 'Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, > €50K)',
+    'var.low': '🟨 Low activity — under 5 meetings/week', 'var.gm': '🟨 Low margin — GM below 25%'
+  },
+  fr: {
+    'tab.teams': 'Classement', 'tab.spotlight': 'Joueurs du moment ⭐', 'tab.awards': 'Prix spéciaux',
+    'tab.var': 'VAR 🟨', 'tab.position': 'Ma position 🔍',
+    'teams.sub': "Vainqueur de la World Cup · Équipe n°1 sur la moyenne de PS Bookings par personne · {n} équipes en lice",
+    'teams.searchPh': 'Rechercher par pays ou nom d\'équipe...',
+    'btn.export': '🖼️ Exporter le classement', 'btn.compare': '⚖️ Comparer', 'btn.copy': '📋 Copier le commentaire', 'btn.card': '🪪 Télécharger ma carte joueur',
+    'spotlight.title': '⭐ JOUEURS DU MOMENT', 'spotlight.sub': 'Les performances marquantes du moment — cinq joueurs en vue actuellement',
+    'awards.title': 'PRIX SPÉCIAUX', 'awards.sub': '4 prix · certains basés sur les données, d\'autres jugés par un jury',
+    'var.title': '🟨 SALLE VAR', 'var.sub': 'Surveillance discipline · {n} joueur{s} actuellement sous carton jaune · Deux jaunes = un rouge',
+    'pos.title': '🔍 MA POSITION', 'pos.sub': 'Tape ton nom pour voir ton classement dans le Sales Challenge', 'pos.searchPh': 'Tape ton nom (ex. Vincent CHEVALIER)',
+    'pos.start': 'Commence à taper ton nom ci-dessus ↑', 'pos.none': 'Aucun commercial trouvé avec ce nom. Vérifie l\'orthographe ou essaie juste le nom de famille.',
+    'login.sub': 'Sales Challenge 2026 — Accès interne', 'login.ph': 'Entre le code d\'accès', 'login.btn': 'ACCÉDER AU CLASSEMENT',
+    'login.bad': 'Code d\'accès incorrect. Réessaie.', 'login.err': 'Serveur injoignable. Vérifie ta connexion et réessaie.', 'login.checking': 'VÉRIFICATION...',
+    'load.title': 'COUP D\'ENVOI', 'load.sub': 'Chargement du classement en direct…',
+    'foot.runs': "Challenge du {a} au {b} · Cérémonie de remise des prix au Victoria Paris (l'Arc)",
+    'foot.data': 'Données : OneBI → Google Sheets · Mis à jour régulièrement · Surveillé chaque semaine par la VAR',
+    'hero.eyebrow': '🏆 VAINQUEUR DE LA WORLD CUP · CLASSEMENT ACTUEL', 'hero.title': 'Qui soulèvera le trophée ?',
+    'hero.desc': "Équipe n°1 sur la moyenne de PS Bookings totaux par personne. Challenge du 1er juin au 3 juillet. Cérémonie à Paris le 9 juillet, au Victoria Paris (l'Arc).",
+    'th.rank': 'RANG', 'th.team': 'ÉQUIPE', 'th.members': 'MEMBRES', 'th.avgps': 'MOY PS / PERS.', 'th.avggm': 'MOY GM', 'th.avgmeet': 'MOY RDV', 'th.avgopps': 'MOY OPPS',
+    'teams.clickHint': '→ cliquer pour voir les membres', 'teams.noresult': 'Aucune équipe ne correspond à ta recherche.',
+    'golden.sub': 'Plus de buts · Top 5 des commerciaux sur les PS Bookings New Business',
+    'playmaker.sub': 'Plus de passes décisives · Top 5 sur les opportunités New Business créées (Stage 2+, > 50 K€)',
+    'var.low': '🟨 Faible activité — moins de 5 RDV/semaine', 'var.gm': '🟨 Faible marge — GM sous 25 %'
+  }
+};
+function t(k, vars) {
+  let s = (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+  if (vars) Object.keys(vars).forEach(v => { s = s.replace('{' + v + '}', vars[v]); });
+  return s;
+}
+function applyLangButton() {
+  const btn = document.getElementById('lang-btn');
+  if (btn) btn.textContent = LANG === 'en' ? 'FR' : 'EN';
+}
+function setLang(l) {
+  LANG = (l === 'fr') ? 'fr' : 'en';
+  safeSet(LANG_KEY, LANG);
+  document.documentElement.lang = LANG;
+  applyLangButton();
+  render();
+}
+
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
 let teamRegion = 'all'; // team table region filter
@@ -1554,9 +1627,9 @@ function renderHero() {
   return `
     <div class="hero">
       <div class="hero-inner">
-        <div class="hero-eyebrow">🏆 WORLD CUP WINNER · CURRENT LEADERBOARD</div>
-        <h1 class="hero-title">Who will lift the trophy?</h1>
-        <p class="hero-desc">Top 1 Team based on Average Total PS Bookings per person. Challenge runs from June 1st to July 3rd. Award ceremony in Paris, July 9th at Victoria Paris (l'Arc).</p>
+        <div class="hero-eyebrow">${t('hero.eyebrow')}</div>
+        <h1 class="hero-title">${t('hero.title')}</h1>
+        <p class="hero-desc">${t('hero.desc')}</p>
         <div class="podium-row">
           ${renderPodiumCard(top3[1], 2, '🥈', 'second')}
           ${renderPodiumCard(top3[0], 1, '🏆', 'first')}
@@ -1597,9 +1670,10 @@ const TABS = [
 function renderTabs() {
   return `
     <div class="tabs-bar">
-      ${TABS.map(t => `
-        <button class="tab-btn ${currentTab === t.id ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>
-      `).join('')}
+      ${TABS.map(tb => {
+        const label = I18N.en['tab.' + tb.id] ? t('tab.' + tb.id) : tb.label;
+        return `<button class="tab-btn ${currentTab === tb.id ? 'active' : ''}" data-tab="${tb.id}">${label}</button>`;
+      }).join('')}
     </div>
   `;
 }
@@ -1618,6 +1692,7 @@ function renderTeamRanking() {
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
   const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
+  const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
   // Reorder rows by the chosen column; the # always stays the official World Cup
   // rank (average PS per person), so you can spot e.g. "#9 overall, #1 in GM".
@@ -1634,23 +1709,23 @@ function renderTeamRanking() {
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">TEAM RANKING</h2>
-        <p class="section-subtitle">World Cup Winner · Top 1 Team based on Average PS Bookings per person · ${teams.length} teams competing${sortNote}</p>
-        <button id="export-standings" class="copy-btn">🖼️ Export standings</button>
-        <button id="compare-btn" class="copy-btn">⚖️ Compare</button>
+        <p class="section-subtitle">${t('teams.sub', { n: teams.length })}${sortNote}</p>
+        <button id="export-standings" class="copy-btn">${t('btn.export')}</button>
+        <button id="compare-btn" class="copy-btn">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
-        <input type="text" class="search-input" id="team-search" placeholder="Search by country or team name..." value="${escapeHtml(currentSearch)}" />
+        <input type="text" class="search-input" id="team-search" placeholder="${t('teams.searchPh')}" value="${escapeHtml(currentSearch)}" />
       </div>
       ${regionChips}
       <div class="teams-table">
         <div class="teams-table-header">
-          <div>RANK</div>
-          <div class="th-sort" data-sort="country">TEAM${arrow('country')}</div>
-          <div class="tt-col-members th-sort" data-sort="members">MEMBERS${arrow('members')}</div>
-          <div class="th-sort" data-sort="avg_ps">AVG PS / PERSON${arrow('avg_ps')}</div>
-          <div class="tt-col-meet th-sort" data-sort="avg_gm">AVG GM${arrow('avg_gm')}</div>
-          <div class="th-sort" data-sort="avg_meetings">AVG MEET${arrow('avg_meetings')}</div>
-          <div class="tt-col-opps th-sort" data-sort="avg_opps">AVG OPPS${arrow('avg_opps')}</div>
+          <div>${t('th.rank')}</div>
+          <div class="th-sort" data-sort="country">${t('th.team')}${arrow('country')}</div>
+          <div class="tt-col-members th-sort" data-sort="members">${t('th.members')}${arrow('members')}</div>
+          <div class="th-sort" data-sort="avg_ps">${t('th.avgps')}${arrow('avg_ps')}</div>
+          <div class="tt-col-meet th-sort" data-sort="avg_gm">${t('th.avggm')}${arrow('avg_gm')}</div>
+          <div class="th-sort" data-sort="avg_meetings">${t('th.avgmeet')}${arrow('avg_meetings')}</div>
+          <div class="tt-col-opps th-sort" data-sort="avg_opps">${t('th.avgopps')}${arrow('avg_opps')}</div>
         </div>
         ${display.map(t => {
           const realRank = sortedTeams.findIndex(x => x.country === t.country) + 1;
@@ -1660,7 +1735,7 @@ function renderTeamRanking() {
               <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${escapeHtml(t.country)}
-                <div class="click-hint">→ click to see members</div>
+                <div class="click-hint">${clickHint}</div>
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>
               <div>
@@ -1673,7 +1748,7 @@ function renderTeamRanking() {
             </div>
           `;
         }).join('')}
-        ${filtered.length === 0 ? '<div class="no-result">No teams match your search.</div>' : ''}
+        ${filtered.length === 0 ? `<div class="no-result">${t('teams.noresult')}</div>` : ''}
       </div>
     </div>
   `;
@@ -1685,7 +1760,7 @@ function renderGoldenBoot() {
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">🥇 GOLDEN BOOT AWARD</h2>
-        <p class="section-subtitle">Most Goals · Top 5 Salespeople based on PS Bookings New Business</p>
+        <p class="section-subtitle">${t('golden.sub')}</p>
       </div>
       <div class="individuals-grid">
         ${top5.map((p, i) => renderIndivCard(p, i+1, animNum('gb:' + p.name, p.ps_nb, 'money'), 'PS Bookings (NB)', [
@@ -1703,7 +1778,7 @@ function renderPlaymaker() {
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">🎯 PLAYMAKER AWARD</h2>
-        <p class="section-subtitle">Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, &gt; €50K)</p>
+        <p class="section-subtitle">${t('playmaker.sub')}</p>
       </div>
       <div class="individuals-grid">
         ${top5.map((p, i) => renderIndivCard(p, i+1, animNum('pm:' + p.name, p.opps, 'int'), 'Opportunities Created', [
@@ -1863,9 +1938,9 @@ function renderSpotlight() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">⭐ PLAYERS OF THE MOMENT</h2>
-        <p class="section-subtitle">This matchday's standout performances — five players catching the eye right now</p>
-        <button id="copy-commentary" class="copy-btn" title="Copy the five headlines to the clipboard">📋 Copy commentary</button>
+        <h2 class="section-title">${t('spotlight.title')}</h2>
+        <p class="section-subtitle">${t('spotlight.sub')}</p>
+        <button id="copy-commentary" class="copy-btn" title="Copy the five headlines to the clipboard">${t('btn.copy')}</button>
       </div>
       <div class="spotlight-grid">
         ${spots.map((s, i) => {
@@ -1914,12 +1989,12 @@ function renderVAR() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">🟨 VAR ROOM</h2>
-        <p class="section-subtitle">Discipline watch · ${names.size} player${names.size === 1 ? '' : 's'} currently on a yellow card · Two yellows = a red</p>
+        <h2 class="section-title">${t('var.title')}</h2>
+        <p class="section-subtitle">${t('var.sub', { n: names.size, s: names.size === 1 ? '' : 's' })}</p>
       </div>
       <div class="var-grid">
-        ${col('🟨 Low activity — under 5 meetings/week', lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, "No cards here — everyone's hitting their meetings. ✅")}
-        ${col('🟨 Low margin — GM below 25%', lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, 'No cards here — margins are healthy. ✅')}
+        ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, "No cards here — everyone's hitting their meetings. ✅")}
+        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, 'No cards here — margins are healthy. ✅')}
       </div>
     </div>
   `;
@@ -1980,8 +2055,8 @@ function renderSpecialAwards() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">SPECIAL AWARDS</h2>
-        <p class="section-subtitle">4 awards · Some data-driven, some judged by panel</p>
+        <h2 class="section-title">${t('awards.title')}</h2>
+        <p class="section-subtitle">${t('awards.sub')}</p>
       </div>
       <div class="awards-grid">
         <div class="award-card" style="--c: #F2C75C">
@@ -2054,11 +2129,11 @@ function renderMyPosition() {
   let resultHtml = '';
 
   if (q.length < 2) {
-    resultHtml = `<div class="position-result"><div class="no-result">Start typing your name above ↑</div></div>`;
+    resultHtml = `<div class="position-result"><div class="no-result">${t('pos.start')}</div></div>`;
   } else {
     const matches = people.filter(p => p.name.toLowerCase().includes(q));
     if (matches.length === 0) {
-      resultHtml = `<div class="position-result"><div class="no-result">No salesperson found with that name. Check spelling or try last name only.</div></div>`;
+      resultHtml = `<div class="position-result"><div class="no-result">${t('pos.none')}</div></div>`;
     } else if (matches.length === 1) {
       resultHtml = renderPositionDetails(matches[0]);
     } else {
@@ -2087,11 +2162,11 @@ function renderMyPosition() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">🔍 MY POSITION</h2>
-        <p class="section-subtitle">Type your name to find your ranking in the Sales Challenge</p>
+        <h2 class="section-title">${t('pos.title')}</h2>
+        <p class="section-subtitle">${t('pos.sub')}</p>
       </div>
       <div class="search-row">
-        <input type="text" class="search-input" id="position-search" placeholder="Type your name (e.g. Vincent CHEVALIER)" value="${escapeHtml(positionQuery)}" autofocus />
+        <input type="text" class="search-input" id="position-search" placeholder="${t('pos.searchPh')}" value="${escapeHtml(positionQuery)}" autofocus />
       </div>
       ${resultHtml}
     </div>
@@ -2168,7 +2243,7 @@ function renderPositionDetails(person) {
           🌱 You are eligible for the <strong>Rookie of the Year</strong> award (less than 1 year at Devoteam)
         </div>
       ` : ''}
-      <button id="download-card" class="copy-btn" style="margin-top:18px">🪪 Download my player card</button>
+      <button id="download-card" class="copy-btn" style="margin-top:18px">${t('btn.card')}</button>
     </div>
   `;
 }
@@ -2437,8 +2512,8 @@ function renderFooter() {
   return `
     <footer class="app-footer">
       <div class="countdown" id="countdown-live">🏆 Counting down to the Final…</div>
-      <div>Challenge runs from ${challenge_dates.start} to ${challenge_dates.end} · Award ceremony at Victoria Paris (l'Arc)</div>
-      <div style="margin-top:8px;opacity:0.6">Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR</div>
+      <div>${t('foot.runs', { a: challenge_dates.start, b: challenge_dates.end })}</div>
+      <div style="margin-top:8px;opacity:0.6">${t('foot.data')}</div>
     </footer>
   `;
 }
@@ -2714,8 +2789,8 @@ function renderLoader() {
         <div class="loader-ball">⚽</div>
       </div>
       <div>
-        <div class="loader-title">KICK-OFF</div>
-        <div class="loader-sub">Loading the live leaderboard…</div>
+        <div class="loader-title">${t('load.title')}</div>
+        <div class="loader-sub">${t('load.sub')}</div>
       </div>
       <div class="loader-bar"></div>
     </div>
@@ -2922,9 +2997,9 @@ function renderLoginScreen(errorMsg) {
       <div class="login-card">
         ${LOGO_DATA_URI ? `<img src="${LOGO_DATA_URI}" class="login-logo" alt="Sales Challenge" />` : ''}
         <div class="login-title">DEVOTEAM WORLD CUP</div>
-        <div class="login-subtitle">Sales Challenge 2026 — Internal Access</div>
-        <input type="password" id="login-pwd" class="login-input" placeholder="Enter access code" autofocus />
-        <button id="login-btn" class="login-btn">ACCESS THE LEADERBOARD</button>
+        <div class="login-subtitle">${t('login.sub')}</div>
+        <input type="password" id="login-pwd" class="login-input" placeholder="${t('login.ph')}" autofocus />
+        <button id="login-btn" class="login-btn">${t('login.btn')}</button>
         <div class="login-error">${errorMsg || ''}</div>
       </div>
     </div>
@@ -3138,15 +3213,15 @@ async function init() {
       const submit = async () => {
         const pwd = input.value.trim();
         if (!pwd) return;
-        btn.textContent = 'CHECKING...';
+        btn.textContent = t('login.checking');
         btn.disabled = true;
         const ok = await attemptLogin(pwd);
         if (ok === true) {
           init(); // re-init now that we're authenticated
         } else if (ok === false) {
-          showLogin('Incorrect access code. Try again.');
+          showLogin(t('login.bad'));
         } else {
-          showLogin('Could not reach the server. Check your connection and retry.');
+          showLogin(t('login.err'));
         }
       };
       btn.addEventListener('click', submit);
@@ -3198,6 +3273,12 @@ async function init() {
     searchBtn.dataset.bound = '1';
     searchBtn.addEventListener('click', openSearch);
   }
+  const langBtn = document.getElementById('lang-btn');
+  if (langBtn && !langBtn.dataset.bound) {
+    langBtn.dataset.bound = '1';
+    langBtn.addEventListener('click', () => setLang(LANG === 'en' ? 'fr' : 'en'));
+  }
+  applyLangButton();
 
   startPolling();
 
@@ -3209,6 +3290,8 @@ async function init() {
 }
 
 // Read the admin activation param before anything else renders.
+LANG = (safeGet(LANG_KEY) === 'fr') ? 'fr' : 'en';
+document.documentElement.lang = LANG;
 applyTheme(currentTheme());
 checkAdminParam();
 
