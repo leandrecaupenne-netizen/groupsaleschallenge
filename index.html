@@ -348,6 +348,32 @@ input { font-family: inherit; }
 .tt-money-sub { font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }
 .tt-stat { font-family: ui-monospace, monospace; font-size: 13px; }
 
+/* === Teams/Nations view toggle === */
+.view-toggle { margin: 4px 0 12px; }
+
+/* === Movers strip === */
+.movers-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.movers-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-right: 4px; }
+.mover { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
+.mover.up { background: rgba(22,163,74,0.12); color: var(--green); }
+.mover.down { background: rgba(200,16,46,0.10); color: var(--usa-red); }
+.mover b { font-variant-numeric: tabular-nums; }
+
+/* === Nations ranking === */
+.nations-table { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper); }
+.nation-row { display: grid; grid-template-columns: 64px 1.6fr 70px 80px 1.3fr 80px; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.nation-row:last-child { border-bottom: none; }
+.nation-head { font-size: 11px; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; text-transform: uppercase; background: var(--cream); }
+.nation-head span { font-family: inherit; }
+.nation-row.top-1 { background: rgba(242,199,92,0.14); }
+.nation-row.top-2 { background: rgba(156,163,175,0.10); }
+.nation-row.top-3 { background: rgba(180,83,9,0.08); }
+.nt-name { font-weight: 800; font-size: 16px; color: var(--ink); }
+@media (max-width: 640px) {
+  .nation-row { grid-template-columns: 50px 1.4fr 1fr 64px; gap: 8px; padding: 12px; }
+  .nt-col-teams, .nt-col-ppl { display: none; }
+}
+
 /* === INDIVIDUAL CARDS === */
 .individuals-grid {
   display: grid;
@@ -1341,6 +1367,7 @@ function t(k, vars) {
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
 let teamRegion = 'all'; // team table region filter
+let teamView = 'teams'; // Team Ranking tab view: 'teams' | 'nations'
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
 let currentSearch = '';
 let positionQuery = '';
@@ -1715,6 +1742,55 @@ function regionOf(c) {
   if (['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
   return 'OTHER';
 }
+function nationsRanking() {
+  // Aggregate teams into nations (regions): true avg PS per person + member-weighted GM.
+  const groups = {};
+  sortedTeams.forEach(t => {
+    const r = regionOf(t.country);
+    const g = groups[r] || (groups[r] = { region: r, teams: 0, people: 0, total_ps: 0, gmw: 0 });
+    g.teams += 1; g.people += (t.members || 0); g.total_ps += (t.total_ps || 0);
+    g.gmw += (t.avg_gm || 0) * (t.members || 0);
+  });
+  return Object.values(groups).map(g => ({
+    region: g.region,
+    label: VT_REGION_LABELS[g.region] || g.region,
+    teams: g.teams,
+    people: g.people,
+    avg_ps: g.people ? g.total_ps / g.people : 0,
+    avg_gm: g.people ? g.gmw / g.people : 0
+  })).sort((a, b) => b.avg_ps - a.avg_ps);
+}
+
+function renderNationsTable() {
+  const nations = nationsRanking();
+  return `
+    <div class="nations-table">
+      <div class="nation-row nation-head">
+        <span>RANK</span><span>NATION</span><span class="nt-col-teams">TEAMS</span><span class="nt-col-ppl">PEOPLE</span><span>AVG PS / PERSON</span><span class="nt-col-gm">AVG GM</span>
+      </div>
+      ${nations.map((n, i) => `
+        <div class="nation-row ${i < 3 ? 'top-' + (i + 1) : ''}">
+          <div class="tt-rank ${i < 3 ? 'top-' + (i + 1) : ''}">${['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))}</div>
+          <div class="nt-name">${n.label}</div>
+          <div class="tt-stat nt-col-teams">${n.teams}</div>
+          <div class="tt-stat nt-col-ppl">${n.people}</div>
+          <div class="tt-money tt-money-main">${animNum('nt:' + n.region, n.avg_ps, 'money')}</div>
+          <div class="tt-stat nt-col-gm">${fmtPct(n.avg_gm)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function moversStrip() {
+  if (!prevRanks || !prevRanks.teams) return '';
+  const movers = sortedTeams.map((t, i) => ({ c: t.country, delta: (prevRanks.teams[t.country] || (i + 1)) - (i + 1) }))
+    .filter(m => m.delta !== 0);
+  const climbers = movers.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  const fallers = movers.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 2);
+  if (!climbers.length && !fallers.length) return '';
+  const chip = (m, up) => `<span class="mover ${up ? 'up' : 'down'}">${escapeHtml(m.c)} <b>${up ? '▲' : '▼'}${Math.abs(m.delta)}</b></span>`;
+  return `<div class="movers-strip"><span class="movers-label">📈 Movers since your last visit</span>${climbers.map(m => chip(m, true)).join('')}${fallers.map(m => chip(m, false)).join('')}</div>`;
+}
+
 function renderTeamRanking() {
   const search = currentSearch.trim().toLowerCase();
   const filtered = sortedTeams.filter(t =>
@@ -1723,6 +1799,27 @@ function renderTeamRanking() {
   const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
+
+  const viewToggle = `
+    <div class="search-chips view-toggle">
+      <button class="search-chip ${teamView === 'teams' ? 'on' : ''}" data-view="teams">🏆 Teams</button>
+      <button class="search-chip ${teamView === 'nations' ? 'on' : ''}" data-view="nations">🌍 Nations</button>
+    </div>`;
+
+  // === Nations view ===
+  if (teamView === 'nations') {
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">NATIONS RANKING</h2>
+          <p class="section-subtitle">Countries head to head · average PS Bookings per person across each region's teams</p>
+          <button id="export-standings" class="copy-btn">${t('btn.export')}</button>
+          <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
+        </div>
+        ${viewToggle}
+        ${renderNationsTable()}
+      </div>`;
+  }
 
   // Reorder rows by the chosen column; the # always stays the official World Cup
   // rank (average PS per person), so you can spot e.g. "#9 overall, #1 in GM".
@@ -1743,6 +1840,8 @@ function renderTeamRanking() {
         <button id="export-standings" class="copy-btn">${t('btn.export')}</button>
         <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
+      ${viewToggle}
+      ${moversStrip()}
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="${t('teams.searchPh')}" value="${escapeHtml(currentSearch)}" />
       </div>
@@ -2790,6 +2889,9 @@ function render() {
   // Team region filter chips
   document.querySelectorAll('.region-chip').forEach(c => {
     c.addEventListener('click', () => { teamRegion = c.dataset.region; render(); });
+  });
+  document.querySelectorAll('.view-toggle button[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => { teamView = btn.dataset.view; render(); });
   });
 
   const teamSearch = document.getElementById('team-search');
