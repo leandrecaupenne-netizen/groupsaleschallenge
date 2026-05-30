@@ -1634,13 +1634,13 @@ function renderPodiumCard(team, rank, medal, position) {
 }
 
 const TABS = [
-  { id: 'teams', label: 'Team Ranking' },
-  { id: 'spotlight', label: 'Players of the Moment ⭐' },
-  { id: 'golden', label: 'Golden Boot 🥇' },
-  { id: 'playmaker', label: 'Playmaker 🎯' },
-  { id: 'awards', label: 'Special Awards' },
-  { id: 'var', label: 'VAR Room 🟨' },
-  { id: 'position', label: 'My Position 🔍' },
+  { id: 'teams', label: 'Team Ranking', tip: 'Team standings — the World Cup Winner is the #1 team on average PS Bookings per person' },
+  { id: 'spotlight', label: 'Players of the Moment ⭐', tip: "This matchday's standout performers across the challenge" },
+  { id: 'golden', label: 'Golden Boot 🥇', tip: 'Top scorers — the 5 salespeople with the most PS Bookings New Business' },
+  { id: 'playmaker', label: 'Playmaker 🎯', tip: 'Top assists — the 5 salespeople who created the most New Business opportunities' },
+  { id: 'awards', label: 'Special Awards', tip: 'Licence, Rookie of the Year, AI Play and Transformative Deal' },
+  { id: 'var', label: 'VAR Room 🟨', tip: 'Discipline watch — yellow cards for low meetings or low margin' },
+  { id: 'position', label: 'My Position 🔍', tip: 'Search your name to see all your rankings in the challenge' },
 ];
 
 function renderTabs() {
@@ -1648,7 +1648,7 @@ function renderTabs() {
     <div class="tabs-bar">
       ${TABS.map(tb => {
         const label = I18N.en['tab.' + tb.id] ? t('tab.' + tb.id) : tb.label;
-        return `<button class="tab-btn ${currentTab === tb.id ? 'active' : ''}" data-tab="${tb.id}">${label}</button>`;
+        return `<button class="tab-btn ${currentTab === tb.id ? 'active' : ''}" data-tab="${tb.id}" title="${escapeHtml(tb.tip || '')}">${label}</button>`;
       }).join('')}
     </div>
   `;
@@ -1687,7 +1687,7 @@ function renderTeamRanking() {
         <h2 class="section-title">TEAM RANKING</h2>
         <p class="section-subtitle">${t('teams.sub', { n: teams.length })}${sortNote}</p>
         <button id="export-standings" class="copy-btn">${t('btn.export')}</button>
-        <button id="compare-btn" class="copy-btn">${t('btn.compare')}</button>
+        <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="${t('teams.searchPh')}" value="${escapeHtml(currentSearch)}" />
@@ -2140,6 +2140,7 @@ function renderMyPosition() {
       <div class="section-header">
         <h2 class="section-title">${t('pos.title')}</h2>
         <p class="section-subtitle">${t('pos.sub')}</p>
+        <button class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
         <input type="text" class="search-input" id="position-search" placeholder="${t('pos.searchPh')}" value="${escapeHtml(positionQuery)}" autofocus />
@@ -2561,8 +2562,7 @@ function render() {
   if (cardBtn) cardBtn.addEventListener('click', () => generatePlayerCard(cardPerson));
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
-  const compareBtn = document.getElementById('compare-btn');
-  if (compareBtn) compareBtn.addEventListener('click', openCompare);
+  document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2574,6 +2574,15 @@ function render() {
       render();
     });
   });
+  // Keep the active tab visible: on narrow screens the tab bar scrolls
+  // horizontally, so centre the selected tab (e.g. "My Position" on a tablet
+  // wouldn't otherwise be visible as selected).
+  const tabsBar = document.querySelector('.tabs-bar');
+  const activeTab = tabsBar && tabsBar.querySelector('.tab-btn.active');
+  if (tabsBar && activeTab) {
+    const target = activeTab.offsetLeft - (tabsBar.clientWidth - activeTab.offsetWidth) / 2;
+    tabsBar.scrollLeft = Math.max(0, target);
+  }
 
   // Sortable team-table headers
   document.querySelectorAll('.th-sort').forEach(h => {
