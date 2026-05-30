@@ -877,19 +877,47 @@ input { font-family: inherit; }
 .state-msg .login-btn { display: inline-block; width: auto; padding: 10px 22px; margin-top: 18px; }
 
 /* === Loading animation (football themed) === */
-.loader-screen { min-height: 62vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 40px 20px; text-align: center; }
+.loader-screen {
+  min-height: 72vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 48px 20px; text-align: center; color: #fff;
+  margin: 16px; border-radius: 20px; position: relative;
+  /* Stadium pitch: mowed vertical stripes over a green gradient. */
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.055) 0 64px, rgba(255,255,255,0) 64px 128px),
+    radial-gradient(circle at 50% 36%, #1aa75e 0%, #0e7d43 56%, #0a5c32 100%);
+  box-shadow: inset 0 0 120px rgba(0,0,0,0.25), 0 20px 50px rgba(10,92,50,0.25);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.loader-screen.kicked { opacity: 0; transform: scale(1.02); }
 .loader-pitch { position: relative; width: 90px; height: 96px; }
-.loader-ball { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 52px; animation: ballBounce 1s ease-in-out infinite; }
-.loader-ball-shadow { position: absolute; left: 50%; bottom: 8px; width: 46px; height: 9px; background: rgba(0,0,0,0.18); border-radius: 50%; transform: translateX(-50%); filter: blur(2px); animation: ballShadow 1s ease-in-out infinite; }
+/* Center circle behind the ball, for the kick-off vibe. */
+.loader-pitch::before {
+  content: ''; position: absolute; left: 50%; bottom: -6px; width: 150px; height: 150px;
+  border: 2px solid rgba(255,255,255,0.18); border-radius: 50%;
+  transform: translateX(-50%); pointer-events: none;
+}
+.loader-ball { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 52px; animation: ballBounce 1s ease-in-out infinite; z-index: 1; will-change: transform; }
+.loader-ball-shadow { position: absolute; left: 50%; bottom: 8px; width: 46px; height: 9px; background: rgba(0,0,0,0.28); border-radius: 50%; transform: translateX(-50%); filter: blur(2px); animation: ballShadow 1s ease-in-out infinite; }
 @keyframes ballBounce { 0%,100% { transform: translateX(-50%) translateY(0) rotate(0deg); } 50% { transform: translateX(-50%) translateY(-32px) rotate(200deg); } }
 @keyframes ballShadow { 0%,100% { transform: translateX(-50%) scale(1); opacity: 0.5; } 50% { transform: translateX(-50%) scale(0.6); opacity: 0.22; } }
-.loader-title { font-family: 'Anton', Impact, sans-serif; font-size: 24px; letter-spacing: 0.06em; color: var(--navy); }
-.loader-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
-.loader-bar { width: 220px; max-width: 70vw; height: 7px; border-radius: 99px; background: var(--line); overflow: hidden; position: relative; }
-.loader-bar::before { content: ''; position: absolute; top: 0; left: -42%; height: 100%; width: 42%; border-radius: 99px; background: linear-gradient(90deg, var(--usa-red), #fff, var(--mex-green)); animation: loaderSweep 1.1s ease-in-out infinite; }
+/* KICK-OFF! The ball is struck and rockets up-field, spinning away. */
+.loader-ball.kicked { animation: ballKick 0.62s cubic-bezier(.45,0,.25,1) forwards; }
+.loader-ball-shadow.kicked { animation: ballShadowKick 0.3s ease forwards; }
+@keyframes ballKick {
+  0% { transform: translate(-50%, 0) rotate(0deg) scale(1); opacity: 1; }
+  14% { transform: translate(-54%, 7px) rotate(-26deg) scale(1.06); } /* wind-up / contact squash */
+  100% { transform: translate(220px, -560px) rotate(1100deg) scale(0.32); opacity: 0; }
+}
+@keyframes ballShadowKick { 0% { opacity: 0.5; } 100% { transform: translateX(-50%) scale(1.6); opacity: 0; } }
+.loader-title { font-family: 'Anton', Impact, sans-serif; font-size: 26px; letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+.loader-sub { color: rgba(255,255,255,0.82); font-size: 13px; margin-top: 2px; }
+.loader-bar { width: 220px; max-width: 70vw; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.22); overflow: hidden; position: relative; }
+.loader-bar::before { content: ''; position: absolute; top: 0; left: -42%; height: 100%; width: 42%; border-radius: 99px; background: linear-gradient(90deg, var(--usa-red), #fff, var(--gold)); animation: loaderSweep 1.1s ease-in-out infinite; }
 @keyframes loaderSweep { 0% { left: -42%; } 100% { left: 100%; } }
+@keyframes appEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .loader-ball, .loader-ball-shadow { animation: none; }
+  .loader-ball.kicked, .loader-ball-shadow.kicked { animation: none; }
   .loader-bar::before { animation: none; left: 0; width: 100%; }
 }
 
@@ -3429,6 +3457,24 @@ function renderLoader() {
   `;
 }
 
+// Kick-off! When data is ready, the ball is struck and rockets off the pitch,
+// the loader fades, and the app takes its place. Resolves when the ball is gone.
+function playKickoff() {
+  return new Promise(resolve => {
+    const screen = document.querySelector('.loader-screen');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!screen || reduce) { resolve(); return; }
+    const ball = screen.querySelector('.loader-ball');
+    const shadow = screen.querySelector('.loader-ball-shadow');
+    const sub = screen.querySelector('.loader-sub');
+    if (sub) sub.textContent = 'Kick-off! ⚽';
+    if (ball) ball.classList.add('kicked');
+    if (shadow) shadow.classList.add('kicked');
+    setTimeout(() => screen.classList.add('kicked'), 230); // fade the pitch out behind the ball
+    setTimeout(resolve, 620);
+  });
+}
+
 // === Rules & Awards modal (self-contained overlay) ===
 function openRules() {
   if (document.getElementById('rules-overlay')) return;
@@ -3946,6 +3992,7 @@ async function init() {
 
   // Logged in: show the app chrome, load data, then render + poll.
   setChromeVisible(true);
+  const loadStart = performance.now();
   app.innerHTML = renderLoader();
   const ok = await fetchData();
   if (!ok) {
@@ -3953,8 +4000,15 @@ async function init() {
     return;
   }
 
+  // Let the ball bounce at least a beat, then strike the kick-off.
+  const elapsed = performance.now() - loadStart;
+  if (elapsed < 750) await new Promise(r => setTimeout(r, 750 - elapsed));
+  await playKickoff();
+
   restoreTab(); // open the tab from the URL hash / last used
   render();
+  app.style.animation = 'appEnter 0.45s ease both';
+  setTimeout(() => { app.style.animation = ''; }, 500);
 
   // Bind the header refresh button once (it lives outside #app, so it survives re-renders).
   const refreshBtn = document.getElementById('refresh-btn');
