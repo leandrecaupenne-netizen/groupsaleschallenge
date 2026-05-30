@@ -1079,6 +1079,18 @@ img, table { max-width: 100%; }
 
 /* === Confetti === */
 .confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1200; }
+
+/* === Rules & Awards modal === */
+.rules-modal { max-width: 640px; }
+.rules-body { padding: 8px 24px 28px; }
+.rules-h { font-family: 'Anton', Impact, sans-serif; font-size: 18px; letter-spacing: 0.03em; color: var(--navy); margin: 20px 0 8px; }
+.rules-list { margin: 0; padding-left: 20px; }
+.rules-list li { margin: 7px 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.rules-foot { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+
+/* === Sortable team-table headers === */
+.th-sort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
+.th-sort:hover { color: var(--usa-red); }
 </style>
 </head>
 <body>
@@ -1104,6 +1116,7 @@ img, table { max-width: 100%; }
   <div class="header-status" id="header-status">
     <div class="last-update" id="last-update">Loading...</div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
     <button id="tv-btn" class="refresh-btn tv-btn" title="TV / projection mode" aria-label="TV mode">📺</button>
     <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
   </div>
@@ -1152,6 +1165,7 @@ let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal
 
 // === STATE ===
 let currentTab = 'teams';
+let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
 let currentSearch = '';
 let positionQuery = '';
 let openTeamModal = null; // country name si modal ouverte
@@ -1332,6 +1346,30 @@ function detectLeaderChanges() {
   leaders = cur;
 }
 
+// === Deep-linkable tabs (URL hash) ===
+const TAB_KEY = 'devoteam_wc_tab_v1';
+function tabFromHash() {
+  const h = (location.hash || '').replace('#', '');
+  return TABS.some(t => t.id === h) ? h : null;
+}
+function setTabUrl(tab) {
+  try { history.replaceState(null, '', location.pathname + location.search + '#' + tab); } catch (e) {}
+  safeSet(TAB_KEY, tab);
+}
+// Restore the tab from the URL hash, else the last one used this device.
+function restoreTab() {
+  const t = tabFromHash() || safeGet(TAB_KEY);
+  if (t && TABS.some(x => x.id === t)) currentTab = t;
+}
+// Respond to shared links / back-forward navigation.
+window.addEventListener('hashchange', () => {
+  const t = tabFromHash();
+  if (t && t !== currentTab) {
+    currentTab = t; currentSearch = ''; positionQuery = '';
+    render();
+  }
+});
+
 // Transient celebratory toast (auto-dismisses).
 function showToast(msg) {
   const root = document.getElementById('toast-root');
@@ -1437,11 +1475,22 @@ function renderTeamRanking() {
   const search = currentSearch.trim().toLowerCase();
   const filtered = sortedTeams.filter(t => !search || t.country.toLowerCase().includes(search));
 
+  // Reorder rows by the chosen column; the # always stays the official World Cup
+  // rank (average PS per person), so you can spot e.g. "#9 overall, #1 in GM".
+  const dir = teamSort.dir === 'asc' ? 1 : -1;
+  const display = [...filtered].sort((a, b) => {
+    if (teamSort.key === 'country') return dir * String(a.country).localeCompare(String(b.country));
+    return dir * ((a[teamSort.key] || 0) - (b[teamSort.key] || 0));
+  });
+  const arrow = k => teamSort.key === k ? (teamSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const sortNote = teamSort.key === 'avg_ps' && teamSort.dir === 'desc' ? '' :
+    ` · sorted by ${({country:'team name',members:'members',avg_ps:'avg PS',avg_gm:'avg GM',avg_meetings:'avg meetings',avg_opps:'avg opps'})[teamSort.key]} ${teamSort.dir}`;
+
   return `
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">TEAM RANKING</h2>
-        <p class="section-subtitle">World Cup Winner · Top 1 Team based on Average PS Bookings per person · ${teams.length} teams competing</p>
+        <p class="section-subtitle">World Cup Winner · Top 1 Team based on Average PS Bookings per person · ${teams.length} teams competing${sortNote}</p>
       </div>
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="Search by country or team name..." value="${escapeHtml(currentSearch)}" />
@@ -1449,14 +1498,14 @@ function renderTeamRanking() {
       <div class="teams-table">
         <div class="teams-table-header">
           <div>RANK</div>
-          <div>TEAM</div>
-          <div class="tt-col-members">MEMBERS</div>
-          <div>AVG PS / PERSON</div>
-          <div class="tt-col-meet">AVG GM</div>
-          <div>AVG MEET</div>
-          <div class="tt-col-opps">AVG OPPS</div>
+          <div class="th-sort" data-sort="country">TEAM${arrow('country')}</div>
+          <div class="tt-col-members th-sort" data-sort="members">MEMBERS${arrow('members')}</div>
+          <div class="th-sort" data-sort="avg_ps">AVG PS / PERSON${arrow('avg_ps')}</div>
+          <div class="tt-col-meet th-sort" data-sort="avg_gm">AVG GM${arrow('avg_gm')}</div>
+          <div class="th-sort" data-sort="avg_meetings">AVG MEET${arrow('avg_meetings')}</div>
+          <div class="tt-col-opps th-sort" data-sort="avg_opps">AVG OPPS${arrow('avg_opps')}</div>
         </div>
-        ${filtered.map(t => {
+        ${display.map(t => {
           const realRank = sortedTeams.findIndex(x => x.country === t.country) + 1;
           const topClass = realRank === 1 ? 'top-1' : realRank === 2 ? 'top-2' : realRank === 3 ? 'top-3' : '';
           return `
@@ -2112,6 +2161,17 @@ function render() {
       currentTab = btn.dataset.tab;
       if (currentTab !== 'teams') currentSearch = '';
       if (currentTab !== 'position') positionQuery = '';
+      setTabUrl(currentTab);
+      render();
+    });
+  });
+
+  // Sortable team-table headers
+  document.querySelectorAll('.th-sort').forEach(h => {
+    h.addEventListener('click', () => {
+      const k = h.dataset.sort;
+      if (teamSort.key === k) teamSort.dir = teamSort.dir === 'asc' ? 'desc' : 'asc';
+      else teamSort = { key: k, dir: k === 'country' ? 'asc' : 'desc' };
       render();
     });
   });
@@ -2287,6 +2347,53 @@ function renderLoader() {
       <div class="loader-bar"></div>
     </div>
   `;
+}
+
+// === Rules & Awards modal (self-contained overlay) ===
+function openRules() {
+  if (document.getElementById('rules-overlay')) return;
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.id = 'rules-overlay';
+  el.innerHTML = `
+    <div class="modal rules-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-block">
+          <h2 class="modal-title">📖 RULES &amp; AWARDS</h2>
+          <div class="modal-subtitle">How the Devoteam World Cup works</div>
+        </div>
+        <button class="modal-close" id="rules-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body rules-body">
+        <h3 class="rules-h">🏆 Main rankings</h3>
+        <ul class="rules-list">
+          <li><b>World Cup Winner (Team Ranking)</b> — top team by <i>average PS Bookings per person</i>.</li>
+          <li><b>🥇 Golden Boot</b> — top salespeople by <i>PS Bookings New Business</i> (the goalscorers).</li>
+          <li><b>🎯 Playmaker</b> — top salespeople by <i>opportunities created</i> (the assists, Stage 2+ &amp; &gt; €50K).</li>
+        </ul>
+        <h3 class="rules-h">⭐ Special awards</h3>
+        <ul class="rules-list">
+          <li><b>💼 Licence</b> — top 3 by Licence GM amount.</li>
+          <li><b>🌱 Rookie of the Year</b> — top 3 with less than a year at Devoteam (by PS NB).</li>
+          <li><b>🤖 AI Play</b> — most impactful AI deal, picked by the AI Agency.</li>
+          <li><b>⚡ Transformative Deal</b> — selected by Group Sales for strategic impact.</li>
+        </ul>
+        <h3 class="rules-h">🟨 VAR — discipline</h3>
+        <ul class="rules-list">
+          <li><b>Yellow card</b> if fewer than <b>5 meetings/week</b>.</li>
+          <li><b>Yellow card</b> if Gross Margin is <b>below 25%</b>.</li>
+          <li>Two yellows make a <b>red</b> — keep your stats clean!</li>
+        </ul>
+        <div class="rules-foot">Challenge: 1 June → 3 July 2026 · Final &amp; ceremony in Paris, 9 July (Victoria Paris — l'Arc).</div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('#rules-close').addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
 }
 
 function renderLoginScreen(errorMsg) {
@@ -2510,6 +2617,7 @@ async function init() {
     return;
   }
 
+  restoreTab(); // open the tab from the URL hash / last used
   render();
 
   // Bind the header refresh button once (it lives outside #app, so it survives re-renders).
@@ -2525,6 +2633,11 @@ async function init() {
   if (tvBtn && !tvBtn.dataset.bound) {
     tvBtn.dataset.bound = '1';
     tvBtn.addEventListener('click', toggleTV);
+  }
+  const rulesBtn = document.getElementById('rules-btn');
+  if (rulesBtn && !rulesBtn.dataset.bound) {
+    rulesBtn.dataset.bound = '1';
+    rulesBtn.addEventListener('click', openRules);
   }
 
   startPolling();
