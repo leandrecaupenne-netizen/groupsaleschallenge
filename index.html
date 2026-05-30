@@ -1622,6 +1622,7 @@ function renderTeamRanking() {
       <div class="section-header">
         <h2 class="section-title">TEAM RANKING</h2>
         <p class="section-subtitle">World Cup Winner · Top 1 Team based on Average PS Bookings per person · ${teams.length} teams competing${sortNote}</p>
+        <button id="export-standings" class="copy-btn">🖼️ Export standings</button>
       </div>
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="Search by country or team name..." value="${escapeHtml(currentSearch)}" />
@@ -2236,14 +2237,71 @@ function drawPlayerCard(person, logo) {
   ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 14px Inter, sans-serif';
   ctx.fillText('Final in Paris · 9 July 2026 · Victoria Paris (l’Arc)', W / 2, H - 46);
 
+  downloadCanvas(cv, person.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-world-cup-card.png');
+}
+
+function downloadCanvas(cv, filename) {
   cv.toBlob(blob => {
     if (!blob) return;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = person.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-world-cup-card.png';
+    a.download = filename;
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }, 'image/png');
+}
+
+// === Export the full standings as a PNG ===
+function generateStandingsImage() {
+  const img = new Image();
+  img.onload = () => drawStandings(img);
+  img.onerror = () => drawStandings(null);
+  img.src = LOGO_DATA_URI || '';
+  if (!LOGO_DATA_URI) drawStandings(null);
+}
+function drawStandings(logo) {
+  const top = sortedTeams.slice(0, 12);
+  const W = 820, rowH = 64, headH = 300, H = headH + top.length * rowH + 90, s = 2;
+  const cv = document.createElement('canvas');
+  cv.width = W * s; cv.height = H * s;
+  const ctx = cv.getContext('2d'); ctx.scale(s, s);
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#2D3550'); g.addColorStop(0.5, '#1E2A78'); g.addColorStop(1, '#131a4d');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 2;
+  for (let i = -H; i < W; i += 26) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke(); }
+  ctx.strokeStyle = '#F2C75C'; ctx.lineWidth = 8; rr(16, 16, W - 32, H - 32, 26); ctx.stroke();
+  const bw = (W - 56) / 3;
+  ['#C8102E', '#FFFFFF', '#006847'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
+  if (logo) { const lw = 110, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 60, lw, lh); }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F2C75C'; ctx.font = '700 24px Inter, sans-serif';
+  ctx.fillText('DEVOTEAM WORLD CUP', W / 2, 200);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '600 13px monospace';
+  ctx.fillText('SALES CHALLENGE 2026' + (period ? ' · ' + period.toUpperCase() : ''), W / 2, 224);
+  ctx.fillStyle = '#fff'; ctx.font = '700 40px "Arial Narrow", Impact, sans-serif';
+  ctx.fillText('🏆 TEAM RANKING', W / 2, 274);
+
+  let y = headH;
+  top.forEach((t, i) => {
+    const lead = i === 0;
+    rr(40, y, W - 80, rowH - 10, 12);
+    ctx.fillStyle = lead ? 'rgba(242,199,92,0.22)' : 'rgba(255,255,255,0.06)'; ctx.fill();
+    if (lead) { ctx.strokeStyle = 'rgba(242,199,92,0.7)'; ctx.lineWidth = 2; ctx.stroke(); }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = i === 0 ? '#F2C75C' : i === 1 ? '#9CA3AF' : i === 2 ? '#B45309' : 'rgba(255,255,255,0.85)';
+    ctx.font = '700 30px "Arial Narrow", Impact, sans-serif';
+    ctx.fillText((['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))), 60, y + 36);
+    ctx.fillStyle = '#fff'; ctx.font = '700 22px Inter, sans-serif';
+    ctx.fillText(t.country, 130, y + 35);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#F2C75C'; ctx.font = '700 26px "Arial Narrow", Impact, sans-serif';
+    ctx.fillText(fmtMoney(t.avg_ps), W - 64, y + 36);
+    y += rowH;
+  });
+  ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 13px Inter, sans-serif';
+  ctx.fillText('Avg PS Bookings / person · Final in Paris, 9 July 2026', W / 2, H - 40);
+  downloadCanvas(cv, 'devoteam-world-cup-standings.png');
 }
 
 function renderTeamModal() {
@@ -2430,6 +2488,8 @@ function render() {
   if (copyBtn) copyBtn.addEventListener('click', copyCommentary);
   const cardBtn = document.getElementById('download-card');
   if (cardBtn) cardBtn.addEventListener('click', () => generatePlayerCard(cardPerson));
+  const exportBtn = document.getElementById('export-standings');
+  if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
 
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
