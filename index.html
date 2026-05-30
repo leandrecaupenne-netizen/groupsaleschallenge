@@ -1154,6 +1154,9 @@ img, table { max-width: 100%; }
 .cs-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-name em { display: block; font-style: normal; font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; font-family: ui-monospace, monospace; }
 .cs-val { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700; color: var(--green); white-space: nowrap; }
+.var-click { cursor: pointer; transition: background 0.12s, transform 0.12s; }
+.var-row.var-click:hover { background: var(--cream); }
+.cs-chip.var-click:hover { transform: translateY(-1px); border-color: rgba(22,163,74,0.4); }
 
 /* === Rank movement badges ▲▼ === */
 .mv { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; font-family: ui-monospace, monospace; vertical-align: middle; letter-spacing: 0.02em; }
@@ -2169,7 +2172,7 @@ function renderVAR() {
     </div>`;
 
   const row = (p, val) => `
-    <div class="var-row">
+    <div class="var-row var-click" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
       <span class="var-card">🟨</span>
       <span class="var-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="var-val">${val}</span>
@@ -2202,7 +2205,7 @@ function renderVAR() {
         <p class="cs-sub">5+ meetings/week and Gross Margin ≥ 25% — the defensive wall. 🛡️ Top performers playing fully by the rules:</p>
         ${topClean.length
           ? `<div class="cs-list">${topClean.map((p, i) => `
-              <div class="cs-chip">
+              <div class="cs-chip var-click" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
                 <span class="cs-rank">${['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))}</span>
                 <span class="cs-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
                 <span class="cs-val">${fmtMoney(p.ps_nb)}</span>
@@ -3030,6 +3033,12 @@ function render() {
     });
     const vClear = document.getElementById('var-clear');
     if (vClear) vClear.addEventListener('click', () => { varRegion = 'all'; varTeam = 'all'; varSearch = ''; reRender(); });
+    // Clicking a player (card or clean sheet) opens their team's squad modal.
+    document.querySelectorAll('.var-click[data-team]').forEach(el => el.addEventListener('click', () => {
+      openTeamModal = el.dataset.team;
+      render();
+      document.body.style.overflow = 'hidden';
+    }));
   }
 
   // Admin VAR TIME: verdict buttons, filter, copy, reset (re-render, keep scroll)
