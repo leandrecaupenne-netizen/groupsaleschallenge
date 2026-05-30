@@ -3703,10 +3703,26 @@ function openCompare() {
   const optionsFor = () => mode === 'teams' ? sortedTeams.map(t => t.country)
     : mode === 'nations' ? nationsRanking().map(n => n.label)
     : sortedGoldenBoot.map(p => p.name);
+  // If we opened from My Position and a player is resolved, pre-fill them as A.
+  let presetA = null;
+  if (currentTab === 'position') {
+    const q = positionQuery.trim().toLowerCase();
+    if (q.length >= 2) {
+      const matches = people.filter(p => p.name.toLowerCase().includes(q));
+      const found = matches.length === 1 ? matches[0] : matches.find(p => p.name.toLowerCase() === q);
+      if (found) presetA = found.name;
+    }
+  }
   const fill = () => {
     const opts = optionsFor();
-    comboA.setValue(opts[0] || '');
-    comboB.setValue(opts[1] || opts[0] || '');
+    if (presetA && mode === 'players' && opts.includes(presetA)) {
+      comboA.setValue(presetA);
+      comboB.setValue(opts.find(o => o !== presetA) || opts[1] || opts[0] || '');
+    } else {
+      comboA.setValue(opts[0] || '');
+      comboB.setValue(opts[1] || opts[0] || '');
+    }
+    presetA = null; // honour the preset only on the first fill
   };
   const draw = () => {
     const aV = comboA.getValue(), bV = comboB.getValue();
