@@ -877,7 +877,13 @@ img, table { max-width: 100%; }
   .logo-text .subtitle { font-size: 9px; letter-spacing: 0.12em; }
   .tabs-bar { top: 0; padding: 0 8px; gap: 2px; }
   .tab-btn { padding: 12px 12px; font-size: 12px; }
-  .header-status { gap: 8px; }
+  /* On mobile the header wraps: don't push header-status to the right (it would
+     overflow off the left edge). Give it the full width, left-aligned, and let
+     its contents (countdown + buttons) wrap instead of clipping. */
+  .header-status { margin-left: 0; width: 100%; gap: 10px; flex-wrap: wrap;
+                   justify-content: flex-start; }
+  .header-info { flex: 1 1 100%; align-items: flex-start; } /* countdown gets its own row */
+  .hdr-countdown { white-space: normal; }
 }
 
 @media (max-width: 600px) {
@@ -2504,6 +2510,12 @@ function updateTicker() {
   lastTickerHTML = seq;
   // duplicate for a seamless loop
   track.innerHTML = seq + '<span class="ticker-dot">•</span>' + seq + '<span class="ticker-dot">•</span>';
+  // iOS Safari sometimes doesn't start a CSS animation on an element that was
+  // display:none when the animation was assigned (the ticker starts hidden until
+  // login). Force a reflow to (re)start the scroll reliably -> no "empty band".
+  track.style.animation = 'none';
+  void track.offsetWidth; // reflow
+  track.style.animation = '';
 }
 
 // === RENDER ===
@@ -2981,6 +2993,7 @@ function setChromeVisible(visible) {
   if (banner) banner.style.display = visible ? '' : 'none';
   if (header) header.style.display = visible ? '' : 'none';
   if (ticker) ticker.hidden = !visible;
+  if (visible) { lastTickerHTML = ''; updateTicker(); } // force (re)build + restart once shown
 }
 
 // === LIVE: TV / projection mode ===
