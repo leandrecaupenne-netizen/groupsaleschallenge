@@ -1059,6 +1059,17 @@ img, table { max-width: 100%; }
 .var-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
 .var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
 .var-more { padding: 10px 6px; color: var(--muted); font-size: 12px; font-style: italic; border-top: 1px dashed var(--line); }
+
+/* === Rank movement badges ▲▼ === */
+.mv { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; font-family: ui-monospace, monospace; vertical-align: middle; letter-spacing: 0.02em; }
+.mv-up { color: var(--green); }
+.mv-down { color: var(--usa-red); }
+.mv-same { color: var(--muted); }
+.mv-new { color: #fff; background: var(--gold); color: #5a4500; padding: 1px 5px; border-radius: 99px; font-size: 9px; }
+.indiv-rank .mv { display: block; margin-left: 0; margin-top: 2px; }
+
+/* === Confetti === */
+.confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1200; }
 </style>
 </head>
 <body>
@@ -1118,7 +1129,8 @@ const CONFIG = {
   // Manual refresh is admin-only. Activate on YOUR device by opening the site with
   //   ?admin=<ADMIN_KEY>   (deactivate with ?admin=off). Change this secret as you like.
   ADMIN_KEY: 'leandre-refresh-2026',
-  ADMIN_FLAG: 'devoteam_wc_admin_v1'
+  ADMIN_FLAG: 'devoteam_wc_admin_v1',
+  RANKS_KEY: 'devoteam_wc_ranks_v1' // snapshot of last-visit ranks for ▲▼ movement
 };
 
 // Reuse the base64 logo already embedded in the header (no duplication).
@@ -1137,6 +1149,8 @@ let openTeamModal = null; // country name si modal ouverte
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
 let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
+let prevRanks = null;      // ranks from the previous visit (for ▲▼ movement)
+let snapshotSaved = false; // capture the baseline only once per session
 
 // === UTILS ===
 const fmtMoney = n => {
@@ -1207,6 +1221,7 @@ async function fetchData(fresh) {
     specialAwards = data.special_awards || {};
 
     computeRankings();
+    initSnapshotOnce();
     detectLeaderChanges();
     setSyncWarning(false);
     return true;
@@ -1217,6 +1232,71 @@ async function fetchData(fresh) {
   }
 }
 
+// === Rank movement (▲▼ since last visit) ===
+function buildRankMaps() {
+  const m = { teams: {}, golden: {}, playmaker: {} };
+  sortedTeams.forEach((t, i) => { m.teams[t.country] = i + 1; });
+  sortedGoldenBoot.forEach((p, i) => { m.golden[p.name] = i + 1; });
+  sortedPlaymaker.forEach((p, i) => { m.playmaker[p.name] = i + 1; });
+  return m;
+}
+// Load the previous visit's ranks (in-memory baseline for the whole session),
+// then save the current ranks as the baseline for the NEXT visit.
+function initSnapshotOnce() {
+  if (snapshotSaved) return;
+  snapshotSaved = true;
+  try { const raw = safeGet(CONFIG.RANKS_KEY); prevRanks = raw ? JSON.parse(raw) : null; }
+  catch (e) { prevRanks = null; }
+  try { safeSet(CONFIG.RANKS_KEY, JSON.stringify(buildRankMaps())); } catch (e) {}
+}
+// Small ▲n / ▼n / NEW badge comparing current rank to the previous visit.
+function movementBadge(kind, key, curRank) {
+  if (!prevRanks || !prevRanks[kind]) return '';
+  const prev = prevRanks[kind][key];
+  if (prev === undefined) return `<span class="mv mv-new" title="New entry since your last visit">NEW</span>`;
+  const d = prev - curRank;
+  if (d > 0) return `<span class="mv mv-up" title="Up ${d} since your last visit">▲${d}</span>`;
+  if (d < 0) return `<span class="mv mv-down" title="Down ${-d} since your last visit">▼${-d}</span>`;
+  return `<span class="mv mv-same" title="No change since your last visit">–</span>`;
+}
+
+// === Confetti (no dependency) ===
+function launchConfetti() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'confetti-canvas';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const resize = () => { canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr; };
+  resize();
+  const colors = ['#F2C75C', '#C8102E', '#006847', '#FFFFFF', '#1E2A78'];
+  const N = 140;
+  const parts = Array.from({ length: N }, () => ({
+    x: Math.random() * canvas.width,
+    y: -Math.random() * canvas.height * 0.4,
+    r: (6 + Math.random() * 7) * dpr,
+    c: colors[(Math.random() * colors.length) | 0],
+    vx: (-1 + Math.random() * 2) * dpr,
+    vy: (3 + Math.random() * 4) * dpr,
+    rot: Math.random() * Math.PI, vr: -0.2 + Math.random() * 0.4
+  }));
+  const start = performance.now();
+  const tick = now => {
+    const elapsed = now - start;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    parts.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.05 * dpr; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c;
+      ctx.globalAlpha = Math.max(0, 1 - elapsed / 2600);
+      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 0.6); ctx.restore();
+    });
+    if (elapsed < 2600) requestAnimationFrame(tick);
+    else canvas.remove();
+  };
+  requestAnimationFrame(tick);
+}
+
 // Detect when a #1 changes between refreshes -> celebratory toast + gold flash.
 function detectLeaderChanges() {
   const cur = {
@@ -1225,18 +1305,20 @@ function detectLeaderChanges() {
     playmaker: sortedPlaymaker[0] && sortedPlaymaker[0].name
   };
   if (leaders) { // skip the very first load (no baseline yet)
+    let changed = false;
     if (cur.team && cur.team !== leaders.team) {
       showToast(`🏆 New leaders! ${cur.team} top the Team Ranking`);
-      flash.team = Date.now() + 9000;
+      flash.team = Date.now() + 9000; changed = true;
     }
     if (cur.golden && cur.golden !== leaders.golden) {
       showToast(`🥇 ${cur.golden} grabs the Golden Boot top spot!`);
-      flash.golden = Date.now() + 9000;
+      flash.golden = Date.now() + 9000; changed = true;
     }
     if (cur.playmaker && cur.playmaker !== leaders.playmaker) {
       showToast(`🎯 ${cur.playmaker} is the new top Playmaker!`);
-      flash.playmaker = Date.now() + 9000;
+      flash.playmaker = Date.now() + 9000; changed = true;
     }
+    if (changed) launchConfetti();
   }
   leaders = cur;
 }
@@ -1370,7 +1452,7 @@ function renderTeamRanking() {
           const topClass = realRank === 1 ? 'top-1' : realRank === 2 ? 'top-2' : realRank === 3 ? 'top-3' : '';
           return `
             <div class="teams-table-row ${topClass}" data-team="${escapeHtml(t.country)}">
-              <div class="tt-rank ${topClass}">#${realRank}</div>
+              <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${escapeHtml(t.country)}
                 <div class="click-hint">→ click to see members</div>
@@ -1649,7 +1731,7 @@ function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flas
     <div class="indiv-card${flashCls}" style="--c: ${color}">
       ${cards.length ? `<div class="indiv-cards">${cards.map(c => `<span class="card-badge" title="${escapeHtml(c.tip)}">${c.icon}</span>`).join('')}</div>` : ''}
       <div class="indiv-card-top">
-        <div class="indiv-rank ${rank === 1 ? 'medal-1' : ''}">#${rank}</div>
+        <div class="indiv-rank ${rank === 1 ? 'medal-1' : ''}">#${rank}${flashType ? movementBadge(flashType, person.name, rank) : ''}</div>
         <div class="indiv-info">
           <div class="indiv-name">${escapeHtml(person.name)}</div>
           <div class="indiv-team">${escapeHtml(person.team)}</div>
