@@ -1698,9 +1698,14 @@ function renderTabs() {
 
 function regionOf(c) {
   c = String(c || '');
+  const u = c.toUpperCase();
   if (c.startsWith('FR') || c === 'Devoteam France') return 'FR';
   if (c.startsWith('ES')) return 'ES';
-  if (['DENMARK', 'NORWAY', 'SWEDEN'].indexOf(c.toUpperCase()) !== -1) return 'NORDICS';
+  if (u.includes('PORTUGAL') || u.startsWith('PT ') || u.startsWith('PT-') || u === 'PT') return 'PT';
+  if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM', 'NETHERLANDS', 'HOLLAND'].indexOf(u) !== -1) return 'BENELUX';
+  // careful: "DENMARK" starts with "DE" but must stay Nordics, so match GERMANY/DACH/"DE - ..." only
+  if (u.includes('GERMANY') || u.startsWith('DACH') || u.startsWith('DE -') || u.startsWith('DE-')) return 'DE';
+  if (['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
   return 'OTHER';
 }
 function renderTeamRanking() {
@@ -1708,7 +1713,7 @@ function renderTeamRanking() {
   const filtered = sortedTeams.filter(t =>
     (!search || t.country.toLowerCase().includes(search)) &&
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
-  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
+  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
