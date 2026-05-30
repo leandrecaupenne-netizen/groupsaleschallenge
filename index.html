@@ -1219,8 +1219,8 @@ img, table { max-width: 100%; }
 .rules-foot { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
 
 /* === Sortable team-table headers === */
-.th-sort, .th-psort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
-.th-sort:hover, .th-psort:hover { color: var(--usa-red); }
+.th-sort, .th-psort, .th-nsort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
+.th-sort:hover, .th-psort:hover, .th-nsort:hover { color: var(--usa-red); }
 
 /* === Filter chips (search + team region) === */
 .search-chips, .region-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
@@ -1426,6 +1426,7 @@ function t(k, vars) {
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
 let playerSort = { key: 'ps_total', dir: 'desc' }; // players view sort column/direction
+let nationSort = { key: 'rank', dir: 'desc' }; // nations view sort column/direction
 let teamRegion = 'all'; // team table region filter
 let teamView = 'teams'; // Team Ranking tab view: 'teams' | 'nations'
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
@@ -1828,22 +1829,40 @@ function nationsRanking() {
 }
 
 function renderNationsTable() {
-  const nations = nationsRanking();
+  const nationsBase = nationsRanking(); // canonical order: avg PS per person, desc
+  // The rank/medal is the official nation standing (avg PS per person) and stays
+  // put while you re-sort the columns to explore — same idea as the Team Ranking.
+  const rankMap = new Map(nationsBase.map((n, i) => [n.region, i + 1]));
+  const dir = nationSort.dir === 'asc' ? 1 : -1;
+  const orderKey = nationSort.key === 'rank' ? 'avg_ps' : nationSort.key;
+  const nations = [...nationsBase].sort((a, b) => orderKey === 'label'
+    ? dir * String(a.label).localeCompare(String(b.label))
+    : dir * ((a[orderKey] || 0) - (b[orderKey] || 0)));
+  const arrow = k => nationSort.key === k ? (nationSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const clickHint = t('teams.clickHint');
   return `
     <div class="nations-table">
       <div class="nation-row nation-head">
-        <span>RANK</span><span>NATION</span><span class="nt-col-teams">TEAMS</span><span class="nt-col-ppl">PEOPLE</span><span>AVG PS / PERSON</span><span class="nt-col-gm">AVG GM</span>
+        <span class="th-nsort" data-nsort="rank">RANK${arrow('rank')}</span>
+        <span class="th-nsort" data-nsort="label">NATION${arrow('label')}</span>
+        <span class="th-nsort nt-col-teams" data-nsort="teams">TEAMS${arrow('teams')}</span>
+        <span class="th-nsort nt-col-ppl" data-nsort="people">PEOPLE${arrow('people')}</span>
+        <span class="th-nsort" data-nsort="avg_ps">AVG PS / PERSON${arrow('avg_ps')}</span>
+        <span class="th-nsort nt-col-gm" data-nsort="avg_gm">AVG GM${arrow('avg_gm')}</span>
       </div>
-      ${nations.map((n, i) => `
-        <div class="nation-row nation-row-click ${i < 3 ? 'top-' + (i + 1) : ''}" data-nation="${escapeHtml(n.region)}">
-          <div class="tt-rank ${i < 3 ? 'top-' + (i + 1) : ''}">${['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))}</div>
+      ${nations.map(n => {
+        const rank = rankMap.get(n.region);
+        const topCls = rank <= 3 ? 'top-' + rank : '';
+        return `
+        <div class="nation-row nation-row-click ${topCls}" data-nation="${escapeHtml(n.region)}">
+          <div class="tt-rank ${topCls}">${['🥇', '🥈', '🥉'][rank - 1] || ('#' + rank)}</div>
           <div class="nt-name">${n.label}<div class="click-hint">${clickHint}</div></div>
           <div class="tt-stat nt-col-teams">${n.teams}</div>
           <div class="tt-stat nt-col-ppl">${n.people}</div>
           <div class="tt-money tt-money-main">${animNum('nt:' + n.region, n.avg_ps, 'money')}</div>
           <div class="tt-stat nt-col-gm">${fmtPct(n.avg_gm)}</div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
@@ -1915,6 +1934,7 @@ function renderTeamRanking() {
         <div class="section-header">
           <h2 class="section-title">PLAYER RANKING</h2>
           <p class="section-subtitle">${people.length} players · #1 = ${metricLabel} leader${playerSort.key === 'name' ? ' · showing A→Z' : ''} · click a column header to re-rank</p>
+          <button id="export-standings" class="copy-btn">${t('btn.export')}</button>
           <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
         </div>
         ${viewToggle}
@@ -2767,7 +2787,14 @@ function generateStandingsImage() {
   if (!LOGO_DATA_URI) drawStandings(null);
 }
 function drawStandings(logo) {
-  const top = sortedTeams.slice(0, 12);
+  const isNations = teamView === 'nations', isPlayers = teamView === 'players';
+  const top = isNations
+    ? nationsRanking().map(n => ({ name: n.label, val: n.avg_ps }))
+    : isPlayers
+    ? sortedPSTotal.slice(0, 12).map(p => ({ name: p.name, val: p.ps_total }))
+    : sortedTeams.slice(0, 12).map(t => ({ name: t.country, val: t.avg_ps }));
+  const heading = isNations ? '🌍 NATIONS RANKING' : isPlayers ? '👤 PLAYER RANKING' : '🏆 TEAM RANKING';
+  const footMetric = isPlayers ? 'PS Bookings Total' : 'Avg PS Bookings / person';
   const W = 820, rowH = 64, headH = 300, H = headH + top.length * rowH + 90, s = 2;
   const cv = document.createElement('canvas');
   cv.width = W * s; cv.height = H * s;
@@ -2788,10 +2815,10 @@ function drawStandings(logo) {
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '600 13px monospace';
   ctx.fillText('SALES CHALLENGE 2026' + (period ? ' · ' + period.toUpperCase() : ''), W / 2, 224);
   ctx.fillStyle = '#fff'; ctx.font = '700 40px "Arial Narrow", Impact, sans-serif';
-  ctx.fillText('🏆 TEAM RANKING', W / 2, 274);
+  ctx.fillText(heading, W / 2, 274);
 
   let y = headH;
-  top.forEach((t, i) => {
+  top.forEach((row, i) => {
     const lead = i === 0;
     rr(40, y, W - 80, rowH - 10, 12);
     ctx.fillStyle = lead ? 'rgba(242,199,92,0.22)' : 'rgba(255,255,255,0.06)'; ctx.fill();
@@ -2801,14 +2828,14 @@ function drawStandings(logo) {
     ctx.font = '700 30px "Arial Narrow", Impact, sans-serif';
     ctx.fillText((['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))), 60, y + 36);
     ctx.fillStyle = '#fff'; ctx.font = '700 22px Inter, sans-serif';
-    ctx.fillText(t.country, 130, y + 35);
+    ctx.fillText(row.name, 130, y + 35);
     ctx.textAlign = 'right'; ctx.fillStyle = '#F2C75C'; ctx.font = '700 26px "Arial Narrow", Impact, sans-serif';
-    ctx.fillText(fmtMoney(t.avg_ps), W - 64, y + 36);
+    ctx.fillText(fmtMoney(row.val), W - 64, y + 36);
     y += rowH;
   });
   ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 13px Inter, sans-serif';
-  ctx.fillText('Avg PS Bookings / person · Final in Paris, 9 July 2026', W / 2, H - 40);
-  downloadCanvas(cv, 'devoteam-world-cup-standings.png');
+  ctx.fillText(footMetric + ' · Final in Paris, 9 July 2026', W / 2, H - 40);
+  downloadCanvas(cv, isNations ? 'devoteam-world-cup-nations.png' : isPlayers ? 'devoteam-world-cup-players.png' : 'devoteam-world-cup-standings.png');
 }
 
 function renderTeamModal() {
@@ -3212,6 +3239,15 @@ function render() {
       const k = h.dataset.psort;
       if (playerSort.key === k) playerSort.dir = playerSort.dir === 'asc' ? 'desc' : 'asc';
       else playerSort = { key: k, dir: k === 'name' ? 'asc' : 'desc' };
+      render();
+    });
+  });
+  // Nations view: sortable columns (rank/medal stays the official avg-PS standing)
+  document.querySelectorAll('.th-nsort').forEach(h => {
+    h.addEventListener('click', () => {
+      const k = h.dataset.nsort;
+      if (nationSort.key === k) nationSort.dir = nationSort.dir === 'asc' ? 'desc' : 'asc';
+      else nationSort = { key: k, dir: k === 'label' ? 'asc' : 'desc' };
       render();
     });
   });
