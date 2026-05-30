@@ -1100,6 +1100,17 @@ img, table { max-width: 100%; }
 /* === Sortable team-table headers === */
 .th-sort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
 .th-sort:hover { color: var(--usa-red); }
+
+/* === Live news ticker === */
+.ticker { background: var(--navy-2); color: #fff; overflow: hidden; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.12); }
+.ticker[hidden] { display: none; }
+.ticker-track { display: inline-block; padding: 8px 0; will-change: transform; animation: tickerScroll 60s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker-item { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; padding: 0 4px; }
+.ticker-dot { color: var(--gold); padding: 0 16px; }
+@keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } .ticker { overflow-x: auto; } }
+@media (max-width: 760px) { .ticker-item { font-size: 12px; } }
 </style>
 </head>
 <body>
@@ -1130,6 +1141,8 @@ img, table { max-width: 100%; }
     <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
   </div>
 </header>
+
+<div id="ticker" class="ticker" hidden><div class="ticker-track" id="ticker-track"></div></div>
 
 <div id="app">
   <noscript>
@@ -1341,16 +1354,20 @@ function detectLeaderChanges() {
     let changed = false;
     if (cur.team && cur.team !== leaders.team) {
       showToast(`🏆 New leaders! ${cur.team} top the Team Ranking`);
+      recentEvents.unshift(`🚨 ${cur.team} take the lead in the World Cup!`);
       flash.team = Date.now() + 9000; changed = true;
     }
     if (cur.golden && cur.golden !== leaders.golden) {
       showToast(`🥇 ${cur.golden} grabs the Golden Boot top spot!`);
+      recentEvents.unshift(`🥇 ${cur.golden} grabs top spot in the Golden Boot race!`);
       flash.golden = Date.now() + 9000; changed = true;
     }
     if (cur.playmaker && cur.playmaker !== leaders.playmaker) {
       showToast(`🎯 ${cur.playmaker} is the new top Playmaker!`);
+      recentEvents.unshift(`🎯 ${cur.playmaker} is the new top Playmaker!`);
       flash.playmaker = Date.now() + 9000; changed = true;
     }
+    if (recentEvents.length > 8) recentEvents.length = 8;
     if (changed) launchConfetti();
   }
   leaders = cur;
@@ -2211,19 +2228,52 @@ function renderTeamModal() {
   `;
 }
 
-function renderFooter() {
-  const end = new Date(challenge_dates.end);
-  const now = new Date();
-  const diff = Math.ceil((end - now) / (1000*60*60*24));
-  const daysLeft = diff > 0 ? diff : 0;
+// Live countdown to the Paris final (9 July 2026).
+const FINAL_DATE = new Date('2026-07-09T19:00:00+02:00');
+function updateCountdown() {
+  const el = document.getElementById('countdown-live');
+  if (!el) return;
+  const ms = FINAL_DATE.getTime() - Date.now();
+  if (ms <= 0) { el.textContent = '🏆 THE FINAL IS HERE — VICTORIA PARIS, PARIS'; return; }
+  const d = Math.floor(ms / 86400000), h = Math.floor(ms / 3600000) % 24,
+        m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
+  el.textContent = `🏆 ${d}d ${h}h ${m}m ${s}s to the Final · Paris, 9 July`;
+}
 
+function renderFooter() {
   return `
     <footer class="app-footer">
-      <div class="countdown">🏆 ${daysLeft} DAYS LEFT · FINAL ON JULY 9TH IN PARIS</div>
+      <div class="countdown" id="countdown-live">🏆 Counting down to the Final…</div>
       <div>Challenge runs from ${challenge_dates.start} to ${challenge_dates.end} · Award ceremony at Victoria Paris (l'Arc)</div>
       <div style="margin-top:8px;opacity:0.6">Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR</div>
     </footer>
   `;
+}
+
+// === Live news ticker ===
+let lastTickerHTML = '';
+let recentEvents = []; // leader-change headlines, newest first
+function buildTickerItems() {
+  const it = [];
+  recentEvents.slice(0, 4).forEach(e => it.push(e));
+  if (sortedTeams[0]) it.push(`🏆 ${sortedTeams[0].country} lead the World Cup — ${fmtMoney(sortedTeams[0].avg_ps)}/person`);
+  if (sortedGoldenBoot[0]) it.push(`🥇 Golden Boot: ${sortedGoldenBoot[0].name} — ${fmtMoney(sortedGoldenBoot[0].ps_nb)} NB`);
+  if (sortedPlaymaker[0]) it.push(`🎯 Playmaker: ${sortedPlaymaker[0].name} — ${Number(sortedPlaymaker[0].opps || 0).toFixed(0)} opps`);
+  if (sortedRookies[0]) it.push(`🌱 Top rookie: ${sortedRookies[0].name} — ${fmtMoney(sortedRookies[0].ps_nb)}`);
+  if (sortedLicence[0]) it.push(`💼 Licence leader: ${sortedLicence[0].name} — ${fmtMoney(sortedLicence[0].licence_gm)}`);
+  if (period) it.push(`📅 ${period}`);
+  return it;
+}
+function updateTicker() {
+  const track = document.getElementById('ticker-track');
+  if (!track) return;
+  const items = buildTickerItems();
+  if (!items.length) return;
+  const seq = items.map(s => `<span class="ticker-item">${escapeHtml(s)}</span>`).join('<span class="ticker-dot">•</span>');
+  if (seq === lastTickerHTML) return;      // unchanged -> keep scrolling smoothly
+  lastTickerHTML = seq;
+  // duplicate for a seamless loop
+  track.innerHTML = seq + '<span class="ticker-dot">•</span>' + seq + '<span class="ticker-dot">•</span>';
 }
 
 // === RENDER ===
@@ -2249,6 +2299,8 @@ function render() {
 
   // Update last update
   document.getElementById('last-update').textContent = `Last updated: ${formatDate(updated_at)} · ${period}`;
+  updateCountdown();
+  updateTicker();
 
   // Count-up the spotlight stats on first view / tab change (not on background polls).
   if (!suppressAnim && currentTab === 'spotlight') animateCountUps();
@@ -2513,8 +2565,10 @@ function renderLoginScreen(errorMsg) {
 function setChromeVisible(visible) {
   const banner = document.querySelector('.flag-banner');
   const header = document.querySelector('.app-header');
+  const ticker = document.getElementById('ticker');
   if (banner) banner.style.display = visible ? '' : 'none';
   if (header) header.style.display = visible ? '' : 'none';
+  if (ticker) ticker.hidden = !visible;
 }
 
 // === LIVE: TV / projection mode ===
@@ -2783,6 +2837,9 @@ init().catch(err => {
   const app = document.getElementById('app');
   if (app) app.innerHTML = `<div class="state-msg error">Something went wrong loading the app.<br/><button class="login-btn" onclick="location.reload()">Reload</button></div>`;
 });
+
+// Tick the live countdown every second (no-ops until the footer exists).
+setInterval(updateCountdown, 1000);
 
 // PWA: register the service worker (https only; silently ignored on file://).
 if ('serviceWorker' in navigator) {
