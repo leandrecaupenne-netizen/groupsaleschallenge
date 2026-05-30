@@ -1081,6 +1081,8 @@ img, table { max-width: 100%; }
   border-radius: 14px; padding: 1.3vh 2.4vw;
 }
 .tv-row.lead { background: linear-gradient(90deg, rgba(242,199,92,0.28), rgba(242,199,92,0.06)); border-color: rgba(242,199,92,0.6); }
+.tv-row.tv-row-clean { background: linear-gradient(90deg, rgba(22,163,74,0.22), rgba(22,163,74,0.04)); border-color: rgba(22,163,74,0.5); }
+.tv-row.tv-row-clean .tv-val { color: #34D399; }
 .tv-pos { font-size: clamp(24px, 4.5vmin, 52px); min-width: 1.4em; text-align: center; }
 .tv-name { flex: 1; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
 .tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
@@ -3711,7 +3713,7 @@ function setChromeVisible(visible) {
 
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight', 'var', 'awards'];
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight', 'var', 'fairplay', 'awards'];
 const TV_ROTATE_MS = 10000; // 10s per panel
 
 function startTvTimer() {
@@ -3795,6 +3797,14 @@ function tvPanelHTML(kind) {
       return `<div class="tv-row"><span class="tv-pos">🟨</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val">${bits.join(' · ')}</span></div>`;
     }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;
     return tvSection('🟨 VAR ROOM — ON A YELLOW CARD', `${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red`, rows);
+  }
+  if (kind === 'fairplay') {
+    const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
+    const top = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 5);
+    const rows = top.length
+      ? top.map(p => `<div class="tv-row tv-row-clean"><span class="tv-pos">✅</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val">${fmtMoney(p.ps_nb)}</span></div>`).join('')
+      : `<div class="tv-row"><span class="tv-name">No clean sheets yet.</span></div>`;
+    return tvSection('🧤 CLEAN SHEET — FAIR PLAY', `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, rows);
   }
   if (kind === 'awards') {
     const awRows = (list, valFn) => list.length
