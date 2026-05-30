@@ -2778,6 +2778,18 @@ function downloadCanvas(cv, filename) {
   }, 'image/png');
 }
 
+// Flag stripe colours per nation/region — used to theme the Nations export bar
+// after the #1 country (e.g. France #1 → blue/white/red).
+const FLAG_STRIPES = {
+  FR: ['#0055A4', '#FFFFFF', '#EF4135'],      // France
+  ES: ['#AA151B', '#F1BF00', '#AA151B'],      // Spain
+  DE: ['#222222', '#DD0000', '#FFCE00'],      // Germany
+  BENELUX: ['#222222', '#FAE042', '#EF3340'], // Belgium
+  PT: ['#006847', '#FFD200', '#DA291C'],      // Portugal
+  NORDICS: ['#00205B', '#FFFFFF', '#C8102E'], // Nordic cross
+  OTHER: ['#C8102E', '#FFFFFF', '#006847']    // brand default
+};
+
 // === Export the full standings as a PNG ===
 function generateStandingsImage() {
   const img = new Image();
@@ -2788,11 +2800,14 @@ function generateStandingsImage() {
 }
 function drawStandings(logo) {
   const isNations = teamView === 'nations', isPlayers = teamView === 'players';
+  const nr = isNations ? nationsRanking() : null;
   const top = isNations
-    ? nationsRanking().map(n => ({ name: n.label, val: n.avg_ps }))
+    ? nr.map(n => ({ name: n.label, val: n.avg_ps }))
     : isPlayers
     ? sortedPSTotal.slice(0, 12).map(p => ({ name: p.name, val: p.ps_total }))
     : sortedTeams.slice(0, 12).map(t => ({ name: t.country, val: t.avg_ps }));
+  // Nations export: theme the top bar after the leading country's flag.
+  const stripes = (isNations && nr[0]) ? (FLAG_STRIPES[nr[0].region] || FLAG_STRIPES.OTHER) : ['#C8102E', '#FFFFFF', '#006847'];
   const heading = isNations ? '🌍 NATIONS RANKING' : isPlayers ? '👤 PLAYER RANKING' : '🏆 TEAM RANKING';
   const footMetric = isPlayers ? 'PS Bookings Total' : 'Avg PS Bookings / person';
   const W = 820, rowH = 64, headH = 300, H = headH + top.length * rowH + 90, s = 2;
@@ -2807,7 +2822,7 @@ function drawStandings(logo) {
   for (let i = -H; i < W; i += 26) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke(); }
   ctx.strokeStyle = '#F2C75C'; ctx.lineWidth = 8; rr(16, 16, W - 32, H - 32, 26); ctx.stroke();
   const bw = (W - 56) / 3;
-  ['#C8102E', '#FFFFFF', '#006847'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
+  stripes.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
   if (logo) { const lw = 110, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 60, lw, lh); }
   ctx.textAlign = 'center';
   ctx.fillStyle = '#F2C75C'; ctx.font = '700 24px Inter, sans-serif';
