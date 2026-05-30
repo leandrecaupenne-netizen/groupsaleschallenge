@@ -796,7 +796,9 @@ input { font-family: inherit; }
 }
 
 @media (max-width: 600px) {
-  .last-update { display: none; }
+  /* Keep the "Last updated" timestamp visible on phones — it's the live-data
+     trust signal — just smaller and allowed to wrap. */
+  .last-update { font-size: 10px; letter-spacing: 0.04em; text-align: right; }
   .hero-title { font-size: 32px; }
 }
 
