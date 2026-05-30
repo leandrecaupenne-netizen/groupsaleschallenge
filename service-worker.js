@@ -1,7 +1,7 @@
 // Devoteam World Cup 2026 — minimal service worker.
 // Network-first for navigations (always fresh HTML after a deploy), cache-first
 // for static assets. The Apps Script API (POST / script.google.com) is never touched.
-const CACHE = 'dwc-shell-v1';
+const CACHE = 'dwc-shell-v2';
 
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
