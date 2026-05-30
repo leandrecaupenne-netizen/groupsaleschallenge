@@ -1057,6 +1057,10 @@ img, table { max-width: 100%; }
 .tv-title { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 6vw, 76px); line-height: 1; text-align: center; }
 .tv-sub { text-align: center; color: rgba(255,255,255,0.7); font-size: clamp(12px, 1.6vw, 20px); letter-spacing: 0.08em; text-transform: uppercase; margin: 10px 0 3vh; }
 .tv-list { display: flex; flex-direction: column; gap: 1.4vh; max-width: 1100px; width: 100%; margin: 0 auto; }
+.tv-awards { display: flex; flex-wrap: wrap; gap: 4vw; justify-content: center; max-width: 1200px; margin: 0 auto; }
+.tv-awcol { flex: 1 1 380px; min-width: 0; }
+.tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3vw, 34px); color: var(--gold); text-align: center; margin-bottom: 1.6vh; letter-spacing: 0.02em; }
+.tv-awcol .tv-list { gap: 1.1vh; }
 .tv-row {
   display: flex; align-items: center; gap: 3vw;
   background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
@@ -3387,7 +3391,7 @@ function setChromeVisible(visible) {
 
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight'];
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight', 'var', 'awards'];
 const TV_ROTATE_MS = 10000; // 10s per panel
 
 function startTvTimer() {
@@ -3459,6 +3463,30 @@ function tvPanelHTML(kind) {
   if (kind === 'playmaker') {
     const rows = sortedPlaymaker.slice(0, 5).map((p, i) => tvPersonRow(i, p, Number(p.opps).toFixed(0))).join('');
     return tvSection('🎯 PLAYMAKERS — MOST ASSISTS', 'Opportunities created', rows);
+  }
+  if (kind === 'var') {
+    const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
+      .sort((a, b) => ((b.yellow_meetings ? 1 : 0) + (b.yellow_gm ? 1 : 0)) - ((a.yellow_meetings ? 1 : 0) + (a.yellow_gm ? 1 : 0)) || (a.meetings || 0) - (b.meetings || 0));
+    const n = union.length;
+    const rows = union.slice(0, 6).map(p => {
+      const bits = [];
+      if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk`);
+      if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)}`);
+      return `<div class="tv-row"><span class="tv-pos">🟨</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val">${bits.join(' · ')}</span></div>`;
+    }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;
+    return tvSection('🟨 VAR ROOM — ON A YELLOW CARD', `${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red`, rows);
+  }
+  if (kind === 'awards') {
+    const awRows = (list, valFn) => list.length
+      ? list.map((p, i) => tvPersonRow(i, p, valFn(p))).join('')
+      : `<div class="tv-row"><span class="tv-name" style="opacity:.7">To be revealed</span></div>`;
+    const lic = awRows(sortedLicence.slice(0, 3), p => fmtMoney(p.licence_gm));
+    const rook = awRows(sortedRookies.slice(0, 3), p => fmtMoney(p.ps_nb));
+    return `<div class="tv-title">⭐ SPECIAL AWARDS</div><div class="tv-sub">Licence &amp; Rookie of the Year</div>
+      <div class="tv-awards">
+        <div class="tv-awcol"><div class="tv-awh">💼 Licence</div><div class="tv-list">${lic}</div></div>
+        <div class="tv-awcol"><div class="tv-awh">🌱 Rookie of the Year</div><div class="tv-list">${rook}</div></div>
+      </div>`;
   }
   const rows = buildSpotlights().map(s =>
     `<div class="tv-row">
