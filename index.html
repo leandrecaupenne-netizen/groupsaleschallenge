@@ -1805,7 +1805,8 @@ function regionOf(c) {
   if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM', 'NETHERLANDS', 'HOLLAND'].indexOf(u) !== -1) return 'BENELUX';
   // careful: "DENMARK" starts with "DE" but must stay Nordics, so match GERMANY/DACH/"DE - ..." only
   if (u.includes('GERMANY') || u.startsWith('DACH') || u.startsWith('DE -') || u.startsWith('DE-')) return 'DE';
-  if (['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
+  // Nordic countries by name, or any "NORDICS …" entity (e.g. "NORDICS Cloud").
+  if (u.startsWith('NORDIC') || ['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
   return 'OTHER';
 }
 function nationsRanking() {
@@ -2714,9 +2715,9 @@ function drawPlayerCard(person, logo) {
   for (let i = -H; i < W; i += 26) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke(); }
   // outer frame
   ctx.strokeStyle = color; ctx.lineWidth = 8; rr(16, 16, W - 32, H - 32, 26); ctx.stroke();
-  // flag banner
+  // flag banner — the player's own country
   const bw = (W - 56) / 3;
-  ['#C8102E', '#FFFFFF', '#006847'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
+  flagForTeam(person.team).forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
 
   // logo
   if (logo) { const lw = 120, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 66, lw, lh); }
@@ -2815,10 +2816,29 @@ const COUNTRY_FLAGS = {
   GREECE: ['#0D5EAF', '#FFFFFF', '#0D5EAF'],
   SLOVAKIA: ['#FFFFFF', '#0B4EA2', '#EE1C25'],
   CZECHIA: ['#11457E', '#FFFFFF', '#D7141A'],
+  'CZECH REPUBLIC': ['#11457E', '#FFFFFF', '#D7141A'],
   CROATIA: ['#171796', '#FFFFFF', '#FF0000'],
+  SLOVENIA: ['#FFFFFF', '#0000A0', '#FF0000'],
   UK: ['#012169', '#FFFFFF', '#C8102E'],
+  'UNITED KINGDOM': ['#012169', '#FFFFFF', '#C8102E'],
   USA: ['#3C3B6E', '#FFFFFF', '#B22234'],
-  MEXICO: ['#006847', '#FFFFFF', '#CE1126']
+  MEXICO: ['#006847', '#FFFFFF', '#CE1126'],
+  // Wider Devoteam footprint (the data also has non-European entities)
+  INDONESIA: ['#CE1126', '#FFFFFF', '#CE1126'],
+  SINGAPORE: ['#EF3340', '#FFFFFF', '#EF3340'],
+  JAPAN: ['#FFFFFF', '#BC002D', '#FFFFFF'],
+  INDIA: ['#FF9933', '#FFFFFF', '#138808'],
+  CHINA: ['#DE2910', '#FFDE00', '#DE2910'],
+  BRAZIL: ['#009C3B', '#FFDF00', '#002776'],
+  CANADA: ['#FF0000', '#FFFFFF', '#FF0000'],
+  AUSTRALIA: ['#00247D', '#FFFFFF', '#E4002B'],
+  TURKEY: ['#E30A17', '#FFFFFF', '#E30A17'],
+  'SOUTH AFRICA': ['#007A4D', '#FFB915', '#DE3831'],
+  UAE: ['#00732F', '#FFFFFF', '#FF0000'],
+  'SAUDI ARABIA': ['#006C35', '#FFFFFF', '#006C35'],
+  EGYPT: ['#CE1126', '#FFFFFF', '#000000'],
+  // Multi-country region buckets — a distinct look so they read as "not Europe".
+  'MIDDLE EAST': ['#007A3D', '#FFFFFF', '#1A1A1A']
 };
 // Stripes for a team/individual: their exact country if known, otherwise the
 // region (handles entity names like "FR - M Cloud" → France).
