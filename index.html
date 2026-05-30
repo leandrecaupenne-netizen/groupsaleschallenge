@@ -1234,7 +1234,7 @@ img, table { max-width: 100%; }
 const CONFIG = {
   // Deployed Apps Script /exec endpoint (Web App, access: Anyone).
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec',
-  POLL_INTERVAL_MS: 30000,  // 30 seconds
+  POLL_INTERVAL_MS: 45000,  // 45 seconds (base; jittered ±25% per client to avoid herd spikes)
   SESSION_KEY: 'devoteam_wc_session_v1',
   PWD_KEY: 'devoteam_wc_pwd_v1',   // stored access code, sent with each data request
   // Manual refresh is admin-only. Activate on YOUR device by opening the site with
@@ -3109,13 +3109,23 @@ async function backgroundRefresh() {
   return success;
 }
 
+function nextPollDelay() {
+  // Base 45s ± jitter (0.75x–1.25x → ~34–56s) so clients don't poll in lockstep.
+  // This spreads requests out and avoids the "thundering herd" spikes at launch.
+  return Math.round(CONFIG.POLL_INTERVAL_MS * (0.75 + Math.random() * 0.5));
+}
+
 function startPolling() {
   stopPolling();
-  pollIntervalId = setInterval(backgroundRefresh, CONFIG.POLL_INTERVAL_MS);
+  const tick = () => {
+    backgroundRefresh();
+    pollIntervalId = setTimeout(tick, nextPollDelay());
+  };
+  pollIntervalId = setTimeout(tick, nextPollDelay());
 }
 
 function stopPolling() {
-  if (pollIntervalId) { clearInterval(pollIntervalId); pollIntervalId = null; }
+  if (pollIntervalId) { clearTimeout(pollIntervalId); pollIntervalId = null; }
 }
 
 // Pause polling when the tab is hidden (saves Apps Script quota).
