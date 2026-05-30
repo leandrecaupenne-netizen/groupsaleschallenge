@@ -1189,8 +1189,8 @@ img, table { max-width: 100%; }
 .rules-foot { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
 
 /* === Sortable team-table headers === */
-.th-sort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
-.th-sort:hover { color: var(--usa-red); }
+.th-sort, .th-psort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
+.th-sort:hover, .th-psort:hover { color: var(--usa-red); }
 
 /* === Filter chips (search + team region) === */
 .search-chips, .region-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
@@ -1395,6 +1395,7 @@ function t(k, vars) {
 
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
+let playerSort = { key: 'ps_total', dir: 'desc' }; // players view sort column/direction
 let teamRegion = 'all'; // team table region filter
 let teamView = 'teams'; // Team Ranking tab view: 'teams' | 'nations'
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
@@ -1840,6 +1841,7 @@ function renderTeamRanking() {
     <div class="search-chips view-toggle">
       <button class="search-chip ${teamView === 'teams' ? 'on' : ''}" data-view="teams">🏆 Teams</button>
       <button class="search-chip ${teamView === 'nations' ? 'on' : ''}" data-view="nations">🌍 Nations</button>
+      <button class="search-chip ${teamView === 'players' ? 'on' : ''}" data-view="players">👤 Players</button>
     </div>`;
 
   // === Nations view ===
@@ -1854,6 +1856,73 @@ function renderTeamRanking() {
         </div>
         ${viewToggle}
         ${renderNationsTable()}
+      </div>`;
+  }
+
+  // === Players view === a full, sortable & filterable individual leaderboard,
+  // so in a couple of clicks you can see who leads on any metric (top row = leader).
+  if (teamView === 'players') {
+    const psearch = currentSearch.trim().toLowerCase();
+    const pdir = playerSort.dir === 'asc' ? 1 : -1;
+    const cmp = (a, b) => playerSort.key === 'name'
+      ? pdir * String(a.name).localeCompare(String(b.name))
+      : pdir * ((a[playerSort.key] || 0) - (b[playerSort.key] || 0));
+    const sortedAll = [...people].sort(cmp);
+    const rankMap = new Map(sortedAll.map((p, i) => [p.name, i + 1]));
+    const displayP = sortedAll.filter(p =>
+      (!psearch || p.name.toLowerCase().includes(psearch) || String(p.team).toLowerCase().includes(psearch)) &&
+      (teamRegion === 'all' || regionOf(p.team) === teamRegion));
+    const pArrow = k => playerSort.key === k ? (playerSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    const metricLabel = { name: 'name', ps_total: 'PS Total', ps_nb: 'PS New Business', ps_total_gm: 'GM', meetings: 'meetings/week', opps: 'opportunities' }[playerSort.key];
+    const PCAP = 100;
+    const shown = displayP.slice(0, PCAP);
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">PLAYER RANKING</h2>
+          <p class="section-subtitle">${people.length} players · sorted by ${metricLabel} ${playerSort.dir === 'asc' ? '↑' : '↓'} — the top of the list is the current leader</p>
+          <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
+        </div>
+        ${viewToggle}
+        <div class="search-row">
+          <input type="text" class="search-input" id="team-search" placeholder="Search a player or team…" value="${escapeHtml(currentSearch)}" />
+        </div>
+        ${regionChips}
+        <div class="members-table players-table">
+          <div class="members-table-header">
+            <div>RANK</div>
+            <div class="th-psort" data-psort="name">PLAYER${pArrow('name')}</div>
+            <div class="th-psort" data-psort="ps_total">PS TOTAL${pArrow('ps_total')}</div>
+            <div class="th-psort" data-psort="ps_nb">PS NB${pArrow('ps_nb')}</div>
+            <div class="th-psort col-gm" data-psort="ps_total_gm">GM${pArrow('ps_total_gm')}</div>
+            <div class="th-psort col-meet" data-psort="meetings">MEET/WK${pArrow('meetings')}</div>
+            <div class="th-psort col-opps" data-psort="opps">OPPS · CARDS${pArrow('opps')}</div>
+          </div>
+          ${shown.map(p => {
+            const rank = rankMap.get(p.name);
+            const cards = [];
+            if (p.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · under 5 meetings/week (${fmtNum(p.meetings)})">🟨</span>`);
+            if (p.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(p.ps_total_gm)})">🟨</span>`);
+            return `
+              <div class="members-table-row player-row var-click" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
+                <div class="member-rank ${rank === 1 ? 'top' : ''}">#${rank}</div>
+                <div>
+                  <div class="member-name">${escapeHtml(p.name)}</div>
+                  <div class="member-tenure">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+                </div>
+                <div class="member-stat">${fmtMoney(p.ps_total)}</div>
+                <div class="member-stat">${fmtMoney(p.ps_nb)}</div>
+                <div class="member-stat col-gm">${fmtPct(p.ps_total_gm)}</div>
+                <div class="member-stat col-meet">${fmtNum(p.meetings)}</div>
+                <div class="col-opps">
+                  <span class="member-stat">${Number(p.opps || 0).toFixed(0)} opps</span>
+                  <span class="member-cards">${cards.join('')}</span>
+                </div>
+              </div>`;
+          }).join('')}
+          ${displayP.length > PCAP ? `<div class="var-more">+ ${displayP.length - PCAP} more — search a name or pick a country to narrow down</div>` : ''}
+          ${displayP.length === 0 ? `<div class="no-result">No players match your search.</div>` : ''}
+        </div>
       </div>`;
   }
 
@@ -3101,6 +3170,23 @@ function render() {
       if (teamSort.key === k) teamSort.dir = teamSort.dir === 'asc' ? 'desc' : 'asc';
       else teamSort = { key: k, dir: k === 'country' ? 'asc' : 'desc' };
       render();
+    });
+  });
+  // Players view: sortable columns
+  document.querySelectorAll('.th-psort').forEach(h => {
+    h.addEventListener('click', () => {
+      const k = h.dataset.psort;
+      if (playerSort.key === k) playerSort.dir = playerSort.dir === 'asc' ? 'desc' : 'asc';
+      else playerSort = { key: k, dir: k === 'name' ? 'asc' : 'desc' };
+      render();
+    });
+  });
+  // Players view: clicking a player opens their team's squad modal
+  document.querySelectorAll('.player-row[data-team]').forEach(row => {
+    row.addEventListener('click', () => {
+      openTeamModal = row.dataset.team;
+      render();
+      document.body.style.overflow = 'hidden';
     });
   });
   // Team region filter chips
