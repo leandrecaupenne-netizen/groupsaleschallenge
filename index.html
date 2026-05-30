@@ -1869,20 +1869,24 @@ function renderTeamRanking() {
     const cmp = (a, b) => playerSort.key === 'name'
       ? pdir * String(a.name).localeCompare(String(b.name))
       : pdir * ((a[playerSort.key] || 0) - (b[playerSort.key] || 0));
-    const sortedAll = [...people].sort(cmp);
-    const rankMap = new Map(sortedAll.map((p, i) => [p.name, i + 1]));
+    const sortedAll = [...people].sort(cmp); // display order (respects the ▲/▼ toggle)
+    // Rank = true standing on the sorted metric, best first — so #1 is always the
+    // actual leader, even when the list is shown worst-first (ascending order).
+    const rankKey = playerSort.key === 'name' ? 'ps_total' : playerSort.key;
+    const ranked = [...people].sort((a, b) => (b[rankKey] || 0) - (a[rankKey] || 0));
+    const rankMap = new Map(ranked.map((p, i) => [p.name, i + 1]));
     const displayP = sortedAll.filter(p =>
       (!psearch || p.name.toLowerCase().includes(psearch) || String(p.team).toLowerCase().includes(psearch)) &&
       (teamRegion === 'all' || regionOf(p.team) === teamRegion));
     const pArrow = k => playerSort.key === k ? (playerSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
-    const metricLabel = { name: 'name', ps_total: 'PS Total', ps_nb: 'PS New Business', ps_total_gm: 'GM', meetings: 'meetings/week', opps: 'opportunities' }[playerSort.key];
+    const metricLabel = { ps_total: 'PS Total', ps_nb: 'PS New Business', ps_total_gm: 'GM', meetings: 'meetings/week', opps: 'opportunities' }[rankKey];
     const PCAP = 100;
     const shown = displayP.slice(0, PCAP);
     return `
       <div class="section">
         <div class="section-header">
           <h2 class="section-title">PLAYER RANKING</h2>
-          <p class="section-subtitle">${people.length} players · sorted by ${metricLabel} ${playerSort.dir === 'asc' ? '↑' : '↓'} — the top of the list is the current leader</p>
+          <p class="section-subtitle">${people.length} players · #1 = ${metricLabel} leader${playerSort.key === 'name' ? ' · showing A→Z' : ''} · click a column header to re-rank</p>
           <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
         </div>
         ${viewToggle}
