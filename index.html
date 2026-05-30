@@ -2806,8 +2806,11 @@ function drawStandings(logo) {
     : isPlayers
     ? sortedPSTotal.slice(0, 12).map(p => ({ name: p.name, val: p.ps_total }))
     : sortedTeams.slice(0, 12).map(t => ({ name: t.country, val: t.avg_ps }));
-  // Nations export: theme the top bar after the leading country's flag.
-  const stripes = (isNations && nr[0]) ? (FLAG_STRIPES[nr[0].region] || FLAG_STRIPES.OTHER) : ['#C8102E', '#FFFFFF', '#006847'];
+  // Theme the top bar after the leader's flag: the #1 nation (Nations) or the
+  // #1 player's country/region (Players). Teams keep the brand stripe.
+  const stripes = (isNations && nr[0]) ? (FLAG_STRIPES[nr[0].region] || FLAG_STRIPES.OTHER)
+    : (isPlayers && sortedPSTotal[0]) ? (FLAG_STRIPES[regionOf(sortedPSTotal[0].team)] || FLAG_STRIPES.OTHER)
+    : ['#C8102E', '#FFFFFF', '#006847'];
   const heading = isNations ? '🌍 NATIONS RANKING' : isPlayers ? '👤 PLAYER RANKING' : '🏆 TEAM RANKING';
   const footMetric = isPlayers ? 'PS Bookings Total' : 'Avg PS Bookings / person';
   const W = 820, rowH = 64, headH = 300, H = headH + top.length * rowH + 90, s = 2;
