@@ -1141,22 +1141,17 @@ img, table { max-width: 100%; }
 .var-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
 .var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
 .var-more { padding: 10px 6px; color: var(--muted); font-size: 12px; font-style: italic; border-top: 1px dashed var(--line); }
+.var-col-count { display: inline-block; min-width: 20px; text-align: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--usa-red); border-radius: 99px; padding: 1px 7px; vertical-align: middle; }
+.var-col-sub { font-size: 11px; color: var(--muted); margin: -6px 0 12px; letter-spacing: 0.02em; }
+/* Clean-sheet column: the "following the rules" side — green, distinct at a glance. */
+.var-col-clean { border-color: rgba(22,163,74,0.35); border-top: 3px solid var(--green); }
+.var-col-clean .var-col-title { color: var(--green); }
+.var-col-clean .var-col-count { background: var(--green); }
+.var-row-clean .var-val { color: var(--green); }
+.var-col-clean .var-row.var-click:hover { background: rgba(22,163,74,0.07); }
 
-/* === Clean Sheet / Fair Play === */
-.clean-sheet { margin-top: 22px; padding: 18px; border: 1px solid var(--line); border-left: 5px solid var(--green); border-radius: 12px; background: var(--paper); }
-.cs-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
-.cs-title { font-family: 'Anton', Impact, sans-serif; font-size: 20px; letter-spacing: 0.02em; color: var(--ink); margin: 0; }
-.cs-count { font-size: 13px; font-weight: 700; color: var(--green); background: rgba(22,163,74,0.12); padding: 4px 10px; border-radius: 99px; }
-.cs-sub { font-size: 13px; color: var(--muted); margin: 6px 0 14px; }
-.cs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
-.cs-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(22,163,74,0.06); border: 1px solid rgba(22,163,74,0.18); border-radius: 10px; }
-.cs-rank { font-weight: 800; font-size: 14px; min-width: 26px; text-align: center; }
-.cs-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cs-name em { display: block; font-style: normal; font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; font-family: ui-monospace, monospace; }
-.cs-val { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700; color: var(--green); white-space: nowrap; }
 .var-click { cursor: pointer; transition: background 0.12s, transform 0.12s; }
 .var-row.var-click:hover { background: var(--cream); }
-.cs-chip.var-click:hover { transform: translateY(-1px); border-color: rgba(22,163,74,0.4); }
 
 /* === Rank movement badges ▲▼ === */
 .mv { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; font-family: ui-monospace, monospace; vertical-align: middle; letter-spacing: 0.02em; }
@@ -2155,7 +2150,6 @@ function renderVAR() {
   const names = new Set(); lowMeet.forEach(p => names.add(p.name)); lowGm.forEach(p => names.add(p.name));
   // Clean Sheet: players respecting every rule (no cards) — the positive side of the VAR.
   const clean = pool.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
-  const topClean = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 8);
 
   const filterBar = `
     <div class="vt-controls">
@@ -2171,46 +2165,48 @@ function renderVAR() {
       ${filtersActive ? `<button id="var-clear" class="vt-reset" title="Clear filters">↺ Clear</button>` : ''}
     </div>`;
 
-  const row = (p, val) => `
-    <div class="var-row var-click" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
-      <span class="var-card">🟨</span>
+  const row = (p, val, icon, cls) => `
+    <div class="var-row var-click ${cls || ''}" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
+      <span class="var-card">${icon}</span>
       <span class="var-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="var-val">${val}</span>
     </div>`;
-  const col = (title, list, valFn, emptyMsg) => `
-    <div class="var-col">
-      <div class="var-col-title">${title} (${list.length})</div>
+  const col = (title, list, valFn, emptyMsg, opts) => {
+    opts = opts || {};
+    const more = list.length > CAP
+      ? `<div class="var-more">${opts.moreText ? opts.moreText(list.length - CAP) : '+ ' + (list.length - CAP) + ' more'}</div>`
+      : '';
+    return `
+    <div class="var-col ${opts.cls || ''}">
+      <div class="var-col-title">${title} <span class="var-col-count">${list.length}</span></div>
+      ${opts.sub ? `<div class="var-col-sub">${opts.sub}</div>` : ''}
       ${list.length
-        ? list.slice(0, CAP).map(p => row(p, valFn(p))).join('') +
-          (list.length > CAP ? `<div class="var-more">+ ${list.length - CAP} more on a yellow card</div>` : '')
+        ? list.slice(0, CAP).map(p => row(p, valFn(p), opts.icon || '🟨', opts.rowCls)).join('') + more
         : `<div class="no-result">${emptyMsg}</div>`}
     </div>`;
+  };
+
+  const cleanSorted = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
 
   return `
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">${t('var.title')}</h2>
-        <p class="section-subtitle">${t('var.sub', { n: names.size, s: names.size === 1 ? '' : 's' })}${filtersActive ? ' · filtered' : ''}</p>
+        <p class="section-subtitle">${t('var.sub', { n: names.size, s: names.size === 1 ? '' : 's' })} · 🧤 ${clean.length} playing by the rules${filtersActive ? ' · filtered' : ''}</p>
       </div>
       ${filterBar}
-      <div class="var-grid">
-        ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`, filtersActive ? 'No cards here for this filter. ✅' : "No cards here — everyone's hitting their meetings. ✅")}
-        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`, filtersActive ? 'No cards here for this filter. ✅' : 'No cards here — margins are healthy. ✅')}
-      </div>
-      <div class="clean-sheet">
-        <div class="cs-head">
-          <h3 class="cs-title">🧤 Clean Sheet — Fair Play</h3>
-          <span class="cs-count">${clean.length} player${clean.length === 1 ? '' : 's'} with zero cards${filtersActive ? ' (filtered)' : ''}</span>
-        </div>
-        <p class="cs-sub">5+ meetings/week and Gross Margin ≥ 25% — the defensive wall. 🛡️ Top performers playing fully by the rules:</p>
-        ${topClean.length
-          ? `<div class="cs-list">${topClean.map((p, i) => `
-              <div class="cs-chip var-click" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
-                <span class="cs-rank">${['🥇', '🥈', '🥉'][i] || ('#' + (i + 1))}</span>
-                <span class="cs-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
-                <span class="cs-val">${fmtMoney(p.ps_nb)}</span>
-              </div>`).join('')}</div>`
-          : `<div class="no-result">${filtersActive ? 'No clean sheets match this filter.' : 'No clean sheets yet — everyone has at least one card.'}</div>`}
+      <div class="var-grid var-grid-3">
+        ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`,
+          filtersActive ? 'Nobody here for this filter. ✅' : "Everyone's hitting their meetings. ✅",
+          { icon: '🟨', sub: 'Not following — under 5 meetings / week' })}
+        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`,
+          filtersActive ? 'Nobody here for this filter. ✅' : 'Margins are healthy. ✅',
+          { icon: '🟨', sub: 'Not following — Gross Margin below 25%' })}
+        ${col('🧤 Clean Sheet — Fair Play', cleanSorted, p => fmtMoney(p.ps_nb),
+          filtersActive ? 'No clean sheets match this filter.' : 'No clean sheets yet — everyone has a card.',
+          { cls: 'var-col-clean', icon: '✅', rowCls: 'var-row-clean',
+            sub: 'Following — 5+ meetings / week and GM ≥ 25%',
+            moreText: n => `+ ${n} more playing by the rules` })}
       </div>
     </div>
   `;
