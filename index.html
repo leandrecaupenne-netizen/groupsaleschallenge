@@ -2609,6 +2609,7 @@ function renderAwardRow(p, rank, stat) {
 function renderMyPosition() {
   const q = positionQuery.trim().toLowerCase();
   let resultHtml = '';
+  let resolved = null; // the single player being shown (enables the card button)
 
   if (q.length < 2) {
     resultHtml = `<div class="position-result"><div class="no-result">${t('pos.start')}</div></div>`;
@@ -2617,11 +2618,13 @@ function renderMyPosition() {
     if (matches.length === 0) {
       resultHtml = `<div class="position-result"><div class="no-result">${t('pos.none')}</div></div>`;
     } else if (matches.length === 1) {
+      resolved = matches[0];
       resultHtml = renderPositionDetails(matches[0]);
     } else {
       // Multiple matches: show suggestions if not exact match
       const exact = matches.find(p => p.name.toLowerCase() === q);
       if (exact) {
+        resolved = exact;
         resultHtml = renderPositionDetails(exact);
       } else {
         resultHtml = `
@@ -2646,6 +2649,7 @@ function renderMyPosition() {
       <div class="section-header">
         <h2 class="section-title">${t('pos.title')}</h2>
         <p class="section-subtitle">${t('pos.sub')}</p>
+        ${resolved ? `<button id="download-card" class="copy-btn">${t('btn.card')}</button>` : ''}
         <button class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
@@ -2726,7 +2730,6 @@ function renderPositionDetails(person) {
           🌱 You are eligible for the <strong>Rookie of the Year</strong> award (less than 1 year at Devoteam)
         </div>
       ` : ''}
-      <button id="download-card" class="copy-btn" style="margin-top:18px">${t('btn.card')}</button>
     </div>
   `;
 }
