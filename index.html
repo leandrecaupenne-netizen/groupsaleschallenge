@@ -1810,7 +1810,9 @@ const CONFIG = {
   //   ?admin=<ADMIN_KEY>   (deactivate with ?admin=off). Change this secret as you like.
   ADMIN_KEY: 'leandre-refresh-2026',
   ADMIN_FLAG: 'devoteam_wc_admin_v1',
-  RANKS_KEY: 'devoteam_wc_ranks_v1' // snapshot of last-visit ranks for ▲▼ movement
+  RANKS_KEY: 'devoteam_wc_ranks_v1', // snapshot of last-visit ranks for ▲▼ movement
+  SNAPSHOT_KEY: 'devoteam_wc_data_v1', // last successful payload → instant paint on return
+  SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000 // ignore cached data older than 6h
 };
 
 // Reuse the base64 logo already embedded in the header (no duplication).
@@ -1933,12 +1935,17 @@ function computeRankings() {
 // The access code is sent in the POST body (never in the URL). fresh=true bypasses
 // the server-side 30s cache (used by the manual refresh).
 async function fetchData(fresh) {
+  // Abort a hung request so a cold/asleep Apps Script doesn't leave us waiting
+  // forever (the loader would never clear). 20s is generous for a cold start.
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
   try {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
       cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
-      body: JSON.stringify({ action: 'data', password: safeGet(CONFIG.PWD_KEY) || '', fresh: !!fresh })
+      body: JSON.stringify({ action: 'data', password: safeGet(CONFIG.PWD_KEY) || '', fresh: !!fresh }),
+      signal: ctrl ? ctrl.signal : undefined
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -1961,12 +1968,44 @@ async function fetchData(fresh) {
     initSnapshotOnce();
     detectLeaderChanges();
     setSyncWarning(false);
+    cacheSnapshot(data); // keep a copy for instant paint on the next visit
     return true;
   } catch (err) {
     console.error('Fetch failed:', err);
     setSyncWarning(true);
     return false;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
+}
+
+// === Instant paint: cache the last good payload, hydrate from it on return ===
+// Apps Script can be slow to wake (cold start). Rather than stare at a loader,
+// returning visitors get the previous data painted immediately while a fresh
+// copy is fetched quietly in the background (stale-while-revalidate).
+function cacheSnapshot(data) {
+  try { safeSet(CONFIG.SNAPSHOT_KEY, JSON.stringify({ ts: Date.now(), data })); } catch (e) {}
+}
+function hydrateFromSnapshot() {
+  try {
+    const raw = safeGet(CONFIG.SNAPSHOT_KEY);
+    if (!raw) return false;
+    const snap = JSON.parse(raw);
+    if (!snap || !snap.data) return false;
+    if (Date.now() - (snap.ts || 0) > CONFIG.SNAPSHOT_MAX_AGE_MS) return false;
+    const data = snap.data;
+    DATA = data;
+    teams = data.teams || [];
+    people = (data.people || []).filter(p => p.name);
+    updated_at = data.updated_at;
+    period = data.period || '';
+    challenge_dates = data.challenge_dates || {};
+    specialAwards = data.special_awards || {};
+    if (!teams.length || !people.length) return false;
+    computeRankings();
+    initSnapshotOnce();
+    return true;
+  } catch (e) { return false; }
 }
 
 // === Rank movement (▲▼ since last visit) ===
@@ -4980,25 +5019,35 @@ async function init() {
     return;
   }
 
-  // Logged in: show the app chrome, load data, then render + poll.
+  // Logged in: show the app chrome, then paint as fast as possible.
   setChromeVisible(true);
-  const loadStart = performance.now();
-  app.innerHTML = renderLoader();
-  const ok = await fetchData();
-  if (!ok) {
-    app.innerHTML = `<div class="state-msg error">Failed to load data.<br/><button class="login-btn" onclick="location.reload()">Retry</button></div>`;
-    return;
+
+  // Fast path — a recent payload is cached: paint it instantly (no loader, no
+  // kick-off animation) and refresh quietly in the background. Feels instant.
+  if (hydrateFromSnapshot()) {
+    restoreTab();
+    render();
+    app.style.animation = 'appEnter 0.3s ease both';
+    setTimeout(() => { app.style.animation = ''; }, 320);
+    backgroundRefresh(); // fetch fresh data in the background, re-render silently
+  } else {
+    // Cold path — nothing cached: show the football loader while we fetch.
+    const loadStart = performance.now();
+    app.innerHTML = renderLoader();
+    const ok = await fetchData();
+    if (!ok) {
+      app.innerHTML = `<div class="state-msg error">Failed to load data.<br/><button class="login-btn" onclick="location.reload()">Retry</button></div>`;
+      return;
+    }
+    // Keep the kick-off snappy: a short beat so the animation reads, no more.
+    const elapsed = performance.now() - loadStart;
+    if (elapsed < 350) await new Promise(r => setTimeout(r, 350 - elapsed));
+    await playKickoff();
+    restoreTab();
+    render();
+    app.style.animation = 'appEnter 0.45s ease both';
+    setTimeout(() => { app.style.animation = ''; }, 500);
   }
-
-  // Let the ball bounce at least a beat, then strike the kick-off.
-  const elapsed = performance.now() - loadStart;
-  if (elapsed < 750) await new Promise(r => setTimeout(r, 750 - elapsed));
-  await playKickoff();
-
-  restoreTab(); // open the tab from the URL hash / last used
-  render();
-  app.style.animation = 'appEnter 0.45s ease both';
-  setTimeout(() => { app.style.animation = ''; }, 500);
 
   // Bind the header refresh button once (it lives outside #app, so it survives re-renders).
   const refreshBtn = document.getElementById('refresh-btn');
