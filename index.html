@@ -881,6 +881,14 @@ input { font-family: inherit; }
 }
 .pc-card > * { position: relative; z-index: 1; }
 .pc-card-top { display: flex; align-items: center; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+.pc-period-line { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-top: 4px; }
+/* Sorare-style rarity tier badge */
+.pc-rarity { font-family: 'Anton', Impact, sans-serif; font-size: 11px; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 999px; color: #1a1530; }
+.pc-rarity-unique { background: linear-gradient(90deg, #F2C75C, #fff3c4); box-shadow: 0 0 12px rgba(242,199,92,0.7); }
+.pc-rarity-legendary { background: linear-gradient(90deg, #C0A0FF, #efe6ff); }
+.pc-rarity-rare { background: linear-gradient(90deg, #6fd3ff, #d6f4ff); }
+.pc-rarity-limited { background: rgba(255,255,255,0.85); }
+.pc-rarity-classic { background: rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); }
 .pc-flag { display: inline-flex; width: 26px; height: 17px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.3); }
 .pc-flag i { flex: 1; }
 .pc-avatar {
@@ -909,7 +917,10 @@ input { font-family: inherit; }
 .pc-stat-val { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--ink); }
 .pc-stat-label { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-top: 3px; }
 .pc-stat-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 2px; }
-.pc-team-link { width: 100%; text-align: center; }
+.pc-actions { display: flex; gap: 8px; }
+.pc-team-link { flex: 1; text-align: center; }
+.pc-share { flex: 0 0 auto; }
+@media (max-width: 360px) { .pc-actions { flex-direction: column; } }
 .modal-header {
   background: var(--navy);
   color: white;
@@ -3497,7 +3508,10 @@ function renderPlayerModal() {
       <div class="pc-modal" onclick="event.stopPropagation()">
         <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
         ${paniniCardInner(p)}
-        <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
+        <div class="pc-actions">
+          <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
+          <button class="pc-share copy-btn" data-share="${escapeHtml(p.name)}" title="Copy a link to this card">🔗 Share</button>
+        </div>
       </div>
     </div>`;
 }
@@ -3524,6 +3538,13 @@ function paniniCardInner(p) {
     : clean
     ? `<span class="pc-discipline ok" title="5+ meetings/week and GM ≥ 25%">✅ Playing by the rules</span>`
     : '';
+  // Rarity tier (Sorare-style) from the player's best rank across categories.
+  const bestRank = Math.min(...[goldenRank, playmakerRank, totalRank, licenceRank].filter(r => r > 0));
+  const rarity = bestRank === 1 ? { label: 'UNIQUE', cls: 'unique' }
+    : bestRank <= 3 ? { label: 'LEGENDARY', cls: 'legendary' }
+    : bestRank <= 10 ? { label: 'RARE', cls: 'rare' }
+    : bestRank <= 50 ? { label: 'LIMITED', cls: 'limited' }
+    : { label: 'CLASSIC', cls: 'classic' };
   const stat = (label, value, sub, tab) => `
     <div class="pc-stat${tab ? ' pc-stat-link' : ''}"${tab ? ` data-goto="${tab}"` : ''}>
       <div class="pc-stat-val">${value}</div>
@@ -3533,9 +3554,10 @@ function paniniCardInner(p) {
   return `
     <div class="pc-card" style="--c:${color}">
       <div class="pc-card-top">
-        <span class="pc-period">${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
+        <span class="pc-rarity pc-rarity-${rarity.cls}">${rarity.label}</span>
         <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       </div>
+      <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
       <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
@@ -3885,6 +3907,14 @@ function render() {
   if (pTeamLink) pTeamLink.addEventListener('click', () => {
     openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
   });
+  const pShare = document.querySelector('.pc-share[data-share]');
+  if (pShare) pShare.addEventListener('click', async () => {
+    const url = location.origin + location.pathname + '?player=' + encodeURIComponent(pShare.dataset.share);
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Devoteam World Cup', text: pShare.dataset.share + ' — Sales Challenge card', url }); }
+      else { await navigator.clipboard.writeText(url); const o = pShare.textContent; pShare.textContent = '✓ Link copied'; setTimeout(() => { pShare.textContent = o; }, 1600); }
+    } catch (e) { /* user cancelled share or clipboard blocked */ }
+  });
   // Stat boxes deep-link to that ranking tab (Golden Boot, Playmaker, Awards).
   document.querySelectorAll('.pc-stat-link[data-goto]').forEach(box => box.addEventListener('click', () => {
     const tab = box.dataset.goto;
@@ -4190,7 +4220,11 @@ function applyTheme(theme) {
 }
 function currentTheme() {
   const saved = safeGet(THEME_KEY);
-  if (saved === 'dark' || saved === 'light') return saved;
+  if (saved === 'dark' || saved === 'light') return saved; // manual choice always wins
+  // No manual pref: dark in the evening/night (after 19h or before 7h) — nice
+  // "ceremony" ambiance — otherwise follow the OS preference.
+  const h = new Date().getHours();
+  if (h >= 19 || h < 7) return 'dark';
   return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
 }
 function toggleTheme() {
@@ -5003,6 +5037,16 @@ async function init() {
   // reload re-enters it). Fullscreen itself may need one click/F11 (browser rule).
   try {
     if (!tvMode && new URLSearchParams(location.search).get('tv') === '1') enterTV();
+  } catch (e) {}
+
+  // Shareable player link: ?player=Name opens that player's card on load.
+  try {
+    const who = new URLSearchParams(location.search).get('player');
+    if (who) {
+      const match = people.find(p => p.name.toLowerCase() === who.toLowerCase())
+        || people.find(p => p.name.toLowerCase().includes(who.toLowerCase()));
+      if (match) { openPlayerModal = match.name; render(); document.body.style.overflow = 'hidden'; }
+    }
   } catch (e) {}
 }
 
