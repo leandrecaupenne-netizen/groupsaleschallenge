@@ -932,6 +932,47 @@ input { font-family: inherit; }
 .pc-rarity-classic { background: rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); }
 .pc-flag { display: inline-flex; width: 26px; height: 17px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.3); }
 .pc-flag i { flex: 1; }
+/* Collectible honour chips under the stats grid. */
+.pc-honours { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
+.pc-honour {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 999px;
+  background: var(--cream); color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+:root[data-theme="dark"] .pc-honour { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); }
+
+/* "Photo finish" tight-race strip above a leaderboard. */
+.race-strip {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 14px; padding: 11px 15px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(200,16,46,0.12), rgba(242,199,92,0.12));
+  border: 1px solid rgba(200,16,46,0.25);
+  font-size: 13px; color: var(--ink);
+}
+.race-flame { font-size: 18px; animation: racePulse 1.4s ease-in-out infinite; }
+@keyframes racePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .race-flame { animation: none; } }
+.race-text b { color: var(--usa-red); }
+:root[data-theme="dark"] .race-text b { color: #ff8aa0; }
+
+/* Weekly recap: header button dot + modal. */
+.digest-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--usa-red); box-shadow: 0 0 0 2px var(--navy); display: none; }
+.digest-modal { max-width: 560px; }
+.digest-body { display: flex; flex-direction: column; gap: 18px; }
+.digest-section { display: flex; flex-direction: column; gap: 8px; }
+.digest-h { font-family: 'Anton', Impact, sans-serif; font-size: 16px; letter-spacing: 0.03em; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
+.digest-sub { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.digest-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--cream); border-radius: 10px; font-size: 13.5px; color: var(--ink); }
+:root[data-theme="dark"] .digest-row { background: rgba(255,255,255,0.05); }
+.digest-emoji { font-size: 15px; min-width: 20px; text-align: center; }
+.digest-row em { font-style: normal; font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-left: 4px; }
+.digest-name { cursor: pointer; border-bottom: 1px dashed transparent; }
+.digest-name:hover { border-bottom-color: currentColor; }
+.digest-empty { text-align: center; color: var(--muted); font-style: italic; padding: 30px 10px; line-height: 1.7; }
 .pc-avatar {
   position: relative; width: 92px; height: 92px; margin: 14px auto 10px;
   border-radius: 50%; background: rgba(255,255,255,0.15);
@@ -1838,6 +1879,7 @@ img, table { max-width: 100%; }
       <span class="last-update" id="last-update">Loading...</span>
     </div>
     <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <button id="digest-btn" class="refresh-btn tv-btn" title="This week's recap" aria-label="This week's recap" style="display:none">📰<span class="digest-dot" id="digest-dot"></span></button>
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
     <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
@@ -1881,7 +1923,9 @@ const CONFIG = {
   ADMIN_FLAG: 'devoteam_wc_admin_v1',
   RANKS_KEY: 'devoteam_wc_ranks_v1', // snapshot of last-visit ranks for ▲▼ movement
   SNAPSHOT_KEY: 'devoteam_wc_data_v1', // last successful payload → instant paint on return
-  SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000 // ignore cached data older than 6h
+  SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000, // ignore cached data older than 6h
+  WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v1', // ranks snapshot keyed by period (weekly digest)
+  WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v1' // computed "what changed" digest for a period
 };
 
 // Reuse the base64 logo already embedded in the header (no duplication).
@@ -2036,6 +2080,7 @@ async function fetchData(fresh) {
     computeRankings();
     initSnapshotOnce();
     detectLeaderChanges();
+    refreshWeekDigest();
     setSyncWarning(false);
     cacheSnapshot(data); // keep a copy for instant paint on the next visit
     return true;
@@ -2073,6 +2118,7 @@ function hydrateFromSnapshot() {
     if (!teams.length || !people.length) return false;
     computeRankings();
     initSnapshotOnce();
+    refreshWeekDigest();
     return true;
   } catch (e) { return false; }
 }
@@ -2094,6 +2140,106 @@ function initSnapshotOnce() {
   catch (e) { prevRanks = null; }
   try { safeSet(CONFIG.RANKS_KEY, JSON.stringify(buildRankMaps())); } catch (e) {}
 }
+// === Weekly digest: "what changed since last update" ============================
+// A snapshot keyed by the period label (e.g. "Week 2 of 5"). When the period
+// changes, we diff the previous snapshot against the current data to build a
+// digest (biggest climbers, new #1s, new yellow cards, new top-10 entries).
+let weekDigest = null; // { period, prevPeriod, climbers, newLeaders, newCards, newTop10 } | null
+
+function buildWeekSnapshot() {
+  const snap = { period: period || '', teams: {}, golden: {}, playmaker: {}, cards: {}, total: {} };
+  sortedTeams.forEach((t, i) => { snap.teams[t.country] = i + 1; });
+  sortedGoldenBoot.forEach((p, i) => { snap.golden[p.name] = i + 1; });
+  sortedPlaymaker.forEach((p, i) => { snap.playmaker[p.name] = i + 1; });
+  sortedPSTotal.forEach((p, i) => { snap.total[p.name] = i + 1; });
+  people.forEach(p => { if (p.yellow_meetings || p.yellow_gm) snap.cards[p.name] = true; });
+  return snap;
+}
+
+// Compute the digest from a previous snapshot vs the current standings.
+function computeWeekDigest(prev) {
+  if (!prev) return null;
+  const d = { period: period || '', prevPeriod: prev.period || '', climbers: [], newLeaders: [], newCards: [], newTop10: [] };
+  // New #1s across the three main boards.
+  const leaderChecks = [
+    ['🏆', 'Team Ranking', sortedTeams[0] && sortedTeams[0].country, prev.teams],
+    ['🥇', 'Golden Boot', sortedGoldenBoot[0] && sortedGoldenBoot[0].name, prev.golden],
+    ['🎯', 'Playmaker', sortedPlaymaker[0] && sortedPlaymaker[0].name, prev.playmaker]
+  ];
+  leaderChecks.forEach(([icon, label, who, prevMap]) => {
+    if (who && prevMap && prevMap[who] !== 1) d.newLeaders.push({ icon, label, who });
+  });
+  // Biggest climbers on PS Total (the universal individual board).
+  const climbers = [];
+  sortedPSTotal.forEach((p, i) => {
+    const cur = i + 1, was = prev.total[p.name];
+    if (was === undefined) { if (cur <= 50) d.newTop10.push({ name: p.name, team: p.team, rank: cur }); return; }
+    const jump = was - cur;
+    if (jump > 0) climbers.push({ name: p.name, team: p.team, jump, from: was, to: cur });
+    if (was > 10 && cur <= 10) d.newTop10.push({ name: p.name, team: p.team, rank: cur });
+  });
+  d.climbers = climbers.sort((a, b) => b.jump - a.jump).slice(0, 5);
+  d.newTop10 = d.newTop10.filter(x => x.rank <= 10).sort((a, b) => a.rank - b.rank).slice(0, 5);
+  // New yellow cards this period.
+  people.forEach(p => {
+    if ((p.yellow_meetings || p.yellow_gm) && !prev.cards[p.name]) d.newCards.push({ name: p.name, team: p.team });
+  });
+  d.newCards = d.newCards.slice(0, 8);
+  d.count = d.climbers.length + d.newLeaders.length + d.newCards.length + d.newTop10.length;
+  return d;
+}
+
+// Refresh the weekly snapshot/digest once data is loaded. The digest is computed
+// only when the period label changes (i.e. Jose pushed a new weekly update).
+function refreshWeekDigest() {
+  let prev = null;
+  try { const raw = safeGet(CONFIG.WEEKSNAP_KEY); prev = raw ? JSON.parse(raw) : null; } catch (e) { prev = null; }
+  const curPeriod = period || '';
+  if (prev && prev.period && curPeriod && prev.period !== curPeriod) {
+    // New week detected → compute & persist the digest, then re-baseline.
+    weekDigest = computeWeekDigest(prev);
+    try { safeSet(CONFIG.WEEKDIGEST_KEY, JSON.stringify(weekDigest)); } catch (e) {}
+    try { safeSet(CONFIG.WEEKSNAP_KEY, JSON.stringify(buildWeekSnapshot())); } catch (e) {}
+  } else if (!prev || !prev.period) {
+    // First ever load → just baseline; load any previously stored digest.
+    try { safeSet(CONFIG.WEEKSNAP_KEY, JSON.stringify(buildWeekSnapshot())); } catch (e) {}
+    try { const raw = safeGet(CONFIG.WEEKDIGEST_KEY); weekDigest = raw ? JSON.parse(raw) : null; } catch (e) { weekDigest = null; }
+  } else {
+    // Same period as before → keep the last computed digest (so it stays visible
+    // all week), don't re-baseline.
+    try { const raw = safeGet(CONFIG.WEEKDIGEST_KEY); weekDigest = raw ? JSON.parse(raw) : null; } catch (e) { weekDigest = null; }
+  }
+}
+
+// === Tight races: smallest gap between adjacent ranks at the top of a board ===
+// Returns { leader, chaser, gap, fmt } for the closest #1↔#2 (or any top pair).
+function tightRace(sorted, valueOf, fmt) {
+  // Only consider the podium battles (#1↔2, #2↔3, #3↔4): a tight race up there is
+  // the dramatic one. Pick the closest of those (by % of the leader's value).
+  const top = sorted.filter(p => valueOf(p) > 0).slice(0, 4);
+  if (top.length < 2) return null;
+  let best = null;
+  for (let i = 0; i < top.length - 1; i++) {
+    const gap = valueOf(top[i]) - valueOf(top[i + 1]);
+    const ref = valueOf(top[i]) || 1;
+    const ratio = gap / ref;
+    if (best === null || ratio < best.ratio) best = { i, gap, ratio, leader: top[i], chaser: top[i + 1] };
+  }
+  if (!best) return null;
+  return { rankA: best.i + 1, rankB: best.i + 2, leader: best.leader, chaser: best.chaser, gap: best.gap, ratio: best.ratio, fmt };
+}
+
+// A small "photo finish" banner when the gap between two adjacent top ranks is
+// tight (≤ 8% of the leader's value). Returns '' when the race isn't close.
+function tightRaceBanner(race, label) {
+  if (!race || race.ratio > 0.08) return '';
+  const gapStr = race.fmt === 'money' ? fmtMoney(race.gap) : (race.fmt === 'int' ? Math.round(race.gap) + ' opps' : race.gap);
+  return `<div class="race-strip" title="It's tight at the top!">
+      <span class="race-flame">🔥</span>
+      <span class="race-text"><b>Photo finish</b> · only <b>${gapStr}</b> between #${race.rankA} ${escapeHtml(race.leader.name || race.leader.country)} and #${race.rankB} ${escapeHtml(race.chaser.name || race.chaser.country)}</span>
+    </div>`;
+}
+
 // Small ▲n / ▼n / NEW badge comparing current rank to the previous visit.
 function movementBadge(kind, key, curRank) {
   if (!prevRanks || !prevRanks[kind]) return '';
@@ -2563,6 +2709,7 @@ function renderTeamRanking() {
         <button id="compare-btn" class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       ${viewToggle}
+      ${tightRaceBanner(tightRace(sortedTeams, t => t.avg_ps || 0, 'money'), 'Team Ranking')}
       ${moversStrip()}
       <div class="search-row">
         <input type="text" class="search-input" id="team-search" placeholder="${t('teams.searchPh')}" value="${escapeHtml(currentSearch)}" />
@@ -2661,12 +2808,14 @@ function renderMatchSheet(list, opts) {
 
 function renderGoldenBoot() {
   const top5 = sortedGoldenBoot.filter(p => p.ps_nb > 0).slice(0, 6);
+  const race = tightRace(sortedGoldenBoot, p => p.ps_nb || 0, 'money');
   return `
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">🥇 GOLDEN BOOT AWARD</h2>
         <p class="section-subtitle">${t('golden.sub')}</p>
       </div>
+      ${tightRaceBanner(race, 'Golden Boot')}
       ${renderMatchSheet(top5, {
         badge: '⚽ TOP SCORER', color: '#F2C75C', keyPrefix: 'gb',
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
@@ -2678,12 +2827,14 @@ function renderGoldenBoot() {
 
 function renderPlaymaker() {
   const top5 = sortedPlaymaker.filter(p => p.opps > 0).slice(0, 6);
+  const race = tightRace(sortedPlaymaker, p => p.opps || 0, 'int');
   return `
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">🎯 PLAYMAKER AWARD</h2>
         <p class="section-subtitle">${t('playmaker.sub')}</p>
       </div>
+      ${tightRaceBanner(race, 'Playmaker')}
       ${renderMatchSheet(top5, {
         badge: '🎯 THE PLAYMAKER', color: '#C8102E', keyPrefix: 'pm',
         valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created',
@@ -3683,6 +3834,9 @@ function paniniCardInner(p) {
     : clean
     ? `<span class="pc-discipline ok" title="5+ meetings/week and GM ≥ 25%">✅ Playing by the rules</span>`
     : '';
+  // Collectible "honours" — Panini-style achievement badges earned from the
+  // player's standings. Shown as a row of chips under the stats.
+  const honours = computeHonours(p, { goldenRank, playmakerRank, totalRank, licenceRank, clean });
   // Rarity tier (Sorare-style) from the player's best rank across categories.
   const bestRank = Math.min(...[goldenRank, playmakerRank, totalRank, licenceRank].filter(r => r > 0));
   const rarity = bestRank === 1 ? { label: 'UNIQUE', cls: 'unique' }
@@ -3718,7 +3872,27 @@ function paniniCardInner(p) {
       ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
       ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
       ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'awards') : ''}
-    </div>`;
+    </div>
+    ${honours.length ? `<div class="pc-honours">${honours.map(h => `<span class="pc-honour" title="${escapeHtml(h.tip)}">${h.icon} ${h.label}</span>`).join('')}</div>` : ''}`;
+}
+
+// Collectible honours from a player's standings — small, motivating milestones.
+function computeHonours(p, r) {
+  const h = [];
+  const best = Math.min(...[r.goldenRank, r.playmakerRank, r.totalRank, r.licenceRank].filter(x => x > 0));
+  if (best === 1) h.push({ icon: '👑', label: 'League Leader', tip: 'Ranked #1 in a category' });
+  else if (best <= 3) h.push({ icon: '🏅', label: 'Podium', tip: 'Top 3 in a category' });
+  else if (best <= 10) h.push({ icon: '🔟', label: 'Top 10 Club', tip: 'Top 10 in a category' });
+  if (r.goldenRank && r.goldenRank <= 5) h.push({ icon: '⚽', label: 'Sharpshooter', tip: `Top 5 Golden Boot (#${r.goldenRank})` });
+  if (r.playmakerRank && r.playmakerRank <= 5) h.push({ icon: '🎯', label: 'Playmaker', tip: `Top 5 Playmaker (#${r.playmakerRank})` });
+  if (r.licenceRank && r.licenceRank <= 3) h.push({ icon: '📜', label: 'Licence Pro', tip: `Top 3 Licence GM (#${r.licenceRank})` });
+  // Double threat: top-10 in two different boards.
+  const top10s = [r.goldenRank, r.playmakerRank, r.totalRank].filter(x => x > 0 && x <= 10).length;
+  if (top10s >= 2) h.push({ icon: '🌟', label: 'Double Threat', tip: 'Top 10 in two categories' });
+  if (r.clean) h.push({ icon: '🧤', label: 'Clean Sheet', tip: 'Playing fully by the rules' });
+  if (p.is_rookie && r.goldenRank && r.goldenRank <= 20) h.push({ icon: '🌱', label: 'Rising Star', tip: 'Rookie in the Golden Boot top 20' });
+  if ((p.meetings || 0) >= 8) h.push({ icon: '🏃', label: 'Engine', tip: `${fmtNum(p.meetings)} meetings/week` });
+  return h.slice(0, 6);
 }
 
 function renderTeamModal() {
@@ -4498,6 +4672,82 @@ function playKickoff() {
   });
 }
 
+// === Weekly recap modal ("what changed since last update") ===
+function digestRow(emoji, html) {
+  return `<div class="digest-row"><span class="digest-emoji">${emoji}</span><span>${html}</span></div>`;
+}
+function openDigest() {
+  if (document.getElementById('digest-overlay')) return;
+  markDigestSeen();
+  const d = weekDigest;
+  let body;
+  if (!d || !d.count) {
+    body = `<div class="digest-empty">No weekly changes to show yet.<br/>The recap fills in once a new weekly update lands. Check back after the next data drop! ⚽</div>`;
+  } else {
+    const sections = [];
+    if (d.newLeaders.length) sections.push(`
+      <div class="digest-section">
+        <h3 class="digest-h">🚨 New leaders</h3>
+        ${d.newLeaders.map(l => digestRow(l.icon, `<b>${escapeHtml(l.who)}</b> tops the <b>${l.label}</b>`)).join('')}
+      </div>`);
+    if (d.climbers.length) sections.push(`
+      <div class="digest-section">
+        <h3 class="digest-h">📈 Biggest climbers <span class="digest-sub">PS Total rank</span></h3>
+        ${d.climbers.map(c => digestRow('▲', `<b data-jump="${c.name}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em> — up <b>${c.jump}</b> (#${c.from}→#${c.to})`)).join('')}
+      </div>`);
+    if (d.newTop10.length) sections.push(`
+      <div class="digest-section">
+        <h3 class="digest-h">⭐ New in the Top 10 <span class="digest-sub">PS Total</span></h3>
+        ${d.newTop10.map(x => digestRow('🔟', `<b data-jump="${x.name}" class="digest-name">${escapeHtml(x.name)}</b> <em>${escapeHtml(x.team)}</em> — now #${x.rank}`)).join('')}
+      </div>`);
+    if (d.newCards.length) sections.push(`
+      <div class="digest-section">
+        <h3 class="digest-h">🟨 New yellow cards</h3>
+        ${d.newCards.map(c => digestRow('🟨', `<b data-jump="${c.name}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em>`)).join('')}
+      </div>`);
+    body = sections.join('');
+  }
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.id = 'digest-overlay';
+  el.innerHTML = `
+    <div class="modal digest-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-block">
+          <h2 class="modal-title">📰 THIS WEEK'S RECAP</h2>
+          <div class="modal-subtitle">${d && d.prevPeriod ? `Since ${escapeHtml(d.prevPeriod)}` : 'What changed in the standings'}${period ? ' · now ' + escapeHtml(period) : ''}</div>
+        </div>
+        <button class="modal-close" id="digest-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body digest-body">${body}</div>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('#digest-close').addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  // Tap a name → open that player's card.
+  el.querySelectorAll('.digest-name[data-jump]').forEach(n => n.addEventListener('click', () => {
+    close(); openPlayerModal = n.dataset.jump; render(); document.body.style.overflow = 'hidden';
+  }));
+}
+
+// Show the 📰 button (with a notification dot) only when a digest exists and the
+// user hasn't opened this period's recap yet.
+function digestSeenKey() { return 'devoteam_wc_digestseen_' + (weekDigest && weekDigest.period ? weekDigest.period : ''); }
+function isDigestSeen() { try { return safeGet(digestSeenKey()) === '1'; } catch (e) { return false; } }
+function markDigestSeen() { try { safeSet(digestSeenKey(), '1'); } catch (e) {} const dot = document.getElementById('digest-dot'); if (dot) dot.style.display = 'none'; }
+function applyDigestVisibility() {
+  const btn = document.getElementById('digest-btn');
+  if (!btn) return;
+  const has = !!(weekDigest && weekDigest.count);
+  btn.style.display = has ? 'flex' : 'none';
+  const dot = document.getElementById('digest-dot');
+  if (dot) dot.style.display = (has && !isDigestSeen()) ? 'block' : 'none';
+}
+
 // === Rules & Awards modal (self-contained overlay) ===
 function openRules() {
   if (document.getElementById('rules-overlay')) return;
@@ -5143,6 +5393,7 @@ async function backgroundRefresh() {
     suppressAnim = true;
     try { render(); } finally { suppressAnim = false; }
     window.scrollTo(0, scrollY);
+    applyDigestVisibility(); // a new week may have landed → show the recap dot
     if (tvMode) renderTV(); // keep the projection panel live
   }
   return success;
@@ -5269,6 +5520,12 @@ async function init() {
     rulesBtn.dataset.bound = '1';
     rulesBtn.addEventListener('click', openRules);
   }
+  const digestBtn = document.getElementById('digest-btn');
+  if (digestBtn && !digestBtn.dataset.bound) {
+    digestBtn.dataset.bound = '1';
+    digestBtn.addEventListener('click', openDigest);
+  }
+  applyDigestVisibility(); // show 📰 + dot only when there's a fresh recap
   const themeBtn = document.getElementById('theme-btn');
   if (themeBtn && !themeBtn.dataset.bound) {
     themeBtn.dataset.bound = '1';
