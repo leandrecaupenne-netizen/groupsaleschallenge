@@ -1478,6 +1478,14 @@ img, table { max-width: 100%; }
 .tv-dots span { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.15s, transform 0.15s; }
 .tv-dots span:hover { transform: scale(1.2); }
 .tv-dots span.on { background: var(--gold); }
+.tv-navhint { text-align: center; margin-top: 1.2vh; font-family: ui-monospace, monospace; font-size: clamp(10px, 1.5vmin, 13px); letter-spacing: 0.06em; color: rgba(255,255,255,0.5); position: relative; z-index: 2; }
+.tv-key { display: inline-block; padding: 1px 6px; margin: 0 1px; border-radius: 4px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-size: 0.95em; }
+/* Keyboard hint on pointer devices, swipe hint on touch. */
+.tv-hint-touch { display: none; }
+@media (hover: none), (max-width: 640px) {
+  .tv-hint-kbd { display: none; }
+  .tv-hint-touch { display: inline; }
+}
 /* Prev / next arrows for manual navigation (swipe also works on touch) */
 .tv-nav {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
@@ -2042,6 +2050,9 @@ function setTabUrl(tab) {
 function restoreTab() {
   const t = tabFromHash() || safeGet(TAB_KEY);
   if (t && TABS.some(x => x.id === t)) currentTab = t;
+  // Restore the Team Ranking sub-view (Teams / Nations / Players) too.
+  const v = safeGet('devoteam_wc_teamview_v1');
+  if (v === 'teams' || v === 'nations' || v === 'players') teamView = v;
 }
 // Respond to shared links / back-forward navigation.
 window.addEventListener('hashchange', () => {
@@ -3979,7 +3990,7 @@ function render() {
     c.addEventListener('click', () => { teamRegion = c.dataset.region; render(); });
   });
   document.querySelectorAll('.view-toggle button[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => { teamView = btn.dataset.view; render(); });
+    btn.addEventListener('click', () => { teamView = btn.dataset.view; try { safeSet('devoteam_wc_teamview_v1', teamView); } catch (e) {} render(); });
   });
 
   const teamSearch = document.getElementById('team-search');
@@ -4804,6 +4815,11 @@ function renderTV() {
       <button class="tv-nav tv-next" id="tv-next" aria-label="Next">›</button>
       <div class="tv-body tv-anim">${tvPanelHTML(TV_PANELS[tvPanel])}</div>
       <div class="tv-dots">${TV_PANELS.map((_, i) => `<span class="${i === tvPanel ? 'on' : ''}" data-i="${i}"></span>`).join('')}</div>
+      <div class="tv-navhint">
+        <span class="tv-count">${tvPanel + 1} / ${TV_PANELS.length}</span>
+        <span class="tv-hint-kbd"> · <span class="tv-key">←</span> <span class="tv-key">→</span> navigate · <span class="tv-key">Esc</span> exit</span>
+        <span class="tv-hint-touch"> · swipe to navigate</span>
+      </div>
     </div>`;
   const c = document.getElementById('tv-close');
   if (c) c.addEventListener('click', exitTV);
