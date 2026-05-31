@@ -447,6 +447,68 @@ input { font-family: inherit; }
   font-size: 18px; cursor: help;
 }
 
+/* === Match-sheet layout: a featured #1 "man of the match" + ranked list === */
+.matchsheet { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 18px; align-items: stretch; }
+@media (max-width: 760px) { .matchsheet { grid-template-columns: 1fr; } }
+
+/* Featured hero card (rank #1) */
+.ms-hero {
+  position: relative; overflow: hidden;
+  border-radius: 16px; padding: 24px 22px 22px;
+  color: #fff;
+  background:
+    radial-gradient(120% 120% at 80% 0%, rgba(255,255,255,0.10), rgba(255,255,255,0) 60%),
+    linear-gradient(150deg, var(--c, var(--usa-red)) 0%, color-mix(in srgb, var(--c, var(--usa-red)) 60%, #11132e) 100%);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.22);
+  display: flex; flex-direction: column;
+}
+/* faint pitch stripes for texture */
+.ms-hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background: repeating-linear-gradient(120deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 30px);
+}
+.ms-hero > * { position: relative; z-index: 1; }
+.ms-hero-badge {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  font-family: 'Anton', Impact, sans-serif; letter-spacing: 0.06em; font-size: 12px;
+  background: rgba(0,0,0,0.28); color: #fff; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.ms-hero-rank { font-family: 'Anton', Impact, sans-serif; font-size: clamp(70px, 16vw, 104px); line-height: 0.82; color: var(--gold); margin: 14px 0 2px; text-shadow: 0 3px 16px rgba(0,0,0,0.3); }
+.ms-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(26px, 5vw, 36px); line-height: 1.05; }
+.ms-hero-team { font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.78); margin-top: 4px; }
+.ms-hero-stat { font-family: 'Anton', Impact, sans-serif; font-size: clamp(34px, 8vw, 52px); line-height: 1; margin-top: 16px; color: #fff; font-variant-numeric: tabular-nums; }
+.ms-hero-stat-label { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 5px; }
+.ms-hero-line { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.2); font-style: italic; font-size: 14px; line-height: 1.45; color: rgba(255,255,255,0.92); }
+.ms-hero-cards { position: absolute; top: 18px; right: 18px; display: flex; gap: 4px; z-index: 2; }
+
+/* Ranked chasing pack (#2…#5) */
+.ms-list { display: flex; flex-direction: column; gap: 10px; }
+.ms-row {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.ms-row:hover { transform: translateX(2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-color: color-mix(in srgb, var(--c, var(--usa-red)) 45%, var(--line)); }
+/* subtle proportion bar behind each row, scaled to the leader */
+.ms-row::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 0%);
+  background: color-mix(in srgb, var(--c, var(--usa-red)) 13%, transparent);
+  z-index: 0;
+}
+.ms-row > * { position: relative; z-index: 1; }
+.ms-rank { font-family: 'Anton', Impact, sans-serif; font-size: 24px; color: var(--c, var(--usa-red)); text-align: center; }
+.ms-who { min-width: 0; }
+.ms-who-name { font-weight: 700; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-who-team { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
+.ms-who-name .ms-mini-badge { font-size: 12px; margin-left: 5px; }
+.ms-val { font-family: 'Anton', Impact, sans-serif; font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 1px; }
+.ms-anim { opacity: 0; animation: spotIn 0.45s cubic-bezier(.2,.7,.3,1) forwards; }
+@media (prefers-reduced-motion: reduce) { .ms-anim { opacity: 1; animation: none; } }
+
 /* === SPECIAL AWARDS === */
 .awards-grid {
   display: grid;
@@ -2102,38 +2164,82 @@ function renderTeamRanking() {
   `;
 }
 
+// Match-sheet card markers (yellow cards) for a person.
+function cardMarkers(person) {
+  const c = [];
+  if (person.yellow_meetings) c.push(`<span class="ms-mini-badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(person.meetings)})">🟨</span>`);
+  if (person.yellow_gm) c.push(`<span class="ms-mini-badge" title="Yellow Card · GM below 25% (${fmtPct(person.ps_total_gm)})">🟨</span>`);
+  return c.join('');
+}
+
+// Featured #1 + ranked chasing pack, football "match-sheet" style.
+// opts: { badge, color, valueOf, fmt, statLabel, line, keyPrefix }
+function renderMatchSheet(list, opts) {
+  if (!list.length) return `<div class="no-result">No standout performances yet — check back once the data lands.</div>`;
+  const top = list[0];
+  const rest = list.slice(1);
+  const max = opts.valueOf(top) || 1;
+  const color = opts.color;
+  const heroCards = cardMarkers(top);
+  const hero = `
+    <div class="ms-hero" style="--c:${color}">
+      ${heroCards ? `<div class="ms-hero-cards">${heroCards}</div>` : ''}
+      <span class="ms-hero-badge">${opts.badge}</span>
+      <div class="ms-hero-rank">#1</div>
+      <div class="ms-hero-name">${escapeHtml(top.name)}</div>
+      <div class="ms-hero-team">${escapeHtml(top.team)}${top.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+      <div class="ms-hero-stat">${animNum(opts.keyPrefix + ':' + top.name, opts.valueOf(top), opts.fmt)}</div>
+      <div class="ms-hero-stat-label">${opts.statLabel}</div>
+      ${opts.line ? `<div class="ms-hero-line">“${opts.line(top)}”</div>` : ''}
+    </div>`;
+  const rows = rest.map((p, i) => {
+    const v = opts.valueOf(p);
+    const w = Math.max(6, Math.round((v / max) * 100));
+    return `
+      <div class="ms-row" data-team="${escapeHtml(p.team)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.team)} squad">
+        <div class="ms-rank">#${i + 2}</div>
+        <div class="ms-who">
+          <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
+          <div class="ms-who-team">${escapeHtml(p.team)}</div>
+        </div>
+        <div>
+          <div class="ms-val">${fmtByType(v, opts.fmt)}</div>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="matchsheet"><div>${hero}</div><div class="ms-list">${rows}</div></div>`;
+}
+
 function renderGoldenBoot() {
-  const top5 = sortedGoldenBoot.slice(0, 5);
+  const top5 = sortedGoldenBoot.filter(p => p.ps_nb > 0).slice(0, 6);
   return `
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">🥇 GOLDEN BOOT AWARD</h2>
         <p class="section-subtitle">${t('golden.sub')}</p>
       </div>
-      <div class="individuals-grid">
-        ${top5.map((p, i) => renderIndivCard(p, i+1, animNum('gb:' + p.name, p.ps_nb, 'money'), 'PS Bookings (NB)', [
-          `GM ${fmtPct(p.ps_nb_gm)}`,
-          `${fmtNum(p.meetings)} meet/wk`
-        ], 'golden')).join('')}
-      </div>
+      ${renderMatchSheet(top5, {
+        badge: '⚽ TOP SCORER', color: '#F2C75C', keyPrefix: 'gb',
+        valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
+        line: pickHeadlineFor('scorer')
+      })}
     </div>
   `;
 }
 
 function renderPlaymaker() {
-  const top5 = sortedPlaymaker.slice(0, 5);
+  const top5 = sortedPlaymaker.filter(p => p.opps > 0).slice(0, 6);
   return `
     <div class="section">
       <div class="section-header">
         <h2 class="section-title">🎯 PLAYMAKER AWARD</h2>
         <p class="section-subtitle">${t('playmaker.sub')}</p>
       </div>
-      <div class="individuals-grid">
-        ${top5.map((p, i) => renderIndivCard(p, i+1, animNum('pm:' + p.name, p.opps, 'int'), 'Opportunities Created', [
-          `${fmtNum(p.meetings)} meet/wk`,
-          `${fmtMoney(p.ps_total)} PS total`
-        ], 'playmaker')).join('')}
-      </div>
+      ${renderMatchSheet(top5, {
+        badge: '🎯 THE PLAYMAKER', color: '#C8102E', keyPrefix: 'pm',
+        valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created',
+        line: pickHeadlineFor('playmaker')
+      })}
     </div>
   `;
 }
@@ -2175,6 +2281,10 @@ const SPOT_HEADLINES = {
 function pickHeadline(key, p) {
   const arr = SPOT_HEADLINES[key];
   return arr[hashStr(p.name + key) % arr.length](p);
+}
+// Curried form for the match-sheet hero (key fixed, person applied later).
+function pickHeadlineFor(key) {
+  return p => pickHeadline(key, p);
 }
 
 function buildSpotlights() {
@@ -2282,7 +2392,46 @@ async function copyCommentary() {
 
 function renderSpotlight() {
   const spots = buildSpotlights();
-  const anim = suppressAnim ? '' : ' spot-anim';
+  if (spots.length === 0) {
+    return `
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">${t('spotlight.title')}</h2>
+          <p class="section-subtitle">${t('spotlight.sub')}</p>
+        </div>
+        <div class="no-result">No standout performances yet — check back once the data lands.</div>
+      </div>`;
+  }
+  const anim = suppressAnim ? '' : ' ms-anim';
+  const featured = spots[0];          // Top Scorer headlines the match sheet
+  const rest = spots.slice(1);        // the other standout roles
+  const fColor = colorForTeam(featured.person.team);
+  const fCards = cardMarkers(featured.person);
+
+  const hero = `
+    <div class="ms-hero${anim}" style="--c:${fColor}">
+      ${fCards ? `<div class="ms-hero-cards">${fCards}</div>` : ''}
+      <span class="ms-hero-badge">${featured.icon} ${featured.cat}</span>
+      <div class="ms-hero-name" style="margin-top:14px">${escapeHtml(featured.person.name)}</div>
+      <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+      <div class="ms-hero-stat" data-countup="${featured.value}" data-fmt="${featured.fmt}">${spotStatText(featured)}</div>
+      <div class="ms-hero-stat-label">${featured.statLabel}</div>
+      <div class="ms-hero-line">“${featured.headline}”</div>
+    </div>`;
+
+  const rows = rest.map((s, i) => `
+    <div class="ms-row${anim}" data-team="${escapeHtml(s.person.team)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.team)} squad">
+      <div class="ms-rank" style="font-size:18px">${s.icon}</div>
+      <div class="ms-who">
+        <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
+        <div class="ms-who-team">${s.cat} · ${escapeHtml(s.person.team)}</div>
+      </div>
+      <div>
+        <div class="ms-val">${spotStatText(s)}</div>
+        <div class="ms-sub">${s.statLabel}</div>
+      </div>
+    </div>`).join('');
+
   return `
     <div class="section">
       <div class="section-header">
@@ -2290,24 +2439,7 @@ function renderSpotlight() {
         <p class="section-subtitle">${t('spotlight.sub')}</p>
         <button id="copy-commentary" class="copy-btn" title="Copy the five headlines to the clipboard">${t('btn.copy')}</button>
       </div>
-      <div class="spotlight-grid">
-        ${spots.map((s, i) => {
-          const color = colorForTeam(s.person.team);
-          return `
-            <div class="spotlight-card${anim}" style="--c:${color}; animation-delay:${i * 90}ms">
-              <div class="spot-head">
-                <span class="spot-cat">${s.icon} ${s.cat}</span>
-              </div>
-              <div class="spot-name">${escapeHtml(s.person.name)}</div>
-              <div class="spot-team">${escapeHtml(s.person.team)}</div>
-              <div class="spot-stat" data-countup="${s.value}" data-fmt="${s.fmt}">${spotStatText(s)}</div>
-              <div class="spot-stat-label">${s.statLabel}</div>
-              <div class="spot-headline">“${s.headline}”</div>
-            </div>
-          `;
-        }).join('')}
-        ${spots.length === 0 ? '<div class="no-result">No standout performances yet — check back once the data lands.</div>' : ''}
-      </div>
+      <div class="matchsheet"><div>${hero}</div><div class="ms-list">${rows}</div></div>
     </div>
   `;
 }
@@ -3281,6 +3413,12 @@ function render() {
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
   document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
+  // Match-sheet ranked rows (Golden Boot / Playmaker / Spotlight) open the squad.
+  document.querySelectorAll('.ms-row[data-team]').forEach(row => row.addEventListener('click', () => {
+    openTeamModal = row.dataset.team;
+    render();
+    document.body.style.overflow = 'hidden';
+  }));
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
