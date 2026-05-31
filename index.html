@@ -1441,7 +1441,9 @@ img, table { max-width: 100%; }
 
 /* === Team modal contribution chart === */
 .contrib-chart { margin: 0 0 22px; display: flex; flex-direction: column; gap: 7px; }
-.contrib-row { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 10px; }
+.contrib-row { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 10px; padding: 2px 4px; border-radius: 6px; }
+.contrib-row.member-row-click:hover { background: var(--cream); }
+.contrib-row.member-row-click:hover .contrib-name { color: var(--ink); }
 .contrib-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
 .contrib-bar { height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; }
 .contrib-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--c), var(--gold)); min-width: 2px; }
@@ -1689,6 +1691,8 @@ let openTeamModal = null; // country name si modal ouverte
 let openNationModal = null; // region key when a nation drilldown modal is open
 let openPlayerModal = null; // player name shown in the Panini-style player card modal
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
+let playerReturnToTeam = null; // team to reopen when closing a player card opened from a team modal
+let playerReturnToNation = null; // nation to reopen when closing a player card opened from a nation modal
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
 let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
@@ -3351,7 +3355,7 @@ function renderTeamModal() {
             <div class="contrib-chart" style="--c:${c}">
               ${members.map(m => {
                 const share = Math.max(0, m.ps_total || 0) / totalPs * 100;
-                return `<div class="contrib-row">
+                return `<div class="contrib-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
                   <span class="contrib-name">${escapeHtml(m.name)}</span>
                   <div class="contrib-bar"><span style="width:${share.toFixed(1)}%"></span></div>
                   <span class="contrib-val">${share.toFixed(0)}%</span>
@@ -3376,7 +3380,7 @@ function renderTeamModal() {
               if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(m.ps_total_gm)})">🟨</span>`);
               const tenureLabel = m.is_rookie ? '🌱 Rookie' : (m.tenure || '');
               return `
-                <div class="members-table-row">
+                <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${idx === 0 ? 'top' : ''}">#${idx+1}</div>
                   <div>
                     <div class="member-name">${escapeHtml(m.name)}</div>
@@ -3486,7 +3490,7 @@ function renderNationModal() {
               if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
               if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(m.ps_total_gm)})">🟨</span>`);
               return `
-                <div class="members-table-row">
+                <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-nation="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>
                   <div>
                     <div class="member-name">${escapeHtml(m.name)}</div>
@@ -3605,13 +3609,22 @@ function render() {
   // Any player element (match-sheet cards/rows, Players-view rows, VAR rows)
   // opens the SAME Panini-style player card — one consistent experience.
   document.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => {
+    // If opened from inside the team/nation modal, remember it so closing the card
+    // returns there (and close that modal so they don't stack).
+    if (el.dataset.fromTeam && openTeamModal) { playerReturnToTeam = openTeamModal; openTeamModal = null; }
+    else if (el.dataset.fromNation && openNationModal) { playerReturnToNation = openNationModal; openNationModal = null; }
     openPlayerModal = el.dataset.player;
     render();
     document.body.style.overflow = 'hidden';
   }));
   // Player modal: close + "view squad" link
   const pOverlay = document.getElementById('player-overlay');
-  const closePlayer = () => { openPlayerModal = null; document.body.style.overflow = ''; render(); };
+  const closePlayer = () => {
+    openPlayerModal = null;
+    if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; render(); }
+    else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; render(); }
+    else { document.body.style.overflow = ''; render(); }
+  };
   const pClose = document.getElementById('player-close-btn');
   if (pClose) pClose.addEventListener('click', closePlayer);
   if (pOverlay) pOverlay.addEventListener('click', e => { if (e.target === pOverlay) closePlayer(); });
@@ -3865,7 +3878,11 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key === 'Escape' && openPlayerModal) {
-    openPlayerModal = null; document.body.style.overflow = ''; render(); return;
+    openPlayerModal = null;
+    if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; }
+    else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; }
+    else { document.body.style.overflow = ''; }
+    render(); return;
   }
   if (e.key === 'Escape' && (openTeamModal || openNationModal)) {
     if (openTeamModal && nationReturnTo) { openTeamModal = null; openNationModal = nationReturnTo; nationReturnTo = null; }
