@@ -128,9 +128,10 @@ input { font-family: inherit; }
 .last-update-label { font-size: 10px; color: rgba(255,255,255,0.55); }
 
 /* === TABS === */
-/* Wrapper holds the sticky position + edge fades; the inner bar scrolls. */
+/* Wrapper holds the tab row + edge fades. (Non-sticky: the tabs scroll away
+   with the page rather than floating — a floating bar felt heavy.) */
 .tabs-wrap {
-  position: sticky; top: 86px; z-index: 90;
+  position: relative; z-index: 90;
   background: var(--paper);
   border-bottom: 2px solid var(--line);
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
@@ -1297,10 +1298,9 @@ input { font-family: inherit; }
    =================================================================== */
 
 /* Safety net: never allow sideways scrolling on small screens.
-   Use `clip` (not `hidden`): `hidden` turns <body> into a scroll container,
-   which silently breaks `position: sticky` for the tab bar. `clip` prevents
-   the sideways overflow without creating that scroll container, so the tabs
-   pin correctly when you scroll. */
+   Use `clip` rather than `hidden`: `hidden` turns <body> into a scroll
+   container (which can break sticky descendants); `clip` blocks the sideways
+   overflow without that side effect. */
 html, body { max-width: 100%; overflow-x: clip; }
 img, table { max-width: 100%; }
 * { min-width: 0; }
@@ -1308,7 +1308,7 @@ img, table { max-width: 100%; }
 @media (max-width: 760px) {
   /* Compact header: the logo + a top-right LIVE pill on row 1, then the
      countdown/timestamp and the icon buttons share row 2 — saving a whole
-     line versus stacking LIVE on its own. Header scrolls away; the tabs pin. */
+     line versus stacking LIVE on its own. */
   .app-header { padding: 10px 14px 9px; gap: 8px 12px; flex-wrap: wrap; }
   .logo { gap: 10px; flex: 1 1 auto; }
   .logo-img { width: 38px; height: 38px; }
@@ -1316,7 +1316,6 @@ img, table { max-width: 100%; }
   .logo-text .subtitle { font-size: 9px; letter-spacing: 0.12em; }
   /* LIVE pill rides on the logo row, top-right — no longer its own line. */
   .live-pill { order: 2; flex: 0 0 auto; align-self: flex-start; padding: 5px 11px; font-size: 12px; }
-  .tabs-wrap { top: 0; }
   .tabs-bar { padding: 0 8px; gap: 2px; }
   .tab-btn { padding: 12px 12px; font-size: 12px; }
   /* Row 2: countdown/timestamp on the left, icon buttons on the right. */
@@ -1516,6 +1515,9 @@ img, table { max-width: 100%; }
 .tv-ms-row.tv-clickable:hover { background: rgba(255,255,255,0.16); transform: translateX(0.4vmin); }
 /* The player card sits above the TV overlay (z-index 1000). */
 .tv-player-overlay { z-index: 1200; }
+/* When the squad (team modal) is hosted in the TV overlay, lift its inner
+   fixed overlay above the TV projection layer too. */
+.tv-player-overlay > .modal-overlay { z-index: 1200; }
 .tv-ms-list { display: flex; flex-direction: column; justify-content: center; gap: 1.2vmin; }
 .tv-ms-row { display: flex; align-items: center; gap: 2vmin; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.4vmin; padding: 1.3vmin 2vmin; }
 .tv-ms-pos { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vmin, 40px); min-width: 1.6em; text-align: center; }
@@ -4535,17 +4537,14 @@ function openRules() {
 }
 
 // === Global player search (with tenure / rookie filters) ===
-// Scroll so the current tab's content sits just below the sticky header + tab
-// bar — used after picking a player so the result is visible, not hidden under
-// the hero podium (users don't intuitively scroll down to find it).
+// Scroll so the current tab's content sits near the top of the viewport — used
+// after picking a player so the result is visible, not hidden under the hero
+// podium (users don't intuitively scroll down to find it).
 function scrollToMainContent(behavior) {
   requestAnimationFrame(() => {
     const section = document.querySelector('#app .section');
     if (!section) { window.scrollTo(0, 0); return; }
-    const header = document.querySelector('.app-header');
-    const tabs = document.querySelector('.tabs-bar');
-    const offset = (header ? header.offsetHeight : 0) + (tabs ? tabs.offsetHeight : 0) + 8;
-    const y = section.getBoundingClientRect().top + window.scrollY - offset;
+    const y = section.getBoundingClientRect().top + window.scrollY - 8;
     window.scrollTo({ top: Math.max(0, y), behavior: behavior || 'smooth' });
   });
 }
@@ -4931,12 +4930,18 @@ function tvMatchSheet(items, opts) {
   const initials = String(top.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const flag = flagForTeam(top.team || top.name);
   const c = colorForTeam(top.team || top.name);
-  // People panels are clickable → tapping a card opens that player's Panini card,
-  // right over the projection. Team panels (podium) are not individual players.
-  const clk = opts.clickable;
-  const heroAttr = clk ? ` data-tvplayer="${escapeHtml(top.name)}" title="Tap to open ${escapeHtml(top.name)}'s card"` : '';
+  // Clickable panels open a card over the projection: people panels open the
+  // player's Panini card (`player`), the podium opens the team modal (`team`).
+  const kind = opts.clickable ? 'player' : (opts.clickTeam ? 'team' : null);
+  const clk = !!kind;
+  const clkAttr = (item) => {
+    if (kind === 'player') return ` data-tvplayer="${escapeHtml(item.name)}" title="Tap to open ${escapeHtml(item.name)}'s card"`;
+    if (kind === 'team') return ` data-tvteam="${escapeHtml(item.name)}" title="Tap to open ${escapeHtml(item.name)}'s squad"`;
+    return '';
+  };
+  const tapHint = kind === 'team' ? '👆 tap for the squad' : '👆 tap for the card';
   const hero = `
-    <div class="tv-hero${clk ? ' tv-clickable' : ''}" style="--c:${c}"${heroAttr}>
+    <div class="tv-hero${clk ? ' tv-clickable' : ''}" style="--c:${c}"${clk ? clkAttr(top) : ''}>
       <div class="tv-hero-top">
         <span class="tv-hero-badge">${opts.badge || '🏆 LEADER'}</span>
         <span class="tv-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span>
@@ -4946,12 +4951,12 @@ function tvMatchSheet(items, opts) {
       ${top.team ? `<div class="tv-hero-team">${escapeHtml(top.team)}</div>` : ''}
       <div class="tv-hero-val">${top.val}</div>
       <div class="tv-hero-sub">${opts.valLabel || ''}</div>
-      ${clk ? '<div class="tv-hero-tap">👆 tap for the card</div>' : ''}
+      ${clk ? `<div class="tv-hero-tap">${tapHint}</div>` : ''}
     </div>`;
   const rows = items.slice(1).map((p, i) => `
-    <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? ` data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card"` : ''}>
+    <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? clkAttr(p) : ''}>
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
-      <span class="tv-ms-name">${escapeHtml(p.name)}${p.team ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
+      <span class="tv-ms-name">${escapeHtml(p.name)}${p.team && p.team !== p.name ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
       <span class="tv-ms-figure">
         <span class="tv-ms-val">${p.val}</span>
         <span class="tv-ms-unit">${p.unit || opts.unit || ''}</span>
@@ -4976,7 +4981,7 @@ function tvPersonRow(i, p, val) {
 function tvPanelHTML(kind) {
   if (kind === 'podium') {
     const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: t.country, val: fmtMoney(t.avg_ps) }));
-    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 WORLD CUP WINNER', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON' });
+    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 WORLD CUP WINNER', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true });
   }
   if (kind === 'golden') {
     const items = sortedGoldenBoot.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
@@ -5056,6 +5061,9 @@ function renderTV() {
   // (great for the commentators: tap a standout, the full card pops up).
   root.querySelectorAll('[data-tvplayer]').forEach(el =>
     el.addEventListener('click', () => openTVPlayerCard(el.dataset.tvplayer)));
+  // Podium teams are tappable too → open the team's squad over the projection.
+  root.querySelectorAll('[data-tvteam]').forEach(el =>
+    el.addEventListener('click', () => openTVTeamCard(el.dataset.tvteam)));
 }
 
 // Player card shown ON TOP of the TV projection (its own overlay so it sits
@@ -5081,6 +5089,33 @@ function openTVPlayerCard(name) {
 function closeTVPlayerCard() {
   const el = document.getElementById('tv-player-overlay');
   if (el) el.remove();
+}
+
+// Team squad shown over the TV projection. Reuses the normal team modal markup,
+// hosted in a TV-level overlay so it sits above the projection. Players inside
+// the squad open their own card (also over the projection).
+function openTVTeamCard(country) {
+  const team = teams.find(t => t.country === country);
+  if (!team) return;
+  closeTVPlayerCard();
+  const prev = openTeamModal;
+  openTeamModal = country;
+  const inner = renderTeamModal(); // returns a full .modal-overlay > .modal
+  openTeamModal = prev; // don't disturb the underlying app state
+  const el = document.createElement('div');
+  el.className = 'tv-player-overlay';
+  el.id = 'tv-player-overlay';
+  el.innerHTML = inner;
+  document.body.appendChild(el);
+  const close = () => closeTVPlayerCard();
+  // Close on the close button or a backdrop tap.
+  const overlay = el.querySelector('#modal-overlay');
+  const btn = el.querySelector('#modal-close-btn');
+  if (btn) btn.addEventListener('click', close);
+  if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  // Player rows in the squad → open that player's card over the projection.
+  el.querySelectorAll('[data-player]').forEach(row =>
+    row.addEventListener('click', () => openTVPlayerCard(row.dataset.player)));
 }
 
 // === LIVE: polling ===
