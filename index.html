@@ -4300,23 +4300,49 @@ function applyAdminVisibility() {
 
 async function attemptLogin(password) {
   try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      // text/plain avoids a CORS preflight against Apps Script.
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'verify_password', password })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      safeSet(CONFIG.SESSION_KEY, '1');
-      safeSet(CONFIG.PWD_KEY, password); // needed to authorize each data request
-      return true;
+    // One round-trip: request the data directly with the password. A successful
+    // payload means the code is correct AND we already have the data — no second
+    // call. (Previously this verified the password, then init() fetched the data
+    // separately: two sequential Apps Script cold starts = a slow first login.)
+    const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
+    let data;
+    try {
+      const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+        method: 'POST',
+        cache: 'no-store',
+        // text/plain avoids a CORS preflight against Apps Script.
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'data', password }),
+        signal: ctrl ? ctrl.signal : undefined
+      });
+      data = await res.json();
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-    return false;
+    if (data && data.error === 'unauthorized') return false; // wrong access code
+    if (!data || data.error || !Array.isArray(data.teams)) return null; // back-end issue
+    // Correct code: persist the session and prime the cache so init() paints
+    // instantly from this payload (no extra fetch on the way in).
+    safeSet(CONFIG.SESSION_KEY, '1');
+    safeSet(CONFIG.PWD_KEY, password); // needed to authorize each data request
+    cacheSnapshot(data);
+    return true;
   } catch (err) {
     console.error('Login failed:', err);
     return null; // null = network/back-end error (distinct from wrong password)
   }
+}
+
+// Wake the Apps Script instance early (it can take several seconds to spin up
+// when idle). Fired while the login screen is shown so the cold start overlaps
+// with the user typing, instead of stacking onto the first real request.
+let prewarmed = false;
+function prewarmBackend() {
+  if (prewarmed) return;
+  prewarmed = true;
+  try { fetch(CONFIG.APPS_SCRIPT_URL + '?action=ping', { cache: 'no-store' }).catch(() => {}); }
+  catch (e) {}
 }
 
 // Football-themed loading animation (bouncing ball + flag-coloured sweep bar).
@@ -4993,6 +5019,7 @@ async function init() {
 
   if (!isLoggedIn()) {
     setChromeVisible(false);
+    prewarmBackend(); // wake Apps Script while the user reads/types — hides the cold start
     const showLogin = (err) => {
       app.innerHTML = renderLoginScreen(err);
       const btn = document.getElementById('login-btn');
