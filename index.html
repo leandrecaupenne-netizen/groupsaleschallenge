@@ -536,11 +536,21 @@ input { font-family: inherit; }
 .ms-list { display: flex; flex-direction: column; gap: 10px; }
 .ms-row {
   position: relative; overflow: hidden;
-  display: grid; grid-template-columns: 34px minmax(0, 1fr) clamp(120px, 30%, 210px); align-items: center; gap: 12px;
+  display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) clamp(110px, 28%, 210px); align-items: center; gap: 11px;
   background: var(--paper); border: 1px solid var(--line);
-  border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  border-radius: 12px; padding: 11px 14px; cursor: pointer;
   transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
 }
+/* Mini player "card" avatar in the chasing pack — team-coloured disc + flag. */
+.ms-avatar {
+  position: relative; width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 78%, #fff 0%), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 25%));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.ms-avatar-flag { position: absolute; bottom: -2px; right: -3px; display: inline-flex; width: 15px; height: 10px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
+.ms-avatar-flag i { flex: 1; }
 .ms-row:hover { transform: translateX(2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-color: color-mix(in srgb, var(--c, var(--usa-red)) 45%, var(--line)); }
 /* subtle proportion bar behind each row, scaled to the leader */
 .ms-row::before {
@@ -562,11 +572,12 @@ input { font-family: inherit; }
 /* Phones: keep names readable AND keep the metric label. The value + its label
    drop to a full-width second line (left-aligned) so nothing is truncated. */
 @media (max-width: 520px) {
-  .ms-row { grid-template-columns: 30px 1fr; grid-auto-rows: auto; gap: 4px 10px; padding: 12px 13px; }
+  .ms-row { grid-template-columns: 26px 36px 1fr; grid-auto-rows: auto; gap: 4px 9px; padding: 11px 12px; }
   .ms-rank { grid-row: 1 / span 2; align-self: center; }
-  .ms-who { grid-column: 2; }
+  .ms-avatar { grid-row: 1 / span 2; align-self: center; width: 36px; height: 36px; font-size: 14px; }
+  .ms-who { grid-column: 3; }
   .ms-who-name { white-space: normal; }
-  .ms-figure { grid-column: 2; text-align: left; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .ms-figure { grid-column: 3; text-align: left; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .ms-val { font-size: 18px; }
   .ms-sub { text-align: left; margin-top: 0; }
 }
@@ -2510,9 +2521,13 @@ function renderMatchSheet(list, opts) {
   const rows = rest.map((p, i) => {
     const v = opts.valueOf(p);
     const w = Math.max(6, Math.round((v / max) * 100));
+    const initials = String(p.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase();
+    const rc = colorForTeam(p.team);
+    const fl = flagForTeam(p.team);
     return `
       <div class="ms-row" data-player="${escapeHtml(p.name)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.name)}'s card">
         <div class="ms-rank">#${i + 2}</div>
+        <div class="ms-avatar" style="--ac:${rc}">${initials || '—'}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
         <div class="ms-who">
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
           <div class="ms-who-team">${escapeHtml(p.team)}</div>
@@ -2738,9 +2753,13 @@ function renderSpotlight() {
       <div class="ms-hero-line">“${featured.headline}”</div>
     </div>`;
 
-  const rows = rest.map((s, i) => `
+  const rows = rest.map((s, i) => {
+    const initials = String(s.person.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase();
+    const fl = flagForTeam(s.person.team);
+    return `
     <div class="ms-row${anim}" data-player="${escapeHtml(s.person.name)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.name)}'s card">
       <div class="ms-rank" style="font-size:18px">${s.icon}</div>
+      <div class="ms-avatar" style="--ac:${colorForTeam(s.person.team)}">${initials || '—'}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
       <div class="ms-who">
         <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
         <div class="ms-who-team">${s.cat} · ${escapeHtml(s.person.team)}</div>
@@ -2749,7 +2768,8 @@ function renderSpotlight() {
         <div class="ms-val">${spotStatText(s)}</div>
         <div class="ms-sub">${s.statLabel}</div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   return `
     <div class="section">
