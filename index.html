@@ -3003,7 +3003,7 @@ const FLAG_STRIPES = {
   DE: ['#222222', '#DD0000', '#FFCE00'],      // Germany
   BENELUX: ['#222222', '#FAE042', '#EF3340'], // Belgium
   NL: ['#AE1C28', '#FFFFFF', '#21468B'],      // Netherlands (red/white/blue)
-  PT: ['#006847', '#FFD200', '#DA291C'],      // Portugal
+  PT: ['#006600', '#006600', '#FF0000'],      // Portugal (green / red — 2:3 split)
   DK: ['#C60C30', '#FFFFFF', '#C60C30'],      // Denmark (Dannebrog red/white)
   NORDICS: ['#006AA7', '#FECC02', '#006AA7'], // Nordic — Swedish blue/gold (not France-like)
   OTHER: ['#C8102E', '#FFFFFF', '#006847']    // brand default
@@ -3022,7 +3022,7 @@ const COUNTRY_FLAGS = {
   BELGIUM: ['#2A2A2A', '#FAE042', '#EF3340'],
   LUXEMBOURG: ['#ED2939', '#FFFFFF', '#00A1DE'],
   SPAIN: ['#AA151B', '#F1BF00', '#AA151B'],
-  PORTUGAL: ['#006847', '#FFD200', '#DA291C'],
+  PORTUGAL: ['#006600', '#006600', '#FF0000'],
   GERMANY: ['#2A2A2A', '#DD0000', '#FFCE00'],
   ITALY: ['#008C45', '#FFFFFF', '#CD212A'],
   SWITZERLAND: ['#D52B1E', '#FFFFFF', '#D52B1E'],
@@ -3062,7 +3062,19 @@ const COUNTRY_FLAGS = {
 // region (handles entity names like "FR - M Cloud" → France).
 function flagForTeam(team) {
   const u = String(team || '').toUpperCase().trim();
-  return COUNTRY_FLAGS[u] || FLAG_STRIPES[regionOf(team)] || FLAG_STRIPES.OTHER;
+  if (COUNTRY_FLAGS[u]) return COUNTRY_FLAGS[u];
+  // Team names often carry a suffix ("PORTUGAL 2", "GERMANY North", "UK - Cyber").
+  // Match the country name when it appears as a whole word so the EXACT flag wins
+  // over the broader region palette.
+  for (const country in COUNTRY_FLAGS) {
+    if (u === country ||
+        u.startsWith(country + ' ') || u.startsWith(country + '-') ||
+        u.endsWith(' ' + country) ||
+        u.indexOf(' ' + country + ' ') !== -1 || u.indexOf('-' + country) !== -1) {
+      return COUNTRY_FLAGS[country];
+    }
+  }
+  return FLAG_STRIPES[regionOf(team)] || FLAG_STRIPES.OTHER;
 }
 
 // === Export the full standings as a PNG ===
@@ -3151,7 +3163,7 @@ function renderPlayerModal() {
 // and the My Position page so the player view is identical everywhere.
 function paniniCardInner(p) {
   const color = colorForTeam(p.team);
-  const flag = (COUNTRY_FLAGS[String(p.team).toUpperCase()] || FLAG_STRIPES[regionOf(p.team)] || FLAG_STRIPES.OTHER);
+  const flag = flagForTeam(p.team);
   const goldenRank = sortedGoldenBoot.findIndex(x => x.name === p.name) + 1;
   const playmakerRank = sortedPlaymaker.findIndex(x => x.name === p.name) + 1;
   const totalRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
