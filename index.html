@@ -1898,7 +1898,7 @@ const I18N = {
   en: {
     'tab.teams': 'Team Ranking', 'tab.spotlight': 'Players of the Moment ⭐', 'tab.awards': 'Special Awards',
     'tab.var': 'VAR Room 🟨', 'tab.position': 'My Position 🔍',
-    'teams.sub': 'World Cup Winner · Top 1 Team based on Average PS Bookings per person · {n} teams competing',
+    'teams.sub': 'Current favourite · Top 1 Team based on Average PS Bookings per person · {n} teams competing',
     'teams.searchPh': 'Search by country or team name...',
     'btn.export': '🖼️ Export standings', 'btn.compare': '⚖️ Compare', 'btn.copy': '📋 Copy commentary', 'btn.card': '🪪 Download my player card',
     'spotlight.title': '⭐ PLAYERS OF THE MOMENT', 'spotlight.sub': "This matchday's standout performances — five players catching the eye right now",
@@ -1912,7 +1912,7 @@ const I18N = {
     'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
     'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
     'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m {s}s to the Final', 'cd.live': '🏆 The Final is on — Paris!',
-    'hero.eyebrow': '🏆 WORLD CUP WINNER · CURRENT LEADERBOARD', 'hero.title': 'Who will lift the trophy?',
+    'hero.eyebrow': '🏆 CURRENT FAVOURITE · LIVE LEADERBOARD', 'hero.title': 'Who will lift the trophy?',
     'hero.desc': "Top 1 Team based on Average Total PS Bookings per person. Challenge runs from June 1st to July 3rd. Award ceremony in Paris, July 9th at Victoria Paris (l'Arc).",
     'th.rank': 'RANK', 'th.team': 'TEAM', 'th.members': 'MEMBERS', 'th.avgps': 'AVG PS<span class="th-thin"> / PERSON</span>', 'th.avggm': 'AVG GM', 'th.avgmeet': 'AVG MEET', 'th.avgopps': 'AVG OPPS',
     'teams.clickHint': '→ click to see members', 'teams.noresult': 'No teams match your search.',
@@ -4993,7 +4993,7 @@ function tvPersonRow(i, p, val) {
 function tvPanelHTML(kind) {
   if (kind === 'podium') {
     const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: t.country, val: fmtMoney(t.avg_ps) }));
-    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 WORLD CUP WINNER', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true });
+    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true });
   }
   if (kind === 'golden') {
     const items = sortedGoldenBoot.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
