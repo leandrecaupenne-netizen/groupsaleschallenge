@@ -1076,8 +1076,10 @@ input { font-family: inherit; }
 /* Phones: keep the three cards in a row but upright (no tilt) and snug. */
 @media (max-width: 560px) {
   .podium-row { gap: 6px; padding-top: 22px; align-items: stretch; }
-  .podium-card { width: clamp(94px, 30vw, 130px); min-height: calc(clamp(94px, 30vw, 130px) * 1.55); padding: 12px 8px 16px; border-radius: 12px; }
-  .podium-card.first { width: clamp(104px, 33vw, 150px); min-height: calc(clamp(104px, 33vw, 150px) * 1.55); margin-bottom: 16px; }
+  /* Widths kept small enough that all three cards fit even on a 280px Galaxy
+     Fold cover screen (≈ 78 + 86 + 78 + 2×6 gap = 254px). */
+  .podium-card { width: clamp(78px, 27vw, 130px); min-height: calc(clamp(78px, 27vw, 130px) * 1.55); padding: 12px 6px 16px; border-radius: 12px; }
+  .podium-card.first { width: clamp(86px, 30vw, 150px); min-height: calc(clamp(86px, 30vw, 150px) * 1.55); margin-bottom: 16px; }
   .podium-card.second, .podium-card.third { transform: none; }
   .podium-card.second:hover, .podium-card.third:hover { transform: translateY(-3px) scale(1.02); }
   .podium-card::after, .podium-card-top { display: none; }
@@ -1616,6 +1618,9 @@ img, table { max-width: 100%; }
 
 /* === Sortable team-table headers === */
 .th-sort, .th-psort, .th-nsort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
+/* On tight table layouts the "/ PERSON" qualifier is dropped (the section
+   subtitle already says "per person"); the full label shows on wider screens. */
+@media (max-width: 800px) { .th-thin { display: none; } }
 .th-sort:hover, .th-psort:hover, .th-nsort:hover { color: var(--usa-red); }
 
 /* === Filter chips (search + team region) === */
@@ -1845,7 +1850,7 @@ const I18N = {
     'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m {s}s to the Final', 'cd.live': '🏆 The Final is on — Paris!',
     'hero.eyebrow': '🏆 WORLD CUP WINNER · CURRENT LEADERBOARD', 'hero.title': 'Who will lift the trophy?',
     'hero.desc': "Top 1 Team based on Average Total PS Bookings per person. Challenge runs from June 1st to July 3rd. Award ceremony in Paris, July 9th at Victoria Paris (l'Arc).",
-    'th.rank': 'RANK', 'th.team': 'TEAM', 'th.members': 'MEMBERS', 'th.avgps': 'AVG PS / PERSON', 'th.avggm': 'AVG GM', 'th.avgmeet': 'AVG MEET', 'th.avgopps': 'AVG OPPS',
+    'th.rank': 'RANK', 'th.team': 'TEAM', 'th.members': 'MEMBERS', 'th.avgps': 'AVG PS<span class="th-thin"> / PERSON</span>', 'th.avggm': 'AVG GM', 'th.avgmeet': 'AVG MEET', 'th.avgopps': 'AVG OPPS',
     'teams.clickHint': '→ click to see members', 'teams.noresult': 'No teams match your search.',
     'golden.sub': 'Most Goals · Top 5 Salespeople based on PS Bookings New Business',
     'playmaker.sub': 'Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, > €50K)',
