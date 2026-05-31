@@ -486,7 +486,7 @@ input { font-family: inherit; }
 .ms-list { display: flex; flex-direction: column; gap: 10px; }
 .ms-row {
   position: relative; overflow: hidden;
-  display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) clamp(120px, 30%, 210px); align-items: center; gap: 12px;
   background: var(--paper); border: 1px solid var(--line);
   border-radius: 12px; padding: 12px 14px; cursor: pointer;
   transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
@@ -504,10 +504,19 @@ input { font-family: inherit; }
 .ms-who-name { font-weight: 700; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ms-who-team { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
 .ms-who-name .ms-mini-badge { font-size: 12px; margin-left: 5px; }
+.ms-figure { text-align: right; min-width: 0; }
 .ms-val { font-family: 'Anton', Impact, sans-serif; font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 1px; }
+.ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 2px; line-height: 1.25; }
 .ms-anim { opacity: 0; animation: spotIn 0.45s cubic-bezier(.2,.7,.3,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .ms-anim { opacity: 1; animation: none; } }
+/* Phones: keep names readable — shrink the figure column and drop the long
+   stat sub-label (the hero already explains the metric). */
+@media (max-width: 520px) {
+  .ms-row { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; padding: 11px 13px; }
+  .ms-who-name { white-space: normal; }
+  .ms-val { font-size: 17px; }
+  .ms-sub { display: none; }
+}
 
 /* === SPECIAL AWARDS === */
 .awards-grid {
@@ -2202,7 +2211,7 @@ function renderMatchSheet(list, opts) {
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
           <div class="ms-who-team">${escapeHtml(p.team)}</div>
         </div>
-        <div>
+        <div class="ms-figure">
           <div class="ms-val">${fmtByType(v, opts.fmt)}</div>
         </div>
       </div>`;
@@ -2426,7 +2435,7 @@ function renderSpotlight() {
         <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
         <div class="ms-who-team">${s.cat} · ${escapeHtml(s.person.team)}</div>
       </div>
-      <div>
+      <div class="ms-figure">
         <div class="ms-val">${spotStatText(s)}</div>
         <div class="ms-sub">${s.statLabel}</div>
       </div>
