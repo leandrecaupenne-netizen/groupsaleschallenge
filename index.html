@@ -1344,6 +1344,43 @@ img, table { max-width: 100%; }
 .tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
 .tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* === TV "Panini" match-sheet: featured hero card + chasing pack === */
+.tv-matchsheet { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 2.5vw; align-items: stretch; max-width: 1200px; width: 100%; margin: 0 auto; }
+.tv-hero {
+  position: relative; overflow: hidden; border-radius: 2vmin; padding: 2.4vmin 2vmin;
+  display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center;
+  color: #fff; border: 2px solid var(--gold);
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(255,255,255,0.22), rgba(255,255,255,0) 55%),
+    linear-gradient(160deg, var(--c, #2D3550) 0%, color-mix(in srgb, var(--c, #2D3550) 50%, #0b0d22) 100%);
+  box-shadow: 0 2vmin 5vmin rgba(0,0,0,0.45), 0 0 0 1px rgba(242,199,92,0.5) inset;
+}
+.tv-hero::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background: repeating-linear-gradient(125deg, rgba(255,255,255,0.06) 0 3px, transparent 3px 22px); }
+.tv-hero > * { position: relative; z-index: 1; }
+.tv-hero-top { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
+.tv-hero-badge { font-family: 'Anton', Impact, sans-serif; font-size: clamp(11px, 1.7vmin, 18px); letter-spacing: 0.05em; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.3); border-radius: 99px; padding: 0.5vmin 1.4vmin; color: #fff; }
+.tv-hero-flag { display: inline-flex; width: clamp(28px, 4vmin, 44px); height: clamp(18px, 2.6vmin, 28px); border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); flex: 0 0 auto; }
+.tv-hero-flag i { flex: 1; }
+.tv-hero-avatar { width: clamp(60px, 11vmin, 120px); height: clamp(60px, 11vmin, 120px); margin: 1.6vmin auto 1vmin; border-radius: 50%; background: rgba(255,255,255,0.15); border: 0.4vmin solid rgba(255,255,255,0.55); display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: clamp(26px, 5vmin, 54px); }
+.tv-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 4vmin, 46px); line-height: 1.05; }
+.tv-hero-team { font-family: ui-monospace, monospace; font-size: clamp(10px, 1.6vmin, 16px); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-top: 0.6vmin; }
+.tv-hero-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 7vmin, 76px); color: var(--gold); line-height: 1; margin-top: 1.4vmin; text-shadow: 0 2px 16px rgba(0,0,0,0.35); }
+.tv-hero-sub { font-family: ui-monospace, monospace; font-size: clamp(9px, 1.4vmin, 14px); letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 0.6vmin; }
+.tv-ms-list { display: flex; flex-direction: column; justify-content: center; gap: 1.2vmin; }
+.tv-ms-row { display: flex; align-items: center; gap: 2vmin; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.4vmin; padding: 1.3vmin 2vmin; }
+.tv-ms-pos { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vmin, 40px); min-width: 1.6em; text-align: center; }
+.tv-ms-name { flex: 1; min-width: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(16px, 2.8vmin, 34px); line-height: 1.05; }
+.tv-ms-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.46em; color: var(--gold); letter-spacing: 0.05em; margin-left: 0.5em; text-transform: uppercase; vertical-align: middle; }
+.tv-ms-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 42px); color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 640px) {
+  .tv-matchsheet { grid-template-columns: 1fr; gap: 2vmin; }
+  .tv-ms-row { flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px; }
+  .tv-ms-name { font-size: clamp(14px, 4.4vw, 22px); }
+  .tv-ms-val { font-size: clamp(15px, 4.4vw, 24px); }
+}
+
 /* TV mode on a phone (portrait): stop the name + value from colliding by letting
    the value wrap onto its own line under the name. TV is built for big screens
    but people do open it on mobile, so keep it clean there too. */
@@ -4516,6 +4553,40 @@ function toggleTV() { tvMode ? exitTV() : enterTV(); }
 function tvSection(title, sub, rows) {
   return `<div class="tv-title">${title}</div><div class="tv-sub">${sub}</div><div class="tv-list">${rows}</div>`;
 }
+// TV "Panini" match-sheet: a giant featured #1 card + the chasing pack as rows.
+// items: [{name, team, val, sub}], opts: { title, sub, accent, valColor, badge }
+function tvMatchSheet(items, opts) {
+  if (!items.length) return tvSection(opts.title, opts.sub, `<div class="tv-row"><span class="tv-name">No data yet.</span></div>`);
+  const top = items[0];
+  const initials = String(top.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const flag = flagForTeam(top.team || top.name);
+  const c = colorForTeam(top.team || top.name);
+  const hero = `
+    <div class="tv-hero" style="--c:${c}">
+      <div class="tv-hero-top">
+        <span class="tv-hero-badge">${opts.badge || '🏆 LEADER'}</span>
+        <span class="tv-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span>
+      </div>
+      <div class="tv-hero-avatar">${initials || '—'}</div>
+      <div class="tv-hero-name">${escapeHtml(top.name)}</div>
+      ${top.team ? `<div class="tv-hero-team">${escapeHtml(top.team)}</div>` : ''}
+      <div class="tv-hero-val">${top.val}</div>
+      <div class="tv-hero-sub">${opts.valLabel || ''}</div>
+    </div>`;
+  const rows = items.slice(1).map((p, i) => `
+    <div class="tv-ms-row">
+      <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
+      <span class="tv-ms-name">${escapeHtml(p.name)}${p.team ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
+      <span class="tv-ms-val">${p.val}</span>
+    </div>`).join('');
+  return `
+    <div class="tv-title">${opts.title}</div>
+    <div class="tv-sub">${opts.sub}</div>
+    <div class="tv-matchsheet">
+      ${hero}
+      <div class="tv-ms-list">${rows || '<div class="tv-ms-row"><span class="tv-ms-name" style="opacity:.6">Only the leader so far</span></div>'}</div>
+    </div>`;
+}
 function tvPersonRow(i, p, val) {
   const medal = ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1));
   return `<div class="tv-row${i === 0 ? ' lead' : ''}">
@@ -4526,21 +4597,16 @@ function tvPersonRow(i, p, val) {
 }
 function tvPanelHTML(kind) {
   if (kind === 'podium') {
-    const rows = sortedTeams.slice(0, 3).map((t, i) =>
-      `<div class="tv-row${i === 0 ? ' lead' : ''}">
-        <span class="tv-pos">${['🥇', '🥈', '🥉'][i]}</span>
-        <span class="tv-name">${escapeHtml(t.country)} <em>${t.members} players</em></span>
-        <span class="tv-val">${fmtMoney(t.avg_ps)}</span>
-      </div>`).join('');
-    return tvSection('🏆 WORLD CUP — TOP TEAMS', 'Average PS Bookings per person', rows);
+    const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: t.country, val: fmtMoney(t.avg_ps) }));
+    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 WORLD CUP WINNER', valLabel: 'AVG PS / PERSON' });
   }
   if (kind === 'golden') {
-    const rows = sortedGoldenBoot.slice(0, 5).map((p, i) => tvPersonRow(i, p, fmtMoney(p.ps_nb))).join('');
-    return tvSection('🥇 GOLDEN BOOT — TOP SCORERS', 'PS Bookings — New Business', rows);
+    const items = sortedGoldenBoot.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
+    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS' });
   }
   if (kind === 'playmaker') {
-    const rows = sortedPlaymaker.slice(0, 5).map((p, i) => tvPersonRow(i, p, Number(p.opps).toFixed(0))).join('');
-    return tvSection('🎯 PLAYMAKERS — MOST ASSISTS', 'Opportunities created', rows);
+    const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
+    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED' });
   }
   if (kind === 'var') {
     const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
@@ -4557,10 +4623,8 @@ function tvPanelHTML(kind) {
   if (kind === 'fairplay') {
     const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
     const top = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 5);
-    const rows = top.length
-      ? top.map(p => `<div class="tv-row tv-row-clean"><span class="tv-pos">✅</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val">${fmtMoney(p.ps_nb)}</span></div>`).join('')
-      : `<div class="tv-row"><span class="tv-name">No clean sheets yet.</span></div>`;
-    return tvSection('🧤 CLEAN SHEET — FAIR PLAY', `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, rows);
+    const items = top.map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
+    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS BOOKINGS · NEW BUSINESS' });
   }
   if (kind === 'awards') {
     const awRows = (list, valFn) => list.length
@@ -4574,13 +4638,12 @@ function tvPanelHTML(kind) {
         <div class="tv-awcol"><div class="tv-awh">🌱 Rookie of the Year</div><div class="tv-list">${rook}</div></div>
       </div>`;
   }
-  const rows = buildSpotlights().map(s =>
-    `<div class="tv-row">
-      <span class="tv-pos">${s.icon}</span>
-      <span class="tv-name">${escapeHtml(s.person.name)} <em>${escapeHtml(s.person.team)}</em><small>${s.cat}</small></span>
-      <span class="tv-val">${spotStatText(s)}</span>
-    </div>`).join('');
-  return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", rows);
+  const spots = buildSpotlights();
+  if (!spots.length) return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", `<div class="tv-row"><span class="tv-name">No standouts yet.</span></div>`);
+  const featured = spots[0];
+  const items = [{ name: featured.person.name, team: featured.person.team, val: spotStatText(featured) }]
+    .concat(spots.slice(1).map(s => ({ name: s.person.name, team: `${s.cat} · ${s.person.team}`, val: spotStatText(s) })));
+  return tvMatchSheet(items, { title: '⭐ PLAYERS OF THE MOMENT', sub: "This matchday's standout performances", badge: `${featured.icon} ${featured.cat}`, valLabel: featured.statLabel.toUpperCase() });
 }
 function renderTV() {
   if (!tvMode) return;
