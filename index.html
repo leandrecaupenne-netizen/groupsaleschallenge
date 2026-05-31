@@ -258,9 +258,24 @@ input { font-family: inherit; }
     linear-gradient(165deg, #C8932E 0%, #7a5418 60%, #4a3210 100%);
 }
 .podium-card.first::after { background: rgba(242,199,92,0.4); box-shadow: inset 0 0 0 1px rgba(242,199,92,0.6); }
-/* #2 / #3 tilt inward toward the champion */
-.podium-card.second { transform: rotate(-6deg) translateY(6px); transform-origin: bottom right; }
-.podium-card.third  { transform: rotate(6deg) translateY(6px); transform-origin: bottom left; }
+/* #2 — silver card, tilted inward toward the champion */
+.podium-card.second {
+  transform: rotate(-6deg) translateY(6px); transform-origin: bottom right;
+  border-color: rgba(226,232,240,0.65);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,0.30), rgba(255,255,255,0) 55%),
+    linear-gradient(165deg, #9aa4b2 0%, #5c6573 60%, #2f3540 100%);
+}
+.podium-card.second .podium-rank, .podium-card.second .podium-team-name { color: #E8EDF4; }
+/* #3 — bronze card, tilted inward */
+.podium-card.third {
+  transform: rotate(6deg) translateY(6px); transform-origin: bottom left;
+  border-color: rgba(205,127,50,0.6);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,0.24), rgba(255,255,255,0) 55%),
+    linear-gradient(165deg, #C07A3A 0%, #80491f 60%, #4a2c12 100%);
+}
+.podium-card.third .podium-rank, .podium-card.third .podium-team-name { color: #F3D2B0; }
 .podium-card.second:hover { transform: rotate(-3deg) translateY(-2px) scale(1.02); }
 .podium-card.third:hover  { transform: rotate(3deg) translateY(-2px) scale(1.02); }
 
@@ -270,8 +285,8 @@ input { font-family: inherit; }
 .podium-medal { font-size: clamp(30px, 5vw, 42px); margin-top: 8px; line-height: 1; }
 .podium-rank { font-family: 'Anton', Impact, sans-serif; font-size: clamp(34px, 6vw, 48px); color: var(--gold); line-height: 0.9; margin-top: 2px; }
 .podium-card.first .podium-rank { font-size: clamp(44px, 8vw, 64px); }
-.podium-team-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(15px, 2.4vw, 20px); letter-spacing: 0.03em; margin: 8px 0 0; word-break: break-word; color: #fff; line-height: 1.05; }
-.podium-card.first .podium-team-name { color: var(--gold); font-size: clamp(17px, 2.8vw, 23px); }
+.podium-team-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(13px, 2.2vw, 20px); letter-spacing: -0.01em; margin: 8px 0 0; overflow-wrap: break-word; hyphens: none; color: #fff; line-height: 1.12; max-width: 100%; }
+.podium-card.first .podium-team-name { color: var(--gold); font-size: clamp(15px, 2.6vw, 23px); }
 .podium-stat-main { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vw, 28px); color: #fff; margin-top: auto; font-variant-numeric: tabular-nums; }
 .podium-stat-label { font-size: 8.5px; letter-spacing: 0.12em; color: rgba(255,255,255,0.65); text-transform: uppercase; margin-top: 3px; }
 .podium-stat-meta { display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.78); font-family: ui-monospace, monospace; }
@@ -940,6 +955,10 @@ input { font-family: inherit; }
   .podium-card.second:hover, .podium-card.third:hover { transform: translateY(-3px) scale(1.02); }
   .podium-card::after, .podium-card-top { display: none; }
   .podium-medal { font-size: 24px; }
+  /* Small enough that long single words (LUXEMBOURG) fit one line on a narrow card. */
+  .podium-team-name { font-size: 11px; letter-spacing: -0.02em; }
+  .podium-card.first .podium-team-name { font-size: 12px; }
+  .podium-stat-main { font-size: clamp(15px, 4.4vw, 20px); }
   .podium-stat-meta { gap: 8px; font-size: 9px; }
 }
 
@@ -1171,14 +1190,10 @@ img, table { max-width: 100%; }
   .teams-table-row .click-hint { display: none; }
   .tt-money-sub { font-size: 10px; }
 
-  /* Long team / people names wrap instead of pushing layout wider */
-  .podium-team-name, .indiv-name, .indiv-team, .position-name,
+  /* Long team / people names wrap instead of pushing layout wider
+     (podium handled separately — it must NOT break mid-word). */
+  .indiv-name, .indiv-team, .position-name,
   .modal-title, .member-name, .award-row .name .full-name { overflow-wrap: anywhere; }
-
-  /* Podium: tighten so the winner card reads well stacked */
-  .podium-card, .podium-card.first { padding: 20px 16px; }
-  .podium-card.first .podium-rank { font-size: 48px; }
-  .podium-card.first .podium-team-name { font-size: 21px; }
 
   /* Individual cards a touch more compact */
   .indiv-rank { font-size: 34px; min-width: 38px; }
