@@ -128,18 +128,29 @@ input { font-family: inherit; }
 .last-update-label { font-size: 10px; color: rgba(255,255,255,0.55); }
 
 /* === TABS === */
-.tabs-bar {
+/* Wrapper holds the sticky position + edge fades; the inner bar scrolls. */
+.tabs-wrap {
+  position: sticky; top: 86px; z-index: 90;
   background: var(--paper);
   border-bottom: 2px solid var(--line);
-  position: sticky;
-  top: 86px;
-  z-index: 90;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+/* Right/left fade hints so users know the tab bar scrolls horizontally. */
+.tabs-wrap::before, .tabs-wrap::after {
+  content: ''; position: absolute; top: 0; bottom: 2px; width: 28px; z-index: 2;
+  pointer-events: none; opacity: 0; transition: opacity 0.2s;
+}
+.tabs-wrap::before { left: 0; background: linear-gradient(90deg, var(--paper), transparent); }
+.tabs-wrap::after { right: 0; background: linear-gradient(270deg, var(--paper), transparent); }
+.tabs-wrap.can-left::before { opacity: 1; }
+.tabs-wrap.can-right::after { opacity: 1; }
+.tabs-bar {
   padding: 0 32px;
   display: flex;
   gap: 4px;
   overflow-x: auto;
   scrollbar-width: thin;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  scroll-behavior: smooth;
 }
 .tab-btn {
   padding: 14px 18px;
@@ -803,6 +814,9 @@ input { font-family: inherit; }
 .pc-rating span { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.75); margin-top: 4px; }
 .pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pc-stat { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
+.pc-stat-link { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
+.pc-stat-link:hover { border-color: var(--c, var(--usa-red)); transform: translateY(-2px); }
+.pc-stat-link .pc-stat-label::after { content: ' ›'; opacity: 0.5; }
 .pc-stat-val { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--ink); }
 .pc-stat-label { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-top: 3px; }
 .pc-stat-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 2px; }
@@ -1160,7 +1174,8 @@ img, table { max-width: 100%; }
   .logo-img { width: 42px; height: 42px; }
   .logo-text .title { font-size: 18px; }
   .logo-text .subtitle { font-size: 9px; letter-spacing: 0.12em; }
-  .tabs-bar { top: 0; padding: 0 8px; gap: 2px; }
+  .tabs-wrap { top: 0; }
+  .tabs-bar { padding: 0 8px; gap: 2px; }
   .tab-btn { padding: 12px 12px; font-size: 12px; }
   /* On mobile the header wraps: don't push header-status to the right (it would
      overflow off the left edge). Give it the full width, left-aligned, and let
@@ -2027,11 +2042,13 @@ function renderTabs() {
     ? [...TABS, { id: 'vartime', label: 'VAR TIME 🟥', tip: 'Admin · Friday review of players outside the rules' }]
     : TABS;
   return `
-    <div class="tabs-bar">
-      ${tabs.map(tb => {
-        const label = I18N.en['tab.' + tb.id] ? t('tab.' + tb.id) : tb.label;
-        return `<button class="tab-btn ${currentTab === tb.id ? 'active' : ''}" data-tab="${tb.id}" title="${escapeHtml(tb.tip || '')}">${label}</button>`;
-      }).join('')}
+    <div class="tabs-wrap">
+      <div class="tabs-bar" id="tabs-bar">
+        ${tabs.map(tb => {
+          const label = I18N.en['tab.' + tb.id] ? t('tab.' + tb.id) : tb.label;
+          return `<button class="tab-btn ${currentTab === tb.id ? 'active' : ''}" data-tab="${tb.id}" title="${escapeHtml(tb.tip || '')}">${label}</button>`;
+        }).join('')}
+      </div>
     </div>
   `;
 }
@@ -3250,8 +3267,8 @@ function paniniCardInner(p) {
     : clean
     ? `<span class="pc-discipline ok" title="5+ meetings/week and GM ≥ 25%">✅ Playing by the rules</span>`
     : '';
-  const stat = (label, value, sub) => `
-    <div class="pc-stat">
+  const stat = (label, value, sub, tab) => `
+    <div class="pc-stat${tab ? ' pc-stat-link' : ''}"${tab ? ` data-goto="${tab}"` : ''}>
       <div class="pc-stat-val">${value}</div>
       <div class="pc-stat-label">${label}</div>
       ${sub ? `<div class="pc-stat-sub">${sub}</div>` : ''}
@@ -3273,10 +3290,10 @@ function paniniCardInner(p) {
       </div>
     </div>
     <div class="pc-stats">
-      ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB')}
-      ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created')}
+      ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB', 'golden')}
+      ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
       ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
-      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm)) : ''}
+      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'awards') : ''}
     </div>`;
 }
 
@@ -3602,6 +3619,13 @@ function render() {
   if (pTeamLink) pTeamLink.addEventListener('click', () => {
     openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
   });
+  // Stat boxes deep-link to that ranking tab (Golden Boot, Playmaker, Awards).
+  document.querySelectorAll('.pc-stat-link[data-goto]').forEach(box => box.addEventListener('click', () => {
+    const tab = box.dataset.goto;
+    openPlayerModal = null; document.body.style.overflow = '';
+    currentTab = tab; if (tab === 'teams') teamView = 'teams';
+    setTabUrl(tab); render();
+  }));
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
@@ -3677,6 +3701,18 @@ function render() {
   if (tabsBar && activeTab) {
     const target = activeTab.offsetLeft - (tabsBar.clientWidth - activeTab.offsetWidth) / 2;
     tabsBar.scrollLeft = Math.max(0, target);
+  }
+  // Show/hide the left & right scroll-fade hints on the tab bar.
+  const tabsWrap = document.querySelector('.tabs-wrap');
+  if (tabsBar && tabsWrap) {
+    const updateFades = () => {
+      const maxScroll = tabsBar.scrollWidth - tabsBar.clientWidth;
+      tabsWrap.classList.toggle('can-left', tabsBar.scrollLeft > 4);
+      // 0.92 absorbs the trailing padding/rounding so the right fade clears at the end.
+      tabsWrap.classList.toggle('can-right', tabsBar.scrollLeft < maxScroll * 0.92 - 1);
+    };
+    tabsBar.addEventListener('scroll', updateFades, { passive: true }); // element is recreated each render, no leak
+    updateFades();
   }
 
   // Sortable team-table headers
@@ -4125,7 +4161,15 @@ function openSearch() {
       document.body.style.overflow = 'hidden';
     }));
   };
-  el.querySelector('#search-input').addEventListener('input', e => { query = e.target.value; renderResults(); });
+  const searchInput = el.querySelector('#search-input');
+  searchInput.addEventListener('input', e => { query = e.target.value; renderResults(); });
+  // Enter opens the top result — faster than reaching for it.
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const first = el.querySelector('.search-result');
+      if (first) { e.preventDefault(); first.click(); }
+    }
+  });
   el.querySelectorAll('.search-chip').forEach(c => c.addEventListener('click', () => {
     filter = c.dataset.f; el.querySelectorAll('.search-chip').forEach(x => x.classList.toggle('on', x === c)); renderResults();
   }));
