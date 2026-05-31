@@ -590,6 +590,8 @@ input { font-family: inherit; }
   border: 1px solid var(--line);
   box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
+.position-card-wrap { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.position-teamrank { text-align: center; font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
 .position-name {
   font-family: 'Anton', Impact, sans-serif;
   font-size: 36px; letter-spacing: 0.03em;
@@ -2870,40 +2872,7 @@ function renderMyPosition() {
 
 function renderPositionDetails(person) {
   cardPerson = person; // remember for the shareable card
-  const goldenRank = sortedGoldenBoot.findIndex(p => p.name === person.name) + 1;
-  const playmakerRank = sortedPlaymaker.findIndex(p => p.name === person.name) + 1;
-  const totalRank = sortedPSTotal.findIndex(p => p.name === person.name) + 1;
-  const licenceRank = sortedLicence.findIndex(p => p.name === person.name) + 1;
   const teamRank = sortedTeams.findIndex(t => t.country === person.team) + 1;
-
-  const stats = [
-    {
-      label: 'Golden Boot Rank',
-      value: goldenRank ? `#${goldenRank}` : '—',
-      sub: fmtMoney(person.ps_nb) + ' NB',
-      highlight: goldenRank && goldenRank <= 5
-    },
-    {
-      label: 'Playmaker Rank',
-      value: playmakerRank ? `#${playmakerRank}` : '—',
-      sub: `${Number(person.opps||0)} opportunities`,
-      highlight: playmakerRank && playmakerRank <= 5
-    },
-    {
-      label: 'PS Bookings Total',
-      value: fmtMoney(person.ps_total),
-      sub: `#${totalRank} overall`,
-      highlight: false
-    }
-  ];
-  if (person.licence_gm > 0) {
-    stats.push({
-      label: 'Licence GM Rank',
-      value: licenceRank ? `#${licenceRank}` : '—',
-      sub: fmtMoney(person.licence_gm),
-      highlight: licenceRank && licenceRank <= 3
-    });
-  }
 
   const cards = [];
   if (person.yellow_meetings) {
@@ -2917,19 +2886,11 @@ function renderPositionDetails(person) {
     cards.push({type: 'ok', label: `✅ GM target met (${fmtPct(person.ps_total_gm)})`});
   }
 
+  // Same Panini card as everywhere else, centred, with discipline status below.
   return `
     <div class="position-result">
-      <div class="position-name">${escapeHtml(person.name)}</div>
-      <div class="position-team">${escapeHtml(person.team)}${teamRank > 0 ? ` · Team #${teamRank} of ${sortedTeams.length}` : ''}</div>
-      <div class="position-stats">
-        ${stats.map(s => `
-          <div class="pos-stat ${s.highlight ? 'highlight' : ''}">
-            <div class="pos-stat-label">${s.label}</div>
-            <div class="pos-stat-value">${s.value}</div>
-            ${s.sub ? `<div class="pos-stat-rank">${s.sub}</div>` : ''}
-          </div>
-        `).join('')}
-      </div>
+      <div class="position-card-wrap">${paniniCardInner(person)}</div>
+      ${teamRank > 0 ? `<div class="position-teamrank">${escapeHtml(person.team)} · Team #${teamRank} of ${sortedTeams.length}</div>` : ''}
       <div class="cards-status">
         ${cards.map(c => `<div class="status-item"><span class="${c.type === 'ok' ? 'status-ok' : 'status-warn'}">${c.label}</span></div>`).join('')}
       </div>
@@ -3176,6 +3137,19 @@ function renderPlayerModal() {
   if (!openPlayerModal) return '';
   const p = people.find(x => x.name === openPlayerModal);
   if (!p) return '';
+  return `
+    <div class="modal-overlay" id="player-overlay">
+      <div class="pc-modal" onclick="event.stopPropagation()">
+        <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
+        ${paniniCardInner(p)}
+        <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
+      </div>
+    </div>`;
+}
+
+// The Panini card body (foil card + stats grid) — shared by the player modal
+// and the My Position page so the player view is identical everywhere.
+function paniniCardInner(p) {
   const color = colorForTeam(p.team);
   const flag = (COUNTRY_FLAGS[String(p.team).toUpperCase()] || FLAG_STRIPES[regionOf(p.team)] || FLAG_STRIPES.OTHER);
   const goldenRank = sortedGoldenBoot.findIndex(x => x.name === p.name) + 1;
@@ -3186,40 +3160,32 @@ function renderPlayerModal() {
   const cards = [];
   if (p.yellow_meetings) cards.push('🟨');
   if (p.yellow_gm) cards.push('🟨');
-
   const stat = (label, value, sub) => `
     <div class="pc-stat">
       <div class="pc-stat-val">${value}</div>
       <div class="pc-stat-label">${label}</div>
       ${sub ? `<div class="pc-stat-sub">${sub}</div>` : ''}
     </div>`;
-
   return `
-    <div class="modal-overlay" id="player-overlay">
-      <div class="pc-modal" onclick="event.stopPropagation()">
-        <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
-        <div class="pc-card" style="--c:${color}">
-          <div class="pc-card-top">
-            <span class="pc-period">${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
-            <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
-          </div>
-          <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : ''}</div>
-          <div class="pc-name">${escapeHtml(p.name)}</div>
-          <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
-          <div class="pc-rating-row">
-            <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
-            <div class="pc-rating"><b>${fmtPct(p.ps_total_gm)}</b><span>GM</span></div>
-            <div class="pc-rating"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
-          </div>
-        </div>
-        <div class="pc-stats">
-          ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB')}
-          ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created')}
-          ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
-          ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm)) : ''}
-        </div>
-        <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
+    <div class="pc-card" style="--c:${color}">
+      <div class="pc-card-top">
+        <span class="pc-period">${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
+        <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       </div>
+      <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : ''}</div>
+      <div class="pc-name">${escapeHtml(p.name)}</div>
+      <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
+      <div class="pc-rating-row">
+        <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
+        <div class="pc-rating"><b>${fmtPct(p.ps_total_gm)}</b><span>GM</span></div>
+        <div class="pc-rating"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
+      </div>
+    </div>
+    <div class="pc-stats">
+      ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB')}
+      ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created')}
+      ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
+      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm)) : ''}
     </div>`;
 }
 
@@ -4063,8 +4029,11 @@ function openSearch() {
     }).join('') + (total > 40 ? `<div class="var-more">+ ${total - 40} more — refine your search</div>` : ''))
       : `<div class="no-result">No player found.</div>`;
     box.querySelectorAll('.search-result').forEach(btn => btn.addEventListener('click', () => {
-      positionQuery = btn.dataset.name; currentTab = 'position'; setTabUrl('position'); close(); render();
-      scrollToMainContent(); // land on the result, not back on the podium
+      // Open the same Panini player card as everywhere else.
+      close();
+      openPlayerModal = btn.dataset.name;
+      render();
+      document.body.style.overflow = 'hidden';
     }));
   };
   el.querySelector('#search-input').addEventListener('input', e => { query = e.target.value; renderResults(); });
