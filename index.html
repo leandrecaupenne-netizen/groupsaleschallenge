@@ -610,52 +610,80 @@ input { font-family: inherit; }
   font-family: ui-monospace, monospace;
   letter-spacing: 0.06em; margin-top: 2px;
 }
-.award-list { display: flex; flex-direction: column; gap: 8px; }
-.award-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 12px;
-  background: var(--cream);
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer; transition: background 0.12s, transform 0.12s;
+/* === Panini-style award winners === */
+/* #1 hero: a mini trading card with avatar disc, flag, big stat and ribbon. */
+.aw-hero {
+  position: relative; cursor: pointer; margin-top: 4px;
+  border-radius: 14px; padding: 16px 14px 14px;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--tc, var(--navy)) 90%, #fff 0%), color-mix(in srgb, var(--tc, var(--navy)) 62%, #000 18%));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--tc, var(--navy)) 35%, transparent), inset 0 0 0 1px rgba(255,255,255,0.14);
+  overflow: hidden; transition: transform 0.15s, box-shadow 0.15s;
 }
-.award-row[data-player]:hover { background: var(--line); transform: translateX(2px); }
-/* #1 winner stands out: gold tint, accent bar, bigger name */
-.award-row-top {
-  background: linear-gradient(90deg, rgba(242,199,92,0.22), rgba(242,199,92,0.06));
-  border: 1px solid rgba(242,199,92,0.5); border-left: 4px solid var(--gold);
-  padding: 13px 12px;
+.aw-hero::before { /* foil diagonal sheen */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(125deg, rgba(255,255,255,0.07) 0 2px, transparent 2px 9px);
 }
-.award-row-top[data-player]:hover { background: linear-gradient(90deg, rgba(242,199,92,0.32), rgba(242,199,92,0.1)); }
-.award-row-top .position { font-size: 24px; }
-.award-row-top .name .full-name { font-size: 15px; }
-.award-row-top .stat { font-size: 15px; color: var(--ink); }
-.award-flag { display: inline-flex; width: 16px; height: 11px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); vertical-align: middle; margin-right: 6px; }
-.award-flag i { flex: 1; }
-.award-row .position {
-  font-family: 'Anton', Impact, sans-serif;
-  font-size: 20px;
-  color: var(--c, var(--usa-red));
-  min-width: 26px;
+.aw-hero > * { position: relative; z-index: 1; }
+.aw-hero:hover { transform: translateY(-3px); box-shadow: 0 16px 34px color-mix(in srgb, var(--tc, var(--navy)) 45%, transparent), inset 0 0 0 1px rgba(255,255,255,0.2); }
+.aw-hero-ribbon {
+  display: inline-block; font-family: ui-monospace, monospace; font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.12em; color: #1a1205; background: linear-gradient(180deg, #FFE08A, var(--gold));
+  padding: 3px 10px; border-radius: 999px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.award-row .name { flex: 1; }
-.award-row .name .full-name { font-weight: 700; font-size: 13px; }
-.award-row .name .team-line {
-  font-size: 11px; color: var(--muted);
-  font-family: ui-monospace, monospace;
-  margin-top: 2px;
+.aw-hero-card { display: flex; align-items: center; gap: 13px; }
+.aw-hero-avatar {
+  position: relative; flex: 0 0 auto; width: 54px; height: 54px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 20px; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,0.45), rgba(0,0,0,0.25));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4);
 }
-.award-row .stat {
-  font-family: ui-monospace, monospace;
-  font-weight: 700; font-size: 13px;
-  color: var(--ink);
-  text-align: right;
+.aw-hero-flag { position: absolute; bottom: -3px; right: -4px; display: inline-flex; width: 20px; height: 13px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.25); }
+.aw-hero-flag i { flex: 1; }
+.aw-hero-info { flex: 1; min-width: 0; }
+.aw-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: 19px; letter-spacing: 0.01em; color: #fff; line-height: 1.05; overflow-wrap: break-word; }
+.aw-hero-team { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 3px; }
+.aw-hero-figure { flex: 0 0 auto; text-align: right; }
+.aw-hero-stat { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
+.aw-hero-statlabel { font-family: ui-monospace, monospace; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 3px; }
+/* Runner-up mini rows */
+.aw-mini-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.aw-mini {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  background: var(--cream); border-radius: 10px; cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
 }
-.award-row.tbd { font-style: italic; color: var(--muted); }
-.award-tbd-msg {
-  font-size: 12px; color: var(--muted);
-  font-style: italic; padding-top: 10px;
+.aw-mini:hover { background: var(--line); transform: translateX(2px); }
+.aw-mini-rank { font-size: 15px; min-width: 22px; text-align: center; }
+.aw-mini-avatar {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 12px; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--tc, var(--navy)) 80%, #fff), color-mix(in srgb, var(--tc, var(--navy)) 55%, #000 20%));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
 }
+.aw-mini-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aw-mini-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
+.aw-mini-stat { font-family: ui-monospace, monospace; font-weight: 700; font-size: 12.5px; color: var(--ink); }
+/* Sealed "mystery" card for not-yet-judged awards */
+.aw-mystery {
+  position: relative; margin-top: 4px; height: 96px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: linear-gradient(150deg, var(--navy), var(--navy-2));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); overflow: hidden;
+}
+.aw-mystery::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.16) 48%, transparent 58%);
+  background-size: 220% 100%; animation: awSheen 3.2s ease-in-out infinite;
+}
+@keyframes awSheen { 0% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) { .aw-mystery::before { animation: none; } }
+.aw-mystery-q { font-family: 'Anton', Impact, sans-serif; font-size: 40px; color: rgba(255,255,255,0.85); line-height: 1; position: relative; }
+.aw-mystery-label { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.18em; color: var(--gold); position: relative; }
+.aw-note { font-size: 12px; color: var(--muted); font-style: italic; padding-top: 10px; }
+.aw-empty { font-size: 12.5px; color: var(--muted); font-style: italic; padding: 10px 2px; }
 
 /* === MY POSITION === */
 .position-result {
@@ -1268,29 +1296,35 @@ input { font-family: inherit; }
    MOBILE RESPONSIVE OVERHAUL
    =================================================================== */
 
-/* Safety net: never allow sideways scrolling on small screens */
-html, body { max-width: 100%; overflow-x: hidden; }
+/* Safety net: never allow sideways scrolling on small screens.
+   Use `clip` (not `hidden`): `hidden` turns <body> into a scroll container,
+   which silently breaks `position: sticky` for the tab bar. `clip` prevents
+   the sideways overflow without creating that scroll container, so the tabs
+   pin correctly when you scroll. */
+html, body { max-width: 100%; overflow-x: clip; }
 img, table { max-width: 100%; }
 * { min-width: 0; }
 
 @media (max-width: 760px) {
-  /* Header is not sticky (it scrolls away); pin the tabs to the very top so
-     there's no empty gap and the tabs stay reachable while scrolling. */
-  .app-header { padding: 12px 16px; gap: 12px; flex-wrap: wrap; }
-  .logo { gap: 10px; }
-  .logo-img { width: 42px; height: 42px; }
-  .logo-text .title { font-size: 18px; }
+  /* Compact header: the logo + a top-right LIVE pill on row 1, then the
+     countdown/timestamp and the icon buttons share row 2 — saving a whole
+     line versus stacking LIVE on its own. Header scrolls away; the tabs pin. */
+  .app-header { padding: 10px 14px 9px; gap: 8px 12px; flex-wrap: wrap; }
+  .logo { gap: 10px; flex: 1 1 auto; }
+  .logo-img { width: 38px; height: 38px; }
+  .logo-text .title { font-size: 17px; }
   .logo-text .subtitle { font-size: 9px; letter-spacing: 0.12em; }
+  /* LIVE pill rides on the logo row, top-right — no longer its own line. */
+  .live-pill { order: 2; flex: 0 0 auto; align-self: flex-start; padding: 5px 11px; font-size: 12px; }
   .tabs-wrap { top: 0; }
   .tabs-bar { padding: 0 8px; gap: 2px; }
   .tab-btn { padding: 12px 12px; font-size: 12px; }
-  /* On mobile the header wraps: don't push header-status to the right (it would
-     overflow off the left edge). Give it the full width, left-aligned, and let
-     its contents (countdown + buttons) wrap instead of clipping. */
-  .header-status { margin-left: 0; width: 100%; gap: 10px; flex-wrap: wrap;
-                   justify-content: flex-start; }
-  .header-info { flex: 1 1 100%; align-items: flex-start; } /* countdown gets its own row */
-  .hdr-countdown { white-space: normal; }
+  /* Row 2: countdown/timestamp on the left, icon buttons on the right. */
+  .header-status { order: 3; margin-left: 0; width: 100%; gap: 8px;
+                   flex-wrap: wrap; justify-content: flex-start; align-items: center; }
+  .header-info { flex: 1 1 auto; align-items: flex-start; }
+  .hdr-countdown { white-space: normal; font-size: 12px; }
+  .last-update { font-size: 9.5px; }
 }
 
 @media (max-width: 600px) {
@@ -1475,6 +1509,13 @@ img, table { max-width: 100%; }
 .tv-hero-team { font-family: ui-monospace, monospace; font-size: clamp(10px, 1.6vmin, 16px); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-top: 0.6vmin; }
 .tv-hero-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 7vmin, 76px); color: var(--gold); line-height: 1; margin-top: 1.4vmin; text-shadow: 0 2px 16px rgba(0,0,0,0.35); }
 .tv-hero-sub { font-family: ui-monospace, monospace; font-size: clamp(9px, 1.4vmin, 14px); letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 0.6vmin; }
+.tv-hero-tap { font-family: ui-monospace, monospace; font-size: clamp(8px, 1.2vmin, 12px); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-top: 1vmin; }
+/* Tappable featured cards (open the Panini card over the projection). */
+.tv-clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, background 0.15s; }
+.tv-hero.tv-clickable:hover { transform: translateY(-0.5vmin) scale(1.015); box-shadow: 0 3vmin 6vmin rgba(0,0,0,0.4); }
+.tv-ms-row.tv-clickable:hover { background: rgba(255,255,255,0.16); transform: translateX(0.4vmin); }
+/* The player card sits above the TV overlay (z-index 1000). */
+.tv-player-overlay { z-index: 1200; }
 .tv-ms-list { display: flex; flex-direction: column; justify-content: center; gap: 1.2vmin; }
 .tv-ms-row { display: flex; align-items: center; gap: 2vmin; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.4vmin; padding: 1.3vmin 2vmin; }
 .tv-ms-pos { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vmin, 40px); min-width: 1.6em; text-align: center; }
@@ -3058,28 +3099,83 @@ function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flas
 
 // Render a jury-selected award (AI Play / Transformative Deal): shows the
 // winner from the Special Awards sheet if present, otherwise a TBD placeholder.
+// Initials helper for award avatars.
+function awardInitials(name) {
+  return String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean)
+    .map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
+}
+
+// Panini-style hero for the #1 of a data-driven award: avatar disc + flag +
+// big stat + WINNER ribbon, tinted with the team colour. Tapping opens the card.
+function awardHero(p, stat, statLabel) {
+  const c = colorForTeam(p.team);
+  const flag = flagForTeam(p.team);
+  return `
+    <div class="aw-hero" style="--tc:${c}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
+      <div class="aw-hero-ribbon">🏆 LEADER</div>
+      <div class="aw-hero-card">
+        <div class="aw-hero-avatar">${awardInitials(p.name)}<span class="aw-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span></div>
+        <div class="aw-hero-info">
+          <div class="aw-hero-name">${escapeHtml(p.name)}</div>
+          <div class="aw-hero-team">${escapeHtml(p.team)}</div>
+        </div>
+        <div class="aw-hero-figure">
+          <div class="aw-hero-stat">${stat}</div>
+          <div class="aw-hero-statlabel">${statLabel}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Runner-up mini-row (rank 2/3) with a small team-coloured avatar.
+function awardMiniRow(p, rank, stat) {
+  const c = colorForTeam(p.team);
+  return `
+    <div class="aw-mini" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
+      <span class="aw-mini-rank">${['', '🥈', '🥉'][rank] || ('#' + rank)}</span>
+      <span class="aw-mini-avatar" style="--tc:${c}">${awardInitials(p.name)}</span>
+      <span class="aw-mini-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+      <span class="aw-mini-stat">${stat}</span>
+    </div>`;
+}
+
+// A data-driven award column: hero #1 + up to two runner-up rows.
+function renderDataAward(list, statFn, emptyMsg) {
+  if (!list.length) return `<div class="aw-empty">${emptyMsg}</div>`;
+  const hero = awardHero(list[0], statFn(list[0]), list.statLabel || '');
+  const rest = list.slice(1, 3).map((p, i) => awardMiniRow(p, i + 2, statFn(p))).join('');
+  return hero + (rest ? `<div class="aw-mini-list">${rest}</div>` : '');
+}
+
+// A jury-selected award: the winner's panini hero once revealed, otherwise a
+// holographic "mystery card" that reads as a sealed pack to be opened.
 function renderJudgedAward(winner, fallbackMsg) {
   if (winner && winner.name) {
+    const known = people.find(x => x.name === winner.name);
+    if (known) {
+      return awardHero(known, '🏆', 'JURY PICK')
+        + (winner.description ? `<div class="aw-note">${escapeHtml(winner.description)}</div>` : '');
+    }
+    // Winner named but not in the dataset: show a simple revealed card.
     return `
-          <div class="award-list">
-            <div class="award-row">
-              <span class="position">🏆</span>
-              <div class="name">
-                <div class="full-name">${escapeHtml(winner.name)}</div>
-                ${winner.team ? `<div class="team-line">${escapeHtml(winner.team)}</div>` : ''}
-              </div>
-            </div>
+      <div class="aw-hero aw-hero-static" style="--tc:var(--navy)">
+        <div class="aw-hero-ribbon">🏆 WINNER</div>
+        <div class="aw-hero-card">
+          <div class="aw-hero-avatar">${awardInitials(winner.name)}</div>
+          <div class="aw-hero-info">
+            <div class="aw-hero-name">${escapeHtml(winner.name)}</div>
+            ${winner.team ? `<div class="aw-hero-team">${escapeHtml(winner.team)}</div>` : ''}
           </div>
-          ${winner.description ? `<div class="award-tbd-msg">${escapeHtml(winner.description)}</div>` : ''}`;
+        </div>
+      </div>
+      ${winner.description ? `<div class="aw-note">${escapeHtml(winner.description)}</div>` : ''}`;
   }
   return `
-          <div class="award-list">
-            <div class="award-row tbd">
-              <span class="position">🏆</span>
-              <div class="name"><div class="full-name">To be selected after the challenge</div></div>
-            </div>
-          </div>
-          <div class="award-tbd-msg">${fallbackMsg}</div>`;
+    <div class="aw-mystery" title="Winner revealed after the challenge">
+      <span class="aw-mystery-q">?</span>
+      <span class="aw-mystery-label">SEALED</span>
+    </div>
+    <div class="aw-note">${fallbackMsg}</div>`;
 }
 
 function renderSpecialAwards() {
@@ -3101,9 +3197,7 @@ function renderSpecialAwards() {
               <div class="award-subtitle">Top 3 · Licence GM Amount</div>
             </div>
           </div>
-          <div class="award-list">
-            ${topLicences.length ? topLicences.map((p, i) => renderAwardRow(p, i+1, fmtMoney(p.licence_gm))).join('') : '<div class="award-tbd-msg">No licence GM recorded yet.</div>'}
-          </div>
+          ${renderDataAward(topLicences, p => fmtMoney(p.licence_gm), 'No licence GM recorded yet.')}
         </div>
 
         <div class="award-card" style="--c: #16A34A">
@@ -3111,12 +3205,10 @@ function renderSpecialAwards() {
             <span class="award-icon">🌱</span>
             <div>
               <div class="award-title">ROOKIE OF THE YEAR</div>
-              <div class="award-subtitle">Top 3 · Less than 1 year at Devoteam · PS Bookings NB</div>
+              <div class="award-subtitle">Top 3 · Less than 1 year · PS Bookings NB</div>
             </div>
           </div>
-          <div class="award-list">
-            ${topRookies.length ? topRookies.map((p, i) => renderAwardRow(p, i+1, fmtMoney(p.ps_nb))).join('') : '<div class="award-tbd-msg">No rookies with PS Bookings yet — coming soon.</div>'}
-          </div>
+          ${renderDataAward(topRookies, p => fmtMoney(p.ps_nb), 'No rookies with PS Bookings yet — coming soon.')}
         </div>
 
         <div class="award-card" style="--c: #8B5CF6">
@@ -3141,21 +3233,6 @@ function renderSpecialAwards() {
           ${renderJudgedAward(specialAwards.transformative_deal_winner, 'Selected by Group Sales GM, Multidisciplinary and Nearshore based on strategic impact.')}
         </div>
       </div>
-    </div>
-  `;
-}
-
-function renderAwardRow(p, rank, stat) {
-  const medal = ['🥇', '🥈', '🥉'][rank - 1] || ('#' + rank);
-  const flag = flagForTeam(p.team);
-  return `
-    <div class="award-row${rank === 1 ? ' award-row-top' : ''}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
-      <span class="position">${medal}</span>
-      <div class="name">
-        <div class="full-name">${escapeHtml(p.name)}</div>
-        <div class="team-line">${rank === 1 ? `<span class="award-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>` : ''}${escapeHtml(p.team)}</div>
-      </div>
-      <span class="stat">${stat}</span>
     </div>
   `;
 }
@@ -4212,6 +4289,8 @@ function render() {
 // the team modal.
 document.addEventListener('keydown', e => {
   if (tvMode) {
+    // If a player card is open over the projection, Esc closes just the card.
+    if (e.key === 'Escape' && document.getElementById('tv-player-overlay')) { closeTVPlayerCard(); return; }
     if (e.key === 'ArrowRight') { tvGo(1); return; }
     if (e.key === 'ArrowLeft') { tvGo(-1); return; }
     if (e.key === 'Escape') { exitTV(); return; }
@@ -4852,8 +4931,12 @@ function tvMatchSheet(items, opts) {
   const initials = String(top.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const flag = flagForTeam(top.team || top.name);
   const c = colorForTeam(top.team || top.name);
+  // People panels are clickable → tapping a card opens that player's Panini card,
+  // right over the projection. Team panels (podium) are not individual players.
+  const clk = opts.clickable;
+  const heroAttr = clk ? ` data-tvplayer="${escapeHtml(top.name)}" title="Tap to open ${escapeHtml(top.name)}'s card"` : '';
   const hero = `
-    <div class="tv-hero" style="--c:${c}">
+    <div class="tv-hero${clk ? ' tv-clickable' : ''}" style="--c:${c}"${heroAttr}>
       <div class="tv-hero-top">
         <span class="tv-hero-badge">${opts.badge || '🏆 LEADER'}</span>
         <span class="tv-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span>
@@ -4863,9 +4946,10 @@ function tvMatchSheet(items, opts) {
       ${top.team ? `<div class="tv-hero-team">${escapeHtml(top.team)}</div>` : ''}
       <div class="tv-hero-val">${top.val}</div>
       <div class="tv-hero-sub">${opts.valLabel || ''}</div>
+      ${clk ? '<div class="tv-hero-tap">👆 tap for the card</div>' : ''}
     </div>`;
   const rows = items.slice(1).map((p, i) => `
-    <div class="tv-ms-row">
+    <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? ` data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card"` : ''}>
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
       <span class="tv-ms-name">${escapeHtml(p.name)}${p.team ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
       <span class="tv-ms-figure">
@@ -4896,11 +4980,11 @@ function tvPanelHTML(kind) {
   }
   if (kind === 'golden') {
     const items = sortedGoldenBoot.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS' });
+    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
   }
   if (kind === 'playmaker') {
     const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
-    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES' });
+    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true });
   }
   if (kind === 'var') {
     const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
@@ -4918,7 +5002,7 @@ function tvPanelHTML(kind) {
     const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
     const top = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 5);
     const items = top.map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS' });
+    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
   }
   if (kind === 'awards') {
     const awRows = (list, valFn) => list.length
@@ -4938,7 +5022,7 @@ function tvPanelHTML(kind) {
   // Each standout has a different metric, so the unit is per-row.
   const items = [{ name: featured.person.name, team: featured.person.team, val: spotStatText(featured), unit: featured.statLabel.toUpperCase() }]
     .concat(spots.slice(1).map(s => ({ name: s.person.name, team: `${s.cat} · ${s.person.team}`, val: spotStatText(s), unit: s.statLabel.toUpperCase() })));
-  return tvMatchSheet(items, { title: '⭐ PLAYERS OF THE MOMENT', sub: "This matchday's standout performances", badge: `${featured.icon} ${featured.cat}`, valLabel: featured.statLabel.toUpperCase() });
+  return tvMatchSheet(items, { title: '⭐ PLAYERS OF THE MOMENT', sub: "This matchday's standout performances", badge: `${featured.icon} ${featured.cat}`, valLabel: featured.statLabel.toUpperCase(), clickable: true });
 }
 function renderTV() {
   if (!tvMode) return;
@@ -4968,6 +5052,35 @@ function renderTV() {
   if (next) next.addEventListener('click', () => tvGo(1));
   root.querySelectorAll('.tv-dots span').forEach(d =>
     d.addEventListener('click', () => tvGoto(parseInt(d.getAttribute('data-i'), 10))));
+  // Featured players are tappable → open their Panini card over the projection
+  // (great for the commentators: tap a standout, the full card pops up).
+  root.querySelectorAll('[data-tvplayer]').forEach(el =>
+    el.addEventListener('click', () => openTVPlayerCard(el.dataset.tvplayer)));
+}
+
+// Player card shown ON TOP of the TV projection (its own overlay so it sits
+// above the z-index:1000 TV layer; pausing the auto-rotation while it's open).
+function openTVPlayerCard(name) {
+  const p = people.find(x => x.name === name);
+  if (!p) return;
+  closeTVPlayerCard();
+  const el = document.createElement('div');
+  el.className = 'modal-overlay tv-player-overlay';
+  el.id = 'tv-player-overlay';
+  el.innerHTML = `<div class="pc-modal" onclick="event.stopPropagation()">
+      <button class="pc-close" id="tv-pc-close" aria-label="Close">×</button>
+      ${paniniCardInner(p)}
+    </div>`;
+  document.body.appendChild(el);
+  const close = () => closeTVPlayerCard();
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  const x = el.querySelector('#tv-pc-close');
+  if (x) x.addEventListener('click', close);
+  attachHolo(el.querySelector('.pc-card'));
+}
+function closeTVPlayerCard() {
+  const el = document.getElementById('tv-player-overlay');
+  if (el) el.remove();
 }
 
 // === LIVE: polling ===
