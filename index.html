@@ -902,38 +902,49 @@ input { font-family: inherit; }
 .loader-screen {
   min-height: 72vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 18px; padding: 48px 20px; text-align: center; color: #fff;
-  margin: 16px; border-radius: 20px; position: relative;
+  margin: 16px; border-radius: 20px; position: relative; overflow: hidden;
   /* Stadium pitch: mowed vertical stripes over a green gradient. */
   background:
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.055) 0 64px, rgba(255,255,255,0) 64px 128px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 64px, rgba(255,255,255,0) 64px 128px),
     radial-gradient(circle at 50% 36%, #1aa75e 0%, #0e7d43 56%, #0a5c32 100%);
   box-shadow: inset 0 0 120px rgba(0,0,0,0.25), 0 20px 50px rgba(10,92,50,0.25);
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 .loader-screen.kicked { opacity: 0; transform: scale(1.02); }
-.loader-pitch { position: relative; width: 90px; height: 96px; }
-/* Center circle behind the ball, for the kick-off vibe. */
-.loader-pitch::before {
-  content: ''; position: absolute; left: 50%; bottom: -6px; width: 150px; height: 150px;
-  border: 2px solid rgba(255,255,255,0.18); border-radius: 50%;
-  transform: translateX(-50%); pointer-events: none;
-}
-.loader-ball { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 52px; animation: ballBounce 1s ease-in-out infinite; z-index: 1; will-change: transform; }
-.loader-ball-shadow { position: absolute; left: 50%; bottom: 8px; width: 46px; height: 9px; background: rgba(0,0,0,0.28); border-radius: 50%; transform: translateX(-50%); filter: blur(2px); animation: ballShadow 1s ease-in-out infinite; }
-@keyframes ballBounce { 0%,100% { transform: translateX(-50%) translateY(0) rotate(0deg); } 50% { transform: translateX(-50%) translateY(-32px) rotate(200deg); } }
+
+/* Pitch markings drawn from above (boundary, halfway line, circle, boxes, corners). */
+.loader-field { position: absolute; inset: 16px; border: 2px solid rgba(255,255,255,0.5); border-radius: 10px; pointer-events: none; z-index: 0; }
+.lf-half { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(255,255,255,0.5); }
+.lf-circle { position: absolute; left: 50%; top: 50%; width: clamp(110px, 30vw, 150px); height: clamp(110px, 30vw, 150px); transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; }
+.lf-spot { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); background: rgba(255,255,255,0.7); border-radius: 50%; }
+/* Penalty + goal areas, top and bottom, attached to the goal lines. */
+.lf-pbox { position: absolute; left: 50%; transform: translateX(-50%); width: min(58%, 230px); height: 17%; border: 2px solid rgba(255,255,255,0.5); }
+.lf-gbox { position: absolute; left: 50%; transform: translateX(-50%); width: min(32%, 130px); height: 8%; border: 2px solid rgba(255,255,255,0.5); }
+.lf-top { top: 0; border-top: none; }
+.lf-bot { bottom: 0; border-bottom: none; }
+.lf-corner { position: absolute; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.45); border-radius: 50%; }
+.lf-corner.tl { top: -9px; left: -9px; }
+.lf-corner.tr { top: -9px; right: -9px; }
+.lf-corner.bl { bottom: -9px; left: -9px; }
+.lf-corner.br { bottom: -9px; right: -9px; }
+
+.loader-pitch { position: relative; width: 96px; height: 96px; z-index: 1; }
+.loader-ball { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 52px; animation: ballBounce 1s ease-in-out infinite; z-index: 1; will-change: transform; }
+.loader-ball-shadow { position: absolute; left: 50%; top: 70%; width: 46px; height: 9px; background: rgba(0,0,0,0.28); border-radius: 50%; transform: translateX(-50%); filter: blur(2px); animation: ballShadow 1s ease-in-out infinite; }
+@keyframes ballBounce { 0%,100% { transform: translate(-50%, -50%) rotate(0deg); } 50% { transform: translate(-50%, calc(-50% - 30px)) rotate(200deg); } }
 @keyframes ballShadow { 0%,100% { transform: translateX(-50%) scale(1); opacity: 0.5; } 50% { transform: translateX(-50%) scale(0.6); opacity: 0.22; } }
 /* KICK-OFF! The ball is struck and rockets up-field, spinning away. */
 .loader-ball.kicked { animation: ballKick 0.62s cubic-bezier(.45,0,.25,1) forwards; }
 .loader-ball-shadow.kicked { animation: ballShadowKick 0.3s ease forwards; }
 @keyframes ballKick {
-  0% { transform: translate(-50%, 0) rotate(0deg) scale(1); opacity: 1; }
-  14% { transform: translate(-54%, 7px) rotate(-26deg) scale(1.06); } /* wind-up / contact squash */
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 1; }
+  14% { transform: translate(-54%, calc(-50% + 7px)) rotate(-26deg) scale(1.06); } /* wind-up / contact squash */
   100% { transform: translate(220px, -560px) rotate(1100deg) scale(0.32); opacity: 0; }
 }
 @keyframes ballShadowKick { 0% { opacity: 0.5; } 100% { transform: translateX(-50%) scale(1.6); opacity: 0; } }
-.loader-title { font-family: 'Anton', Impact, sans-serif; font-size: 26px; letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.3); }
-.loader-sub { color: rgba(255,255,255,0.82); font-size: 13px; margin-top: 2px; }
-.loader-bar { width: 220px; max-width: 70vw; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.22); overflow: hidden; position: relative; }
+.loader-title { font-family: 'Anton', Impact, sans-serif; font-size: 26px; letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.4); position: relative; z-index: 1; }
+.loader-sub { color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 2px; position: relative; z-index: 1; text-shadow: 0 1px 6px rgba(0,0,0,0.35); }
+.loader-bar { width: 220px; max-width: 70vw; height: 7px; border-radius: 99px; background: rgba(255,255,255,0.22); overflow: hidden; position: relative; z-index: 1; }
 .loader-bar::before { content: ''; position: absolute; top: 0; left: -42%; height: 100%; width: 42%; border-radius: 99px; background: linear-gradient(90deg, var(--usa-red), #fff, var(--gold)); animation: loaderSweep 1.1s ease-in-out infinite; }
 @keyframes loaderSweep { 0% { left: -42%; } 100% { left: 100%; } }
 @keyframes appEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -3604,6 +3615,19 @@ async function attemptLogin(password) {
 function renderLoader() {
   return `
     <div class="loader-screen">
+      <div class="loader-field" aria-hidden="true">
+        <span class="lf-half"></span>
+        <span class="lf-circle"></span>
+        <span class="lf-spot"></span>
+        <span class="lf-pbox lf-top"></span>
+        <span class="lf-gbox lf-top"></span>
+        <span class="lf-pbox lf-bot"></span>
+        <span class="lf-gbox lf-bot"></span>
+        <span class="lf-corner tl"></span>
+        <span class="lf-corner tr"></span>
+        <span class="lf-corner bl"></span>
+        <span class="lf-corner br"></span>
+      </div>
       <div class="loader-pitch">
         <div class="loader-ball-shadow"></div>
         <div class="loader-ball">⚽</div>
