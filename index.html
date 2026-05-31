@@ -900,37 +900,41 @@ input { font-family: inherit; }
 
 /* === Loading animation (football themed) === */
 .loader-screen {
-  min-height: 72vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 18px; padding: 48px 20px; text-align: center; color: #fff;
+  min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 44px 20px; text-align: center; color: #fff;
   margin: 16px; border-radius: 20px; position: relative; overflow: hidden;
   /* Stadium pitch: mowed vertical stripes over a green gradient. */
   background:
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 64px, rgba(255,255,255,0) 64px 128px),
-    radial-gradient(circle at 50% 36%, #1aa75e 0%, #0e7d43 56%, #0a5c32 100%);
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 56px, rgba(255,255,255,0) 56px 112px),
+    radial-gradient(circle at 50% 40%, #1aa75e 0%, #0e7d43 58%, #0a5c32 100%);
   box-shadow: inset 0 0 120px rgba(0,0,0,0.25), 0 20px 50px rgba(10,92,50,0.25);
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 .loader-screen.kicked { opacity: 0; transform: scale(1.02); }
 
-/* Pitch markings drawn from above (boundary, halfway line, circle, boxes, corners). */
-.loader-field { position: absolute; inset: 16px; border: 2px solid rgba(255,255,255,0.5); border-radius: 10px; pointer-events: none; z-index: 0; }
-.lf-half { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(255,255,255,0.5); }
-.lf-circle { position: absolute; left: 50%; top: 50%; width: clamp(110px, 30vw, 150px); height: clamp(110px, 30vw, 150px); transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; }
-.lf-spot { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); background: rgba(255,255,255,0.7); border-radius: 50%; }
-/* Penalty + goal areas, top and bottom, attached to the goal lines. */
-.lf-pbox { position: absolute; left: 50%; transform: translateX(-50%); width: min(58%, 230px); height: 17%; border: 2px solid rgba(255,255,255,0.5); }
-.lf-gbox { position: absolute; left: 50%; transform: translateX(-50%); width: min(32%, 130px); height: 8%; border: 2px solid rgba(255,255,255,0.5); }
-.lf-top { top: 0; border-top: none; }
-.lf-bot { bottom: 0; border-bottom: none; }
-.lf-corner { position: absolute; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.45); border-radius: 50%; }
-.lf-corner.tl { top: -9px; left: -9px; }
-.lf-corner.tr { top: -9px; right: -9px; }
-.lf-corner.bl { bottom: -9px; left: -9px; }
-.lf-corner.br { bottom: -9px; right: -9px; }
+/* A self-contained LANDSCAPE pitch (top-down), with the ball at the centre spot. */
+.loader-pitch {
+  position: relative; z-index: 1;
+  width: min(78vw, 460px); aspect-ratio: 3 / 2;
+  border: 2px solid rgba(255,255,255,0.55); border-radius: 8px;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.18);
+}
+.lf-half { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-1px); background: rgba(255,255,255,0.55); }
+.lf-circle { position: absolute; left: 50%; top: 50%; width: 34%; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.55); border-radius: 50%; }
+.lf-spot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); background: rgba(255,255,255,0.8); border-radius: 50%; z-index: 1; }
+/* Penalty + goal areas on the LEFT and RIGHT goal lines. */
+.lf-pbox { position: absolute; top: 50%; transform: translateY(-50%); width: 16%; height: 56%; border: 2px solid rgba(255,255,255,0.55); }
+.lf-gbox { position: absolute; top: 50%; transform: translateY(-50%); width: 7%; height: 30%; border: 2px solid rgba(255,255,255,0.55); }
+.lf-left { left: 0; border-left: none; }
+.lf-right { right: 0; border-right: none; }
+.lf-corner { position: absolute; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.45); border-radius: 50%; }
+.lf-corner.tl { top: -8px; left: -8px; }
+.lf-corner.tr { top: -8px; right: -8px; }
+.lf-corner.bl { bottom: -8px; left: -8px; }
+.lf-corner.br { bottom: -8px; right: -8px; }
 
-.loader-pitch { position: relative; width: 96px; height: 96px; z-index: 1; }
-.loader-ball { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 52px; animation: ballBounce 1s ease-in-out infinite; z-index: 1; will-change: transform; }
-.loader-ball-shadow { position: absolute; left: 50%; top: 70%; width: 46px; height: 9px; background: rgba(0,0,0,0.28); border-radius: 50%; transform: translateX(-50%); filter: blur(2px); animation: ballShadow 1s ease-in-out infinite; }
+.loader-ball { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: clamp(40px, 11vw, 54px); animation: ballBounce 1s ease-in-out infinite; z-index: 2; will-change: transform; }
+.loader-ball-shadow { position: absolute; left: 50%; top: calc(50% + 22px); width: 44px; height: 9px; background: rgba(0,0,0,0.28); border-radius: 50%; transform: translateX(-50%); filter: blur(2px); animation: ballShadow 1s ease-in-out infinite; z-index: 1; }
 @keyframes ballBounce { 0%,100% { transform: translate(-50%, -50%) rotate(0deg); } 50% { transform: translate(-50%, calc(-50% - 30px)) rotate(200deg); } }
 @keyframes ballShadow { 0%,100% { transform: translateX(-50%) scale(1); opacity: 0.5; } 50% { transform: translateX(-50%) scale(0.6); opacity: 0.22; } }
 /* KICK-OFF! The ball is struck and rockets up-field, spinning away. */
@@ -3615,22 +3619,20 @@ async function attemptLogin(password) {
 function renderLoader() {
   return `
     <div class="loader-screen">
-      <div class="loader-field" aria-hidden="true">
+      <div class="loader-pitch" aria-hidden="true">
         <span class="lf-half"></span>
         <span class="lf-circle"></span>
-        <span class="lf-spot"></span>
-        <span class="lf-pbox lf-top"></span>
-        <span class="lf-gbox lf-top"></span>
-        <span class="lf-pbox lf-bot"></span>
-        <span class="lf-gbox lf-bot"></span>
+        <span class="lf-pbox lf-left"></span>
+        <span class="lf-gbox lf-left"></span>
+        <span class="lf-pbox lf-right"></span>
+        <span class="lf-gbox lf-right"></span>
         <span class="lf-corner tl"></span>
         <span class="lf-corner tr"></span>
         <span class="lf-corner bl"></span>
         <span class="lf-corner br"></span>
-      </div>
-      <div class="loader-pitch">
         <div class="loader-ball-shadow"></div>
         <div class="loader-ball">⚽</div>
+        <span class="lf-spot"></span>
       </div>
       <div>
         <div class="loader-title">${t('load.title')}</div>
