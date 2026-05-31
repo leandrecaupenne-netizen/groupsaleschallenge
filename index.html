@@ -1121,6 +1121,11 @@ input { font-family: inherit; }
 .refresh-btn:hover { background: rgba(255,255,255,0.25); }
 .refresh-btn.spinning { animation: spin 0.8s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+/* Touch devices: enlarge the header icon buttons to a comfortable ~42px tap
+   target (Apple/Google guidance ≈44px) — they stay compact (32px) with a mouse. */
+@media (hover: none) {
+  .refresh-btn { width: 42px; height: 42px; font-size: 20px; }
+}
 
 /* Back-to-top button — appears after scrolling down a long list (Players, VAR…) */
 .scroll-top {
@@ -1621,6 +1626,8 @@ img, table { max-width: 100%; }
 /* On tight table layouts the "/ PERSON" qualifier is dropped (the section
    subtitle already says "per person"); the full label shows on wider screens. */
 @media (max-width: 800px) { .th-thin { display: none; } }
+/* Touch: give sortable column headers a taller hit area (they're thin text). */
+@media (hover: none) { .th-sort, .th-psort, .th-nsort { padding: 6px 0; margin: -6px 0; } }
 .th-sort:hover, .th-psort:hover, .th-nsort:hover { color: var(--usa-red); }
 
 /* === Filter chips (search + team region) === */
@@ -1632,6 +1639,8 @@ img, table { max-width: 100%; }
 }
 .search-chip:hover, .region-chip:hover { border-color: var(--usa-red); }
 .search-chip.on, .region-chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+/* Touch: a little more vertical padding so chips clear a ~40px tap height. */
+@media (hover: none) { .search-chip, .region-chip { padding: 10px 16px; } }
 
 /* === Global search modal === */
 .search-modal { max-width: 560px; }
