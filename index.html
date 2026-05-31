@@ -1116,6 +1116,19 @@ img, table { max-width: 100%; }
 .tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
 .tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
+/* TV mode on a phone (portrait): stop the name + value from colliding by letting
+   the value wrap onto its own line under the name. TV is built for big screens
+   but people do open it on mobile, so keep it clean there too. */
+@media (max-width: 640px) {
+  .tv-sub { margin: 0.6vh 0 1.4vh; }
+  .tv-list { gap: 0.7vh; }
+  .tv-row { flex-wrap: wrap; gap: 2px 10px; padding: 8px 13px; }
+  .tv-pos { font-size: clamp(18px, 5.2vw, 28px); min-width: 1.3em; }
+  .tv-name { font-size: clamp(14px, 4.6vw, 22px); line-height: 1.12; min-width: 0; }
+  .tv-name em { font-size: 0.55em; }
+  .tv-val { flex-basis: 100%; padding-left: calc(1.3em + 10px); font-size: clamp(14px, 4.4vw, 22px); }
+  .tv-awcol { flex-basis: 100%; }
+}
 .tv-dots { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 2; padding-top: 2vh; }
 .tv-dots span { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.15s, transform 0.15s; }
 .tv-dots span:hover { transform: scale(1.2); }
