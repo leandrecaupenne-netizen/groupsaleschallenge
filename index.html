@@ -1819,7 +1819,9 @@ function regionOf(c) {
   if (c.startsWith('FR') || c === 'Devoteam France') return 'FR';
   if (c.startsWith('ES')) return 'ES';
   if (u.includes('PORTUGAL') || u.startsWith('PT ') || u.startsWith('PT-') || u === 'PT') return 'PT';
-  if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM', 'NETHERLANDS', 'HOLLAND'].indexOf(u) !== -1) return 'BENELUX';
+  // Netherlands stands as its own nation (broken out from the Benelux group).
+  if (u === 'NETHERLANDS' || u === 'HOLLAND' || u.startsWith('NETHERLANDS') || u.startsWith('NL ') || u.startsWith('NL-')) return 'NL';
+  if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM'].indexOf(u) !== -1) return 'BENELUX';
   // careful: "DENMARK" starts with "DE" but must stay Nordics, so match GERMANY/DACH/"DE - ..." only
   if (u.includes('GERMANY') || u.startsWith('DACH') || u.startsWith('DE -') || u.startsWith('DE-')) return 'DE';
   // Denmark stands as its own nation (broken out from the Nordics group).
@@ -1902,7 +1904,7 @@ function renderTeamRanking() {
   const filtered = sortedTeams.filter(t =>
     (!search || t.country.toLowerCase().includes(search)) &&
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
-  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['DK', '🇩🇰 Denmark'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
+  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['NL', '🇳🇱 Netherlands'], ['PT', '🇵🇹 Portugal'], ['DK', '🇩🇰 Denmark'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
@@ -2381,8 +2383,8 @@ function varBreakers() {
   }).sort((a, b) => b.reasons.length - a.reasons.length || (a.p.meetings || 0) - (b.p.meetings || 0));
 }
 
-const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
-const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'DK', 'NORDICS', 'OTHER'];
+const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', NL: '🇳🇱 Netherlands', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
+const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'NL', 'PT', 'DK', 'NORDICS', 'OTHER'];
 
 function renderVarTime() {
   const all = varBreakers();
@@ -2805,6 +2807,7 @@ const FLAG_STRIPES = {
   ES: ['#AA151B', '#F1BF00', '#AA151B'],      // Spain
   DE: ['#222222', '#DD0000', '#FFCE00'],      // Germany
   BENELUX: ['#222222', '#FAE042', '#EF3340'], // Belgium
+  NL: ['#AE1C28', '#FFFFFF', '#21468B'],      // Netherlands (red/white/blue)
   PT: ['#006847', '#FFD200', '#DA291C'],      // Portugal
   DK: ['#C60C30', '#FFFFFF', '#C60C30'],      // Denmark (Dannebrog red/white)
   NORDICS: ['#006AA7', '#FECC02', '#006AA7'], // Nordic — Swedish blue/gold (not France-like)
