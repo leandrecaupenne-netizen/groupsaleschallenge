@@ -1373,12 +1373,16 @@ img, table { max-width: 100%; }
 .tv-ms-pos { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vmin, 40px); min-width: 1.6em; text-align: center; }
 .tv-ms-name { flex: 1; min-width: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(16px, 2.8vmin, 34px); line-height: 1.05; }
 .tv-ms-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.46em; color: var(--gold); letter-spacing: 0.05em; margin-left: 0.5em; text-transform: uppercase; vertical-align: middle; }
-.tv-ms-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 42px); color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tv-ms-figure { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex: 0 0 auto; min-width: 0; }
+.tv-ms-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 42px); color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
+.tv-ms-unit { font-family: ui-monospace, monospace; font-size: clamp(8px, 1.2vmin, 12px); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.62); margin-top: 0.4vmin; white-space: nowrap; }
 @media (max-width: 640px) {
   .tv-matchsheet { grid-template-columns: 1fr; gap: 2vmin; }
   .tv-ms-row { flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px; }
   .tv-ms-name { font-size: clamp(14px, 4.4vw, 22px); }
   .tv-ms-val { font-size: clamp(15px, 4.4vw, 24px); }
+  .tv-ms-figure { flex-direction: row; align-items: baseline; gap: 6px; }
+  .tv-ms-unit { font-size: 9px; margin-top: 0; }
 }
 
 /* TV mode on a phone (portrait): stop the name + value from colliding by letting
@@ -4505,27 +4509,19 @@ function setChromeVisible(visible) {
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
 const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight', 'var', 'fairplay', 'awards'];
-const TV_ROTATE_MS = 10000; // 10s per panel
 
-function startTvTimer() {
-  clearInterval(tvTimer);
-  tvTimer = setInterval(() => { tvPanel = (tvPanel + 1) % TV_PANELS.length; renderTV(); }, TV_ROTATE_MS);
-}
-
-// Manual navigation (swipe / arrows / arrows buttons / dots). Resets the auto
-// rotation so it doesn't jump immediately after a manual move.
+// No auto-rotation: TV mode is a manually-driven deck so commentators control the
+// pace. Navigate with arrows / dots / swipe / ← → keys.
 function tvGo(delta) {
   if (!tvMode) return;
   const n = TV_PANELS.length;
   tvPanel = (tvPanel + delta + n) % n;
   renderTV();
-  startTvTimer();
 }
 function tvGoto(i) {
   if (!tvMode) return;
   tvPanel = ((i % TV_PANELS.length) + TV_PANELS.length) % TV_PANELS.length;
   renderTV();
-  startTvTimer();
 }
 
 function enterTV() {
@@ -4534,7 +4530,6 @@ function enterTV() {
   // browser's native "press Esc to exit full screen" banner. The overlay already
   // covers the whole viewport; use F11 manually for true fullscreen if wanted.
   renderTV();
-  startTvTimer();
   refreshScrollTop();
 }
 
@@ -4577,7 +4572,10 @@ function tvMatchSheet(items, opts) {
     <div class="tv-ms-row">
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
       <span class="tv-ms-name">${escapeHtml(p.name)}${p.team ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
-      <span class="tv-ms-val">${p.val}</span>
+      <span class="tv-ms-figure">
+        <span class="tv-ms-val">${p.val}</span>
+        <span class="tv-ms-unit">${p.unit || opts.unit || ''}</span>
+      </span>
     </div>`).join('');
   return `
     <div class="tv-title">${opts.title}</div>
@@ -4598,15 +4596,15 @@ function tvPersonRow(i, p, val) {
 function tvPanelHTML(kind) {
   if (kind === 'podium') {
     const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: t.country, val: fmtMoney(t.avg_ps) }));
-    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 WORLD CUP WINNER', valLabel: 'AVG PS / PERSON' });
+    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 WORLD CUP WINNER', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON' });
   }
   if (kind === 'golden') {
     const items = sortedGoldenBoot.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS' });
+    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS' });
   }
   if (kind === 'playmaker') {
     const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
-    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED' });
+    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES' });
   }
   if (kind === 'var') {
     const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
@@ -4624,7 +4622,7 @@ function tvPanelHTML(kind) {
     const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
     const top = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 5);
     const items = top.map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS BOOKINGS · NEW BUSINESS' });
+    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS' });
   }
   if (kind === 'awards') {
     const awRows = (list, valFn) => list.length
@@ -4641,8 +4639,9 @@ function tvPanelHTML(kind) {
   const spots = buildSpotlights();
   if (!spots.length) return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", `<div class="tv-row"><span class="tv-name">No standouts yet.</span></div>`);
   const featured = spots[0];
-  const items = [{ name: featured.person.name, team: featured.person.team, val: spotStatText(featured) }]
-    .concat(spots.slice(1).map(s => ({ name: s.person.name, team: `${s.cat} · ${s.person.team}`, val: spotStatText(s) })));
+  // Each standout has a different metric, so the unit is per-row.
+  const items = [{ name: featured.person.name, team: featured.person.team, val: spotStatText(featured), unit: featured.statLabel.toUpperCase() }]
+    .concat(spots.slice(1).map(s => ({ name: s.person.name, team: `${s.cat} · ${s.person.team}`, val: spotStatText(s), unit: s.statLabel.toUpperCase() })));
   return tvMatchSheet(items, { title: '⭐ PLAYERS OF THE MOMENT', sub: "This matchday's standout performances", badge: `${featured.icon} ${featured.cat}`, valLabel: featured.statLabel.toUpperCase() });
 }
 function renderTV() {
