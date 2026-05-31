@@ -652,6 +652,24 @@ input { font-family: inherit; }
   box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
 .position-card-wrap { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+/* Pack-opening reveal: the card flips/scales in, then a shine sweeps across. */
+.pc-reveal { animation: pcRevealIn 0.6s cubic-bezier(.2,.8,.25,1) both; transform-origin: center 60%; }
+.pc-reveal .pc-card { position: relative; }
+.pc-reveal .pc-card::after {
+  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.55) 48%, rgba(255,255,255,0.0) 62%);
+  transform: translateX(-120%); animation: pcShine 0.9s ease 0.35s 1;
+}
+@keyframes pcRevealIn {
+  0% { opacity: 0; transform: perspective(900px) rotateY(38deg) scale(0.7); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: perspective(900px) rotateY(0) scale(1); }
+}
+@keyframes pcShine { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) {
+  .pc-reveal { animation: none; }
+  .pc-reveal .pc-card::after { animation: none; content: none; }
+}
 /* Empty state: a Panini-style "mystery card" inviting you to find yourself. */
 .position-empty { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 26px 16px; }
 .pos-mystery-card {
@@ -1789,6 +1807,7 @@ let nationSort = { key: 'rank', dir: 'desc' }; // nations view sort column/direc
 let teamRegion = 'all'; // team table region filter
 let teamView = 'teams'; // Team Ranking tab view: 'teams' | 'nations'
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
+let lastRevealedName = null; // last player revealed in My Position (to play the reveal once)
 let currentSearch = '';
 let positionQuery = '';
 let vartimeFilter = 'all'; // admin VAR TIME view: 'all' | 'pending'
@@ -3018,6 +3037,7 @@ function renderMyPosition() {
   let resolved = null; // the single player being shown (enables the card button)
 
   if (q.length < 2) {
+    lastRevealedName = null; // back to empty → next match replays the reveal
     resultHtml = `
       <div class="position-empty">
         <div class="pos-mystery-card">
@@ -3030,6 +3050,7 @@ function renderMyPosition() {
   } else {
     const matches = people.filter(p => p.name.toLowerCase().includes(q));
     if (matches.length === 0) {
+      lastRevealedName = null;
       resultHtml = `<div class="position-result"><div class="no-result">${t('pos.none')}</div></div>`;
     } else if (matches.length === 1) {
       resolved = matches[0];
@@ -3090,10 +3111,15 @@ function renderPositionDetails(person) {
     cards.push({type: 'ok', label: `✅ GM target met (${fmtPct(person.ps_total_gm)})`});
   }
 
+  // Play the pack-opening reveal only when a NEW player is shown (not on every
+  // keystroke that still resolves to the same person).
+  const isNewReveal = person.name !== lastRevealedName;
+  lastRevealedName = person.name;
+
   // Same Panini card as everywhere else, centred, with discipline status below.
   return `
     <div class="position-result">
-      <div class="position-card-wrap">${paniniCardInner(person)}</div>
+      <div class="position-card-wrap${isNewReveal ? ' pc-reveal' : ''}">${paniniCardInner(person)}</div>
       ${teamRank > 0 ? `<div class="position-teamrank">${escapeHtml(person.team)} · Team #${teamRank} of ${sortedTeams.length}</div>` : ''}
       <div class="cards-status">
         ${cards.map(c => `<div class="status-item"><span class="${c.type === 'ok' ? 'status-ok' : 'status-warn'}">${c.label}</span></div>`).join('')}
