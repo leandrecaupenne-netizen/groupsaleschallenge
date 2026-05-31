@@ -825,6 +825,28 @@ input { font-family: inherit; }
 .refresh-btn:hover { background: rgba(255,255,255,0.25); }
 .refresh-btn.spinning { animation: spin 0.8s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Back-to-top button — appears after scrolling down a long list (Players, VAR…) */
+.scroll-top {
+  position: fixed; right: 18px; bottom: 18px; z-index: 800;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--navy); color: var(--gold);
+  border: 2px solid rgba(242,199,92,0.55);
+  font-size: 22px; line-height: 1; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+  cursor: pointer; opacity: 0; transform: translateY(12px) scale(0.9);
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s;
+}
+.scroll-top.show { opacity: 1; transform: none; }
+.scroll-top:hover { background: var(--navy-2); }
+:root[data-theme="dark"] .scroll-top { background: var(--paper); }
+@supports (padding: env(safe-area-inset-bottom)) {
+  .scroll-top { bottom: calc(18px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-top { transition: opacity 0.2s ease; transform: none; }
+}
 .sync-warn {
   display: none;
   align-items: center;
@@ -1378,6 +1400,7 @@ img, table { max-width: 100%; }
 </div>
 <div id="tv-root"></div>
 <div id="toast-root"></div>
+<button id="scroll-top" class="scroll-top" aria-label="Back to top" title="Back to top" hidden>↑</button>
 
 
 <script>
@@ -3675,6 +3698,30 @@ function scrollToMainContent(behavior) {
   });
 }
 
+// Back-to-top button: show it once the user has scrolled a screenful down, and
+// smooth-scroll home on click. Bound once; survives re-renders (lives outside #app).
+function initScrollTop() {
+  const btn = document.getElementById('scroll-top');
+  if (!btn || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }));
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    // z-index keeps it under modals/TV (1000); the tvMode guard avoids it lingering.
+    const show = window.scrollY > window.innerHeight * 0.8 && !tvMode;
+    btn.hidden = false;
+    btn.classList.toggle('show', show);
+  };
+  window.addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  refreshScrollTop = update; // let TV mode re-evaluate visibility on open/close
+  update();
+}
+let refreshScrollTop = () => {};
+
 function openSearch() {
   if (document.getElementById('search-overlay')) return;
   let query = '', filter = 'all';
@@ -3964,6 +4011,7 @@ function enterTV() {
   // covers the whole viewport; use F11 manually for true fullscreen if wanted.
   renderTV();
   startTvTimer();
+  refreshScrollTop();
 }
 
 function exitTV() {
@@ -3973,6 +4021,7 @@ function exitTV() {
   try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
   const root = document.getElementById('tv-root');
   if (root) root.innerHTML = '';
+  refreshScrollTop();
 }
 
 function toggleTV() { tvMode ? exitTV() : enterTV(); }
@@ -4209,6 +4258,7 @@ async function init() {
     searchBtn.dataset.bound = '1';
     searchBtn.addEventListener('click', openSearch);
   }
+  initScrollTop();
 
   startPolling();
 
