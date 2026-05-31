@@ -782,8 +782,12 @@ input { font-family: inherit; }
   font-family: 'Anton', Impact, sans-serif; font-size: 38px; color: #fff;
 }
 .pc-cards { position: absolute; bottom: -4px; right: -4px; font-size: 16px; }
+.pc-cards.pc-clean { filter: drop-shadow(0 0 4px rgba(34,197,94,0.7)); }
 .pc-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 6vw, 30px); line-height: 1.05; }
 .pc-team { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 4px; }
+.pc-discipline { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.pc-discipline.ok { background: rgba(34,197,94,0.22); color: #b9f6ca; border: 1px solid rgba(34,197,94,0.5); }
+.pc-discipline.warn { background: rgba(242,199,92,0.18); color: #ffe7a3; border: 1px solid rgba(242,199,92,0.5); }
 .pc-rating-row { display: flex; justify-content: center; gap: 22px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.22); }
 .pc-rating { display: flex; flex-direction: column; }
 .pc-rating b { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1; }
@@ -3008,8 +3012,8 @@ function drawPlayerCard(person, logo) {
     ['⚽ GOLDEN BOOT', gRank ? '#' + gRank : '—', fmtMoney(person.ps_nb) + ' NB'],
     ['🎯 PLAYMAKER', pRank ? '#' + pRank : '—', Number(person.opps || 0).toFixed(0) + ' opps'],
     ['💰 PS TOTAL', fmtMoney(person.ps_total), '#' + tRank + ' overall'],
-    ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : 'on target'],
-    ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : 'on target']
+    ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : '✅ on target'],
+    ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : '✅ on target']
   ];
   let y = 392;
   rows.forEach(r => {
@@ -3142,9 +3146,11 @@ function drawStandings(logo) {
     : sortedTeams.slice(0, 12).map(t => ({ name: t.country, val: t.avg_ps }));
   // Theme the top bar after the leader's flag: the #1 nation (Nations) or the
   // #1 player's country/region (Players). Teams keep the brand stripe.
+  // Nations / Players: flag of the leader. Teams: no flag (a brand stripe reads as
+  // a country flag, e.g. red/white/green looks Italian) — use a plain gold accent.
   const stripes = (isNations && nr[0]) ? (FLAG_STRIPES[nr[0].region] || FLAG_STRIPES.OTHER)
     : (isPlayers && sortedPSTotal[0]) ? flagForTeam(sortedPSTotal[0].team)
-    : ['#C8102E', '#FFFFFF', '#006847'];
+    : null;
   const heading = isNations ? '🌍 NATIONS RANKING' : isPlayers ? '👤 PLAYER RANKING' : '🏆 TEAM RANKING';
   const footMetric = isPlayers ? 'PS Bookings Total' : 'Avg PS Bookings / person';
   const W = 820, rowH = 64, headH = 300, H = headH + top.length * rowH + 90, s = 2;
@@ -3158,8 +3164,13 @@ function drawStandings(logo) {
   ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 2;
   for (let i = -H; i < W; i += 26) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke(); }
   ctx.strokeStyle = '#F2C75C'; ctx.lineWidth = 8; rr(16, 16, W - 32, H - 32, 26); ctx.stroke();
-  const bw = (W - 56) / 3;
-  stripes.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
+  if (stripes) {
+    const bw = (W - 56) / 3;
+    stripes.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
+  } else {
+    // Teams export: a single neutral gold bar (no flag connotation).
+    ctx.fillStyle = '#F2C75C'; ctx.fillRect(28, 34, W - 56, 10);
+  }
   if (logo) { const lw = 110, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 60, lw, lh); }
   ctx.textAlign = 'center';
   ctx.fillStyle = '#F2C75C'; ctx.font = '700 24px Inter, sans-serif';
@@ -3219,6 +3230,15 @@ function paniniCardInner(p) {
   const cards = [];
   if (p.yellow_meetings) cards.push('🟨');
   if (p.yellow_gm) cards.push('🟨');
+  // Discipline badge: yellow card(s) if breaking a rule, or a green ✅ "Clean
+  // Sheet" when the player is playing fully by the rules (and has real data).
+  const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
+  const clean = !p.yellow_meetings && !p.yellow_gm && hasData;
+  const disciplineBadge = cards.length
+    ? `<span class="pc-discipline warn" title="On a yellow card — see meetings / GM below">${cards.join('')} On a yellow card</span>`
+    : clean
+    ? `<span class="pc-discipline ok" title="5+ meetings/week and GM ≥ 25%">✅ Playing by the rules</span>`
+    : '';
   const stat = (label, value, sub) => `
     <div class="pc-stat">
       <div class="pc-stat-val">${value}</div>
@@ -3231,9 +3251,10 @@ function paniniCardInner(p) {
         <span class="pc-period">${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
         <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       </div>
-      <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : ''}</div>
+      <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
+      ${disciplineBadge}
       <div class="pc-rating-row">
         <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
         <div class="pc-rating"><b>${fmtPct(p.ps_total_gm)}</b><span>GM</span></div>
