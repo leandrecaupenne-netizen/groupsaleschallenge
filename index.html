@@ -515,8 +515,11 @@ input { font-family: inherit; }
   background: repeating-linear-gradient(120deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 30px);
 }
 .ms-hero > * { position: relative; z-index: 1; }
+.ms-hero-toprow { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
+.ms-hero-flag { display: inline-flex; width: 28px; height: 18px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); flex: 0 0 auto; }
+.ms-hero-flag i { flex: 1; }
 .ms-hero-badge {
-  align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  display: inline-flex; align-items: center; gap: 7px;
   font-family: 'Anton', Impact, sans-serif; letter-spacing: 0.06em; font-size: 12px;
   background: rgba(0,0,0,0.28); color: #fff; padding: 6px 12px; border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.25);
@@ -2472,10 +2475,14 @@ function renderMatchSheet(list, opts) {
   const max = opts.valueOf(top) || 1;
   const color = opts.color;
   const heroCards = cardMarkers(top);
+  const heroFlag = flagForTeam(top.team);
   const hero = `
     <div class="ms-hero" data-player="${escapeHtml(top.name)}" style="--c:${color}" title="View ${escapeHtml(top.name)}'s card">
       ${heroCards ? `<div class="ms-hero-cards">${heroCards}</div>` : ''}
-      <span class="ms-hero-badge">${opts.badge}</span>
+      <div class="ms-hero-toprow">
+        <span class="ms-hero-badge">${opts.badge}</span>
+        <span class="ms-hero-flag">${heroFlag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+      </div>
       <div class="ms-hero-rank">#1</div>
       <div class="ms-hero-name">${escapeHtml(top.name)}</div>
       <div class="ms-hero-team">${escapeHtml(top.team)}${top.is_rookie ? ' · 🌱 Rookie' : ''}</div>
@@ -2699,11 +2706,15 @@ function renderSpotlight() {
   const fColor = colorForTeam(featured.person.team);
   const fCards = cardMarkers(featured.person);
 
+  const fFlag = flagForTeam(featured.person.team);
   const hero = `
     <div class="ms-hero${anim}" data-player="${escapeHtml(featured.person.name)}" style="--c:${fColor}" title="View ${escapeHtml(featured.person.name)}'s card">
       ${fCards ? `<div class="ms-hero-cards">${fCards}</div>` : ''}
-      <span class="ms-hero-badge">${featured.icon} ${featured.cat}</span>
-      <div class="ms-hero-name" style="margin-top:14px">${escapeHtml(featured.person.name)}</div>
+      <div class="ms-hero-toprow">
+        <span class="ms-hero-badge">${featured.icon} ${featured.cat}</span>
+        <span class="ms-hero-flag">${fFlag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+      </div>
+      <div class="ms-hero-name" style="margin-top:8px">${escapeHtml(featured.person.name)}</div>
       <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🌱 Rookie' : ''}</div>
       <div class="ms-hero-stat" data-countup="${featured.value}" data-fmt="${featured.fmt}">${spotStatText(featured)}</div>
       <div class="ms-hero-stat-label">${featured.statLabel}</div>
@@ -4522,10 +4533,13 @@ function openCompare() {
         ['Meetings / wk', fmtNum(A.meetings), fmtNum(B.meetings), better(A.meetings, B.meetings)]
       ];
     }
-    // Count category wins (ties don't count) to crown an overall winner.
+    // Count category wins to crown an overall winner. On a tie, the better-ranked
+    // side (the first row is always the rank row) takes the crown — so there's
+    // always a champion, even in Teams where ties are common.
     let winsA = 0, winsB = 0;
     rows.forEach(r => { if (r[3] === 0) winsA++; else if (r[3] === 1) winsB++; });
-    const leader = winsA > winsB ? 0 : winsB > winsA ? 1 : -1;
+    let leader = winsA > winsB ? 0 : winsB > winsA ? 1 : -1;
+    if (leader === -1 && rows.length && (rows[0][3] === 0 || rows[0][3] === 1)) leader = rows[0][3];
 
     // Build the team-coloured "Panini" face-off cards for each side.
     const colorOf = name => mode === 'players'
