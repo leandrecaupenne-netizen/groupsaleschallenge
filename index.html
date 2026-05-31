@@ -3161,6 +3161,7 @@ function renderMyPosition() {
         <h2 class="section-title">${t('pos.title')}</h2>
         <p class="section-subtitle">${t('pos.sub')}</p>
         ${resolved ? `<button id="download-card" class="copy-btn">${t('btn.card')}</button>` : ''}
+        ${resolved ? `<button class="copy-btn pc-share" data-share="${escapeHtml(resolved.name)}" title="Copy a link to this card">🔗 Share</button>` : ''}
         <button class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
@@ -3907,14 +3908,13 @@ function render() {
   if (pTeamLink) pTeamLink.addEventListener('click', () => {
     openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
   });
-  const pShare = document.querySelector('.pc-share[data-share]');
-  if (pShare) pShare.addEventListener('click', async () => {
+  document.querySelectorAll('.pc-share[data-share]').forEach(pShare => pShare.addEventListener('click', async () => {
     const url = location.origin + location.pathname + '?player=' + encodeURIComponent(pShare.dataset.share);
     try {
       if (navigator.share) { await navigator.share({ title: 'Devoteam World Cup', text: pShare.dataset.share + ' — Sales Challenge card', url }); }
       else { await navigator.clipboard.writeText(url); const o = pShare.textContent; pShare.textContent = '✓ Link copied'; setTimeout(() => { pShare.textContent = o; }, 1600); }
     } catch (e) { /* user cancelled share or clipboard blocked */ }
-  });
+  }));
   // Stat boxes deep-link to that ranking tab (Golden Boot, Playmaker, Awards).
   document.querySelectorAll('.pc-stat-link[data-goto]').forEach(box => box.addEventListener('click', () => {
     const tab = box.dataset.goto;
