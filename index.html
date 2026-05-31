@@ -216,7 +216,9 @@ input { font-family: inherit; }
 .podium-card {
   position: relative; flex: 0 0 auto;
   width: clamp(150px, 22vw, 220px);
-  aspect-ratio: 5 / 7;
+  /* card-shaped MINIMUM height, but grows if a long team name wraps to 2 lines
+     (a fixed aspect-ratio + overflow:hidden used to clip the bottom meta line). */
+  min-height: calc(clamp(150px, 22vw, 220px) * 1.4);
   border-radius: 16px;
   padding: 18px 16px 22px;
   display: flex; flex-direction: column; align-items: center; text-align: center;
@@ -249,6 +251,7 @@ input { font-family: inherit; }
 /* #1 — gold "unique" card, centred and raised */
 .podium-card.first {
   width: clamp(170px, 25vw, 250px);
+  min-height: calc(clamp(170px, 25vw, 250px) * 1.4);
   border: 2px solid var(--gold);
   margin-bottom: 26px; /* lift it above the others */
   box-shadow: 0 24px 56px rgba(242,199,92,0.32), 0 0 0 1px rgba(242,199,92,0.4) inset;
@@ -952,9 +955,9 @@ input { font-family: inherit; }
 
 /* Phones: keep the three cards in a row but upright (no tilt) and snug. */
 @media (max-width: 560px) {
-  .podium-row { gap: 6px; padding-top: 22px; }
-  .podium-card { width: clamp(94px, 30vw, 130px); padding: 12px 8px 16px; border-radius: 12px; }
-  .podium-card.first { width: clamp(104px, 33vw, 150px); margin-bottom: 16px; }
+  .podium-row { gap: 6px; padding-top: 22px; align-items: stretch; }
+  .podium-card { width: clamp(94px, 30vw, 130px); min-height: calc(clamp(94px, 30vw, 130px) * 1.55); padding: 12px 8px 16px; border-radius: 12px; }
+  .podium-card.first { width: clamp(104px, 33vw, 150px); min-height: calc(clamp(104px, 33vw, 150px) * 1.55); margin-bottom: 16px; }
   .podium-card.second, .podium-card.third { transform: none; }
   .podium-card.second:hover, .podium-card.third:hover { transform: translateY(-3px) scale(1.02); }
   .podium-card::after, .podium-card-top { display: none; }
@@ -2194,7 +2197,7 @@ function renderTeamRanking() {
             if (p.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · under 5 meetings/week (${fmtNum(p.meetings)})">🟨</span>`);
             if (p.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(p.ps_total_gm)})">🟨</span>`);
             return `
-              <div class="members-table-row player-row var-click" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
+              <div class="members-table-row player-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
                 <div class="member-rank ${rank === 1 ? 'top' : ''}">#${rank}</div>
                 <div>
                   <div class="member-name">${escapeHtml(p.name)}</div>
@@ -2595,7 +2598,7 @@ function renderVAR() {
     </div>`;
 
   const row = (p, val, icon, cls) => `
-    <div class="var-row var-click ${cls || ''}" data-team="${escapeHtml(p.team)}" title="View ${escapeHtml(p.team)} squad">
+    <div class="var-row var-click ${cls || ''}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       <span class="var-card">${icon}</span>
       <span class="var-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="var-val">${val}</span>
@@ -3574,7 +3577,8 @@ function render() {
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
   document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
-  // Match-sheet cards (hero + ranked rows) open the Panini-style player card.
+  // Any player element (match-sheet cards/rows, Players-view rows, VAR rows)
+  // opens the SAME Panini-style player card — one consistent experience.
   document.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => {
     openPlayerModal = el.dataset.player;
     render();
@@ -3607,12 +3611,7 @@ function render() {
     });
     const vClear = document.getElementById('var-clear');
     if (vClear) vClear.addEventListener('click', () => { varRegion = 'all'; varTeam = 'all'; varSearch = ''; reRender(); });
-    // Clicking a player (card or clean sheet) opens their team's squad modal.
-    document.querySelectorAll('.var-click[data-team]').forEach(el => el.addEventListener('click', () => {
-      openTeamModal = el.dataset.team;
-      render();
-      document.body.style.overflow = 'hidden';
-    }));
+    // VAR rows carry data-player → the generic [data-player] handler opens the card.
   }
 
   // Admin VAR TIME: verdict buttons, filter, copy, reset (re-render, keep scroll)
@@ -3699,14 +3698,7 @@ function render() {
       render();
     });
   });
-  // Players view: clicking a player opens their team's squad modal
-  document.querySelectorAll('.player-row[data-team]').forEach(row => {
-    row.addEventListener('click', () => {
-      openTeamModal = row.dataset.team;
-      render();
-      document.body.style.overflow = 'hidden';
-    });
-  });
+  // Players view rows carry data-player → handled by the generic [data-player] binding.
   // Team region filter chips
   document.querySelectorAll('.region-chip').forEach(c => {
     c.addEventListener('click', () => { teamRegion = c.dataset.region; render(); });
