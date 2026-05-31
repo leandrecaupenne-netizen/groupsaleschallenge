@@ -572,12 +572,12 @@ input { font-family: inherit; }
 /* Phones: keep names readable AND keep the metric label. The value + its label
    drop to a full-width second line (left-aligned) so nothing is truncated. */
 @media (max-width: 520px) {
-  .ms-row { grid-template-columns: 26px 36px 1fr; grid-auto-rows: auto; gap: 4px 9px; padding: 11px 12px; }
-  .ms-rank { grid-row: 1 / span 2; align-self: center; }
-  .ms-avatar { grid-row: 1 / span 2; align-self: center; width: 36px; height: 36px; font-size: 14px; }
-  .ms-who { grid-column: 3; }
+  .ms-row { grid-template-columns: 26px 36px 1fr; grid-template-rows: auto auto; gap: 4px 9px; padding: 11px 12px; }
+  .ms-rank { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+  .ms-avatar { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 36px; height: 36px; font-size: 14px; }
+  .ms-who { grid-column: 3; grid-row: 1; }
   .ms-who-name { white-space: normal; }
-  .ms-figure { grid-column: 3; text-align: left; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .ms-figure { grid-column: 3; grid-row: 2; text-align: left; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .ms-val { font-size: 18px; }
   .ms-sub { text-align: left; margin-top: 0; }
 }
