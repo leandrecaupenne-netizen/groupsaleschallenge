@@ -652,13 +652,14 @@ input { font-family: inherit; }
   box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
 .position-card-wrap { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
-/* Pack-opening reveal: the card flips/scales in, then a shine sweeps across. */
-.pc-reveal { animation: pcRevealIn 0.6s cubic-bezier(.2,.8,.25,1) both; transform-origin: center 60%; }
-.pc-reveal .pc-card { position: relative; }
-.pc-reveal .pc-card::after {
-  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
-  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.55) 48%, rgba(255,255,255,0.0) 62%);
-  transform: translateX(-120%); animation: pcShine 0.9s ease 0.35s 1;
+/* Pack-opening reveal: the card flips/scales in, then a shine sweeps across.
+   The sweep lives on the WRAPPER so it never collides with the card's
+   holographic ::after sheen. */
+.pc-reveal { position: relative; animation: pcRevealIn 0.6s cubic-bezier(.2,.8,.25,1) both; transform-origin: center 60%; }
+.pc-reveal::after {
+  content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.5) 48%, rgba(255,255,255,0.0) 58%);
+  transform: translateX(-120%); animation: pcShine 0.9s ease 0.35s 1 both;
 }
 @keyframes pcRevealIn {
   0% { opacity: 0; transform: perspective(900px) rotateY(38deg) scale(0.7); }
@@ -668,7 +669,7 @@ input { font-family: inherit; }
 @keyframes pcShine { 0% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
 @media (prefers-reduced-motion: reduce) {
   .pc-reveal { animation: none; }
-  .pc-reveal .pc-card::after { animation: none; content: none; }
+  .pc-reveal::after { animation: none; content: none; }
 }
 /* Empty state: a Panini-style "mystery card" inviting you to find yourself. */
 .position-empty { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 26px 16px; }
@@ -835,7 +836,23 @@ input { font-family: inherit; }
     radial-gradient(120% 90% at 50% -10%, rgba(255,255,255,0.18), rgba(255,255,255,0) 55%),
     linear-gradient(160deg, var(--c, var(--usa-red)) 0%, color-mix(in srgb, var(--c, var(--usa-red)) 55%, #0d0f24) 100%);
   box-shadow: inset 0 0 50px rgba(0,0,0,0.25);
+  /* Holographic tilt: --mx/--my (0–100%) are set on pointer/tilt move. */
+  --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.18s ease;
+  will-change: transform;
 }
+/* holographic rainbow sheen that follows the pointer */
+.pc-card::after {
+  content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit;
+  opacity: 0; transition: opacity 0.2s; mix-blend-mode: color-dodge;
+  background:
+    radial-gradient(40% 60% at var(--mx) var(--my), rgba(255,255,255,0.45), rgba(255,255,255,0) 60%),
+    linear-gradient(105deg, transparent 38%, rgba(0,229,255,0.18) 44%, rgba(255,0,229,0.18) 50%, rgba(255,229,0,0.18) 56%, transparent 62%);
+  background-blend-mode: screen;
+}
+.pc-card.holo-active::after { opacity: 1; }
+.pc-card.holo-active { transition: transform 0.06s ease; }
 .pc-card::before { /* foil / chevron texture like a trading card */
   content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
   background:
@@ -3382,6 +3399,47 @@ function drawStandings(logo) {
 
 // Panini-style player card modal — opens when you tap a player anywhere
 // (match-sheet rows, etc.). Big portrait-style card + the player's key stats.
+// Holographic tilt + sheen on a Panini card: follows the pointer on desktop and
+// the device tilt on mobile. No-op if the element is missing or reduced-motion.
+function attachHolo(card) {
+  if (!card) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const MAX = 9; // degrees of tilt
+  const apply = (px, py) => {
+    // px, py in 0..1 across the card
+    card.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
+    card.style.setProperty('--my', (py * 100).toFixed(1) + '%');
+    card.style.setProperty('--ry', ((px - 0.5) * 2 * MAX).toFixed(2) + 'deg');
+    card.style.setProperty('--rx', ((0.5 - py) * 2 * MAX).toFixed(2) + 'deg');
+  };
+  const reset = () => {
+    card.classList.remove('holo-active');
+    card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg');
+    card.style.setProperty('--mx', '50%'); card.style.setProperty('--my', '50%');
+  };
+  const onMove = e => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    card.classList.add('holo-active'); apply(x, y);
+  };
+  card.addEventListener('pointermove', onMove);
+  card.addEventListener('pointerleave', reset);
+  // Device tilt (mobile): map gamma/beta to the sheen position.
+  const onTilt = ev => {
+    if (ev.gamma == null) return;
+    const px = Math.min(1, Math.max(0, (ev.gamma + 30) / 60)); // -30..30 → 0..1
+    const py = Math.min(1, Math.max(0, (ev.beta - 20) / 60));  // 20..80 → 0..1
+    card.classList.add('holo-active'); apply(px, py);
+  };
+  if (window.DeviceOrientationEvent && 'ontouchstart' in window) {
+    window.addEventListener('deviceorientation', onTilt);
+    // clean up when the card leaves the DOM
+    const obs = new MutationObserver(() => { if (!document.body.contains(card)) { window.removeEventListener('deviceorientation', onTilt); obs.disconnect(); } });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+}
+
 function renderPlayerModal() {
   if (!openPlayerModal) return '';
   const p = people.find(x => x.name === openPlayerModal);
@@ -3786,6 +3844,8 @@ function render() {
     currentTab = tab; if (tab === 'teams') teamView = 'teams';
     setTabUrl(tab); render();
   }));
+  // Holographic tilt on the player-modal card.
+  attachHolo(document.querySelector('#player-overlay .pc-card'));
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
@@ -3938,6 +3998,8 @@ function render() {
       }
     });
   }
+  // Holographic tilt on the My Position card.
+  if (currentTab === 'position') attachHolo(document.querySelector('.position-card-wrap .pc-card'));
 
   document.querySelectorAll('.suggestion-item').forEach(item => {
     item.addEventListener('click', () => {
