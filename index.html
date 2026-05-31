@@ -206,61 +206,75 @@ input { font-family: inherit; }
   line-height: 1.5;
 }
 
+/* === Hero podium — Sorare-style trading cards === */
 .podium-row {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr 1fr;
-  gap: 18px;
-  align-items: end;
-  max-width: 900px;
-  margin: 0 auto;
+  display: flex; justify-content: center; align-items: flex-end;
+  gap: clamp(8px, 2vw, 26px);
+  max-width: 940px; margin: 0 auto; padding-top: 30px;
+  perspective: 1400px;
 }
 .podium-card {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 14px;
-  padding: 22px 18px;
-  text-align: center;
-  position: relative;
-  transition: transform 0.2s;
+  position: relative; flex: 0 0 auto;
+  width: clamp(150px, 22vw, 220px);
+  aspect-ratio: 5 / 7;
+  border-radius: 16px;
+  padding: 18px 16px 22px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  color: #fff; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  /* team-coloured "rare card" gradient */
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,0.18), rgba(255,255,255,0) 55%),
+    linear-gradient(165deg, var(--cc, #2D3550) 0%, color-mix(in srgb, var(--cc, #2D3550) 55%, #0b0d22) 100%);
 }
-.podium-card:hover { transform: translateY(-4px); }
+/* foil chevron texture, like a Sorare/Panini card */
+.podium-card::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+  background:
+    repeating-linear-gradient(125deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 16px),
+    radial-gradient(70% 45% at 50% 0%, rgba(255,255,255,0.14), transparent 70%);
+}
+/* bottom chevron notch, the signature Sorare card shape cue */
+.podium-card::after {
+  content: ''; position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  width: 16px; height: 16px; border-radius: 4px;
+  background: rgba(255,255,255,0.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+.podium-card > * { position: relative; z-index: 1; }
+.podium-card:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 26px 56px rgba(0,0,0,0.5); }
+
+/* #1 — gold "unique" card, centred and raised */
 .podium-card.first {
-  background: linear-gradient(180deg, rgba(242,199,92,0.22) 0%, rgba(242,199,92,0.04) 100%);
+  width: clamp(170px, 25vw, 250px);
   border: 2px solid var(--gold);
-  padding: 30px 18px;
-  box-shadow: 0 8px 24px rgba(242,199,92,0.2);
+  margin-bottom: 26px; /* lift it above the others */
+  box-shadow: 0 24px 56px rgba(242,199,92,0.32), 0 0 0 1px rgba(242,199,92,0.4) inset;
+  z-index: 2;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,0.28), rgba(255,255,255,0) 55%),
+    linear-gradient(165deg, #C8932E 0%, #7a5418 60%, #4a3210 100%);
 }
-.podium-card.second { border-color: rgba(192,192,192,0.5); }
-.podium-card.third { border-color: rgba(205,127,50,0.5); }
-.podium-medal { font-size: 36px; margin-bottom: 8px; }
-.podium-rank {
-  font-family: 'Anton', Impact, sans-serif;
-  font-size: 40px; color: var(--gold); line-height: 1;
-}
-.podium-card.first .podium-rank { font-size: 60px; }
-.podium-team-name {
-  font-family: 'Anton', Impact, sans-serif;
-  font-size: 18px; letter-spacing: 0.04em;
-  margin: 10px 0 6px; word-break: break-word; color: white;
-}
-.podium-card.first .podium-team-name { font-size: 24px; color: var(--gold); }
-.podium-stat-main {
-  font-family: ui-monospace, monospace;
-  font-size: 20px; font-weight: 700; color: white; margin-top: 8px;
-}
-.podium-card.first .podium-stat-main { font-size: 26px; }
-.podium-stat-label {
-  font-size: 10px; letter-spacing: 0.14em;
-  color: rgba(255,255,255,0.6);
-  text-transform: uppercase; margin-top: 4px;
-}
-.podium-stat-meta {
-  display: flex; justify-content: center; gap: 14px;
-  margin-top: 14px;
-  font-size: 11px; color: rgba(255,255,255,0.7);
-  font-family: ui-monospace, monospace;
-}
+.podium-card.first::after { background: rgba(242,199,92,0.4); box-shadow: inset 0 0 0 1px rgba(242,199,92,0.6); }
+/* #2 / #3 tilt inward toward the champion */
+.podium-card.second { transform: rotate(-6deg) translateY(6px); transform-origin: bottom right; }
+.podium-card.third  { transform: rotate(6deg) translateY(6px); transform-origin: bottom left; }
+.podium-card.second:hover { transform: rotate(-3deg) translateY(-2px) scale(1.02); }
+.podium-card.third:hover  { transform: rotate(3deg) translateY(-2px) scale(1.02); }
+
+.podium-card-top { display: flex; align-items: center; justify-content: space-between; width: 100%; font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.8); }
+.podium-flag { display: inline-flex; width: 22px; height: 14px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.3); }
+.podium-flag i { flex: 1; }
+.podium-medal { font-size: clamp(30px, 5vw, 42px); margin-top: 8px; line-height: 1; }
+.podium-rank { font-family: 'Anton', Impact, sans-serif; font-size: clamp(34px, 6vw, 48px); color: var(--gold); line-height: 0.9; margin-top: 2px; }
+.podium-card.first .podium-rank { font-size: clamp(44px, 8vw, 64px); }
+.podium-team-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(15px, 2.4vw, 20px); letter-spacing: 0.03em; margin: 8px 0 0; word-break: break-word; color: #fff; line-height: 1.05; }
+.podium-card.first .podium-team-name { color: var(--gold); font-size: clamp(17px, 2.8vw, 23px); }
+.podium-stat-main { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vw, 28px); color: #fff; margin-top: auto; font-variant-numeric: tabular-nums; }
+.podium-stat-label { font-size: 8.5px; letter-spacing: 0.12em; color: rgba(255,255,255,0.65); text-transform: uppercase; margin-top: 3px; }
+.podium-stat-meta { display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.78); font-family: ui-monospace, monospace; }
 
 /* === SEARCH === */
 .search-row {
@@ -914,9 +928,19 @@ input { font-family: inherit; }
   .tt-col-members,
   .tt-col-meet,
   .tt-col-opps { display: none; }
-  .podium-row { grid-template-columns: 1fr; }
-  .podium-card.first { order: -1; }
   .hero { padding: 32px 18px 40px; }
+}
+
+/* Phones: keep the three cards in a row but upright (no tilt) and snug. */
+@media (max-width: 560px) {
+  .podium-row { gap: 6px; padding-top: 22px; }
+  .podium-card { width: clamp(94px, 30vw, 130px); padding: 12px 8px 16px; border-radius: 12px; }
+  .podium-card.first { width: clamp(104px, 33vw, 150px); margin-bottom: 16px; }
+  .podium-card.second, .podium-card.third { transform: none; }
+  .podium-card.second:hover, .podium-card.third:hover { transform: translateY(-3px) scale(1.02); }
+  .podium-card::after, .podium-card-top { display: none; }
+  .podium-medal { font-size: 24px; }
+  .podium-stat-meta { gap: 8px; font-size: 9px; }
 }
 
 @media (max-width: 600px) {
@@ -1936,16 +1960,24 @@ function renderHero() {
 
 function renderPodiumCard(team, rank, medal, position) {
   const flashCls = (rank === 1 && isFlashing('team')) ? ' flash-gold' : '';
+  const cc = colorForTeam(team.country);
+  const flag = flagForTeam(team.country);
+  // #1 keeps the gold "unique" look; #2/#3 take their team colour.
+  const colorVar = rank === 1 ? '' : `--cc:${cc};`;
   return `
-    <div class="podium-card ${position}${flashCls}">
+    <div class="podium-card ${position}${flashCls}" data-team="${escapeHtml(team.country)}" style="${colorVar}" title="View ${escapeHtml(team.country)} squad">
+      <div class="podium-card-top">
+        <span>${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
+        <span class="podium-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+      </div>
       <div class="podium-medal">${medal}</div>
       <div class="podium-rank">#${rank}</div>
       <div class="podium-team-name">${escapeHtml(team.country)}</div>
       <div class="podium-stat-main">${animNum('pod:' + team.country, team.avg_ps, 'money')}</div>
-      <div class="podium-stat-label">Avg PS Bookings per person</div>
+      <div class="podium-stat-label">Avg PS / person</div>
       <div class="podium-stat-meta">
         <span>👥 ${team.members}</span>
-        <span>📊 GM ${fmtPct(team.avg_gm)}</span>
+        <span>📊 ${fmtPct(team.avg_gm)}</span>
       </div>
     </div>
   `;
@@ -3688,6 +3720,15 @@ function render() {
       openTeamModal = row.dataset.team;
       render();
       // Bloque le scroll du body quand modal ouvert
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  // Hero podium cards → open the team's squad
+  document.querySelectorAll('.podium-card[data-team]').forEach(card => {
+    card.addEventListener('click', () => {
+      openTeamModal = card.dataset.team;
+      render();
       document.body.style.overflow = 'hidden';
     });
   });
