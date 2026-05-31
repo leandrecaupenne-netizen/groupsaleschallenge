@@ -213,6 +213,10 @@ input { font-family: inherit; }
   max-width: 940px; margin: 0 auto; padding-top: 30px;
   perspective: 1400px;
 }
+/* Any element wired to open a player card / team / nation is clickable —
+   always show the pointer cursor so the affordance is consistent everywhere. */
+[data-player], [data-team], [data-nteam], [data-nation] { cursor: pointer; }
+
 .podium-card {
   position: relative; flex: 0 0 auto;
   width: clamp(150px, 22vw, 220px);
@@ -588,7 +592,9 @@ input { font-family: inherit; }
   background: var(--cream);
   border-radius: 8px;
   font-size: 13px;
+  cursor: pointer; transition: background 0.12s, transform 0.12s;
 }
+.award-row[data-player]:hover { background: var(--line); transform: translateX(2px); }
 .award-row .position {
   font-family: 'Anton', Impact, sans-serif;
   font-size: 20px;
@@ -2775,6 +2781,7 @@ function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flas
 function renderJudgedAward(winner, fallbackMsg) {
   if (winner && winner.name) {
     return `
+          <div class="award-list">
             <div class="award-row">
               <span class="position">🏆</span>
               <div class="name">
@@ -2786,6 +2793,7 @@ function renderJudgedAward(winner, fallbackMsg) {
           ${winner.description ? `<div class="award-tbd-msg">${escapeHtml(winner.description)}</div>` : ''}`;
   }
   return `
+          <div class="award-list">
             <div class="award-row tbd">
               <span class="position">🏆</span>
               <div class="name"><div class="full-name">To be selected after the challenge</div></div>
@@ -2839,7 +2847,7 @@ function renderSpecialAwards() {
               <div class="award-subtitle">Top 1 · Selected by AI Agency</div>
             </div>
           </div>
-          <div class="award-list">${renderJudgedAward(specialAwards.ai_play_winner, 'The AI Agency will pick the most impactful AI deal of the challenge period.')}
+          ${renderJudgedAward(specialAwards.ai_play_winner, 'The AI Agency will pick the most impactful AI deal of the challenge period.')}
         </div>
 
         <div class="award-card" style="--c: #C8102E">
@@ -2850,7 +2858,7 @@ function renderSpecialAwards() {
               <div class="award-subtitle">Top 1 · Group Sales / Multidisciplinary / Nearshore</div>
             </div>
           </div>
-          <div class="award-list">${renderJudgedAward(specialAwards.transformative_deal_winner, 'Selected by Group Sales GM, Multidisciplinary and Nearshore based on strategic impact.')}
+          ${renderJudgedAward(specialAwards.transformative_deal_winner, 'Selected by Group Sales GM, Multidisciplinary and Nearshore based on strategic impact.')}
         </div>
       </div>
     </div>
@@ -2859,7 +2867,7 @@ function renderSpecialAwards() {
 
 function renderAwardRow(p, rank, stat) {
   return `
-    <div class="award-row">
+    <div class="award-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       <span class="position">#${rank}</span>
       <div class="name">
         <div class="full-name">${escapeHtml(p.name)}</div>
