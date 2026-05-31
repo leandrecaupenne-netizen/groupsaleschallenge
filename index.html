@@ -606,6 +606,18 @@ input { font-family: inherit; }
   cursor: pointer; transition: background 0.12s, transform 0.12s;
 }
 .award-row[data-player]:hover { background: var(--line); transform: translateX(2px); }
+/* #1 winner stands out: gold tint, accent bar, bigger name */
+.award-row-top {
+  background: linear-gradient(90deg, rgba(242,199,92,0.22), rgba(242,199,92,0.06));
+  border: 1px solid rgba(242,199,92,0.5); border-left: 4px solid var(--gold);
+  padding: 13px 12px;
+}
+.award-row-top[data-player]:hover { background: linear-gradient(90deg, rgba(242,199,92,0.32), rgba(242,199,92,0.1)); }
+.award-row-top .position { font-size: 24px; }
+.award-row-top .name .full-name { font-size: 15px; }
+.award-row-top .stat { font-size: 15px; color: var(--ink); }
+.award-flag { display: inline-flex; width: 16px; height: 11px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); vertical-align: middle; margin-right: 6px; }
+.award-flag i { flex: 1; }
 .award-row .position {
   font-family: 'Anton', Impact, sans-serif;
   font-size: 20px;
@@ -640,6 +652,28 @@ input { font-family: inherit; }
   box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
 .position-card-wrap { max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+/* Empty state: a Panini-style "mystery card" inviting you to find yourself. */
+.position-empty { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 26px 16px; }
+.pos-mystery-card {
+  position: relative; overflow: hidden;
+  width: clamp(150px, 46vw, 200px); aspect-ratio: 5 / 7; border-radius: 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  color: #fff; border: 2px solid rgba(242,199,92,0.55);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%),
+    linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 55%, #11132e 100%);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+  animation: posMystFloat 3.2s ease-in-out infinite;
+}
+.pos-mystery-card::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background: repeating-linear-gradient(125deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 16px); }
+.pos-mystery-card > * { position: relative; z-index: 1; }
+.pos-mystery-top { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; color: rgba(255,255,255,0.55); position: absolute; top: 12px; }
+.pos-mystery-q { font-family: 'Anton', Impact, sans-serif; font-size: clamp(56px, 18vw, 84px); color: var(--gold); line-height: 1; text-shadow: 0 4px 18px rgba(242,199,92,0.4); }
+.pos-mystery-label { font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.1em; color: rgba(255,255,255,0.7); }
+.pos-empty-text { color: var(--muted); font-size: 14px; font-style: italic; text-align: center; }
+@keyframes posMystFloat { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-8px) rotate(1.5deg); } }
+@media (prefers-reduced-motion: reduce) { .pos-mystery-card { animation: none; } }
 .position-teamrank { text-align: center; font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
 .position-name {
   font-family: 'Anton', Impact, sans-serif;
@@ -2964,12 +2998,14 @@ function renderSpecialAwards() {
 }
 
 function renderAwardRow(p, rank, stat) {
+  const medal = ['🥇', '🥈', '🥉'][rank - 1] || ('#' + rank);
+  const flag = flagForTeam(p.team);
   return `
-    <div class="award-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
-      <span class="position">#${rank}</span>
+    <div class="award-row${rank === 1 ? ' award-row-top' : ''}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
+      <span class="position">${medal}</span>
       <div class="name">
         <div class="full-name">${escapeHtml(p.name)}</div>
-        <div class="team-line">${escapeHtml(p.team)}</div>
+        <div class="team-line">${rank === 1 ? `<span class="award-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>` : ''}${escapeHtml(p.team)}</div>
       </div>
       <span class="stat">${stat}</span>
     </div>
@@ -2982,7 +3018,15 @@ function renderMyPosition() {
   let resolved = null; // the single player being shown (enables the card button)
 
   if (q.length < 2) {
-    resultHtml = `<div class="position-result"><div class="no-result">${t('pos.start')}</div></div>`;
+    resultHtml = `
+      <div class="position-empty">
+        <div class="pos-mystery-card">
+          <span class="pos-mystery-top">SALES CHALLENGE 2026</span>
+          <span class="pos-mystery-q">?</span>
+          <span class="pos-mystery-label">YOUR CARD</span>
+        </div>
+        <div class="pos-empty-text">${t('pos.start')}</div>
+      </div>`;
   } else {
     const matches = people.filter(p => p.name.toLowerCase().includes(q));
     if (matches.length === 0) {
