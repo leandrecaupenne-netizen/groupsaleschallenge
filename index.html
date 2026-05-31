@@ -509,13 +509,16 @@ input { font-family: inherit; }
 .ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 2px; line-height: 1.25; }
 .ms-anim { opacity: 0; animation: spotIn 0.45s cubic-bezier(.2,.7,.3,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .ms-anim { opacity: 1; animation: none; } }
-/* Phones: keep names readable — shrink the figure column and drop the long
-   stat sub-label (the hero already explains the metric). */
+/* Phones: keep names readable AND keep the metric label. The value + its label
+   drop to a full-width second line (left-aligned) so nothing is truncated. */
 @media (max-width: 520px) {
-  .ms-row { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; padding: 11px 13px; }
+  .ms-row { grid-template-columns: 30px 1fr; grid-auto-rows: auto; gap: 4px 10px; padding: 12px 13px; }
+  .ms-rank { grid-row: 1 / span 2; align-self: center; }
+  .ms-who { grid-column: 2; }
   .ms-who-name { white-space: normal; }
-  .ms-val { font-size: 17px; }
-  .ms-sub { display: none; }
+  .ms-figure { grid-column: 2; text-align: left; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .ms-val { font-size: 18px; }
+  .ms-sub { text-align: left; margin-top: 0; }
 }
 
 /* === SPECIAL AWARDS === */
@@ -712,6 +715,54 @@ input { font-family: inherit; }
   animation: slideUp 0.25s ease;
 }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* === Panini-style player card modal === */
+#player-overlay { align-items: center; }
+.pc-modal {
+  position: relative; width: 100%; max-width: 380px; margin: auto;
+  background: var(--paper); border-radius: 20px; padding: 18px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.45); animation: slideUp 0.25s ease;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.pc-close { position: absolute; top: 10px; right: 12px; z-index: 5; background: rgba(0,0,0,0.25); color:#fff; border-radius: 50%; width: 32px; height: 32px; font-size: 20px; line-height: 1; }
+.pc-card {
+  position: relative; overflow: hidden; border-radius: 16px; padding: 20px 18px 22px;
+  color: #fff; text-align: center;
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(255,255,255,0.18), rgba(255,255,255,0) 55%),
+    linear-gradient(160deg, var(--c, var(--usa-red)) 0%, color-mix(in srgb, var(--c, var(--usa-red)) 55%, #0d0f24) 100%);
+  box-shadow: inset 0 0 50px rgba(0,0,0,0.25);
+}
+.pc-card::before { /* foil / chevron texture like a trading card */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 14px),
+    radial-gradient(60% 50% at 50% 0%, rgba(255,255,255,0.12), transparent 70%);
+}
+.pc-card > * { position: relative; z-index: 1; }
+.pc-card-top { display: flex; align-items: center; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+.pc-flag { display: inline-flex; width: 26px; height: 17px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.3); }
+.pc-flag i { flex: 1; }
+.pc-avatar {
+  position: relative; width: 92px; height: 92px; margin: 14px auto 10px;
+  border-radius: 50%; background: rgba(255,255,255,0.15);
+  border: 3px solid rgba(255,255,255,0.55);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 38px; color: #fff;
+}
+.pc-cards { position: absolute; bottom: -4px; right: -4px; font-size: 16px; }
+.pc-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 6vw, 30px); line-height: 1.05; }
+.pc-team { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 4px; }
+.pc-rating-row { display: flex; justify-content: center; gap: 22px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.22); }
+.pc-rating { display: flex; flex-direction: column; }
+.pc-rating b { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1; }
+.pc-rating span { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.75); margin-top: 4px; }
+.pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pc-stat { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
+.pc-stat-val { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--ink); }
+.pc-stat-label { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-top: 3px; }
+.pc-stat-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 2px; }
+.pc-team-link { width: 100%; text-align: center; }
 .modal-header {
   background: var(--navy);
   color: white;
@@ -1567,6 +1618,7 @@ let varTeam = 'all';       // VAR Room entity (team) filter
 let varSearch = '';        // VAR Room player name search
 let openTeamModal = null; // country name si modal ouverte
 let openNationModal = null; // region key when a nation drilldown modal is open
+let openPlayerModal = null; // player name shown in the Panini-style player card modal
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
@@ -2191,7 +2243,7 @@ function renderMatchSheet(list, opts) {
   const color = opts.color;
   const heroCards = cardMarkers(top);
   const hero = `
-    <div class="ms-hero" style="--c:${color}">
+    <div class="ms-hero" data-player="${escapeHtml(top.name)}" style="--c:${color}" title="View ${escapeHtml(top.name)}'s card">
       ${heroCards ? `<div class="ms-hero-cards">${heroCards}</div>` : ''}
       <span class="ms-hero-badge">${opts.badge}</span>
       <div class="ms-hero-rank">#1</div>
@@ -2205,7 +2257,7 @@ function renderMatchSheet(list, opts) {
     const v = opts.valueOf(p);
     const w = Math.max(6, Math.round((v / max) * 100));
     return `
-      <div class="ms-row" data-team="${escapeHtml(p.team)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.team)} squad">
+      <div class="ms-row" data-player="${escapeHtml(p.name)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.name)}'s card">
         <div class="ms-rank">#${i + 2}</div>
         <div class="ms-who">
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
@@ -2418,7 +2470,7 @@ function renderSpotlight() {
   const fCards = cardMarkers(featured.person);
 
   const hero = `
-    <div class="ms-hero${anim}" style="--c:${fColor}">
+    <div class="ms-hero${anim}" data-player="${escapeHtml(featured.person.name)}" style="--c:${fColor}" title="View ${escapeHtml(featured.person.name)}'s card">
       ${fCards ? `<div class="ms-hero-cards">${fCards}</div>` : ''}
       <span class="ms-hero-badge">${featured.icon} ${featured.cat}</span>
       <div class="ms-hero-name" style="margin-top:14px">${escapeHtml(featured.person.name)}</div>
@@ -2429,7 +2481,7 @@ function renderSpotlight() {
     </div>`;
 
   const rows = rest.map((s, i) => `
-    <div class="ms-row${anim}" data-team="${escapeHtml(s.person.team)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.team)} squad">
+    <div class="ms-row${anim}" data-player="${escapeHtml(s.person.name)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.name)}'s card">
       <div class="ms-rank" style="font-size:18px">${s.icon}</div>
       <div class="ms-who">
         <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
@@ -3118,6 +3170,59 @@ function drawStandings(logo) {
   downloadCanvas(cv, isNations ? 'devoteam-world-cup-nations.png' : isPlayers ? 'devoteam-world-cup-players.png' : 'devoteam-world-cup-standings.png');
 }
 
+// Panini-style player card modal — opens when you tap a player anywhere
+// (match-sheet rows, etc.). Big portrait-style card + the player's key stats.
+function renderPlayerModal() {
+  if (!openPlayerModal) return '';
+  const p = people.find(x => x.name === openPlayerModal);
+  if (!p) return '';
+  const color = colorForTeam(p.team);
+  const flag = (COUNTRY_FLAGS[String(p.team).toUpperCase()] || FLAG_STRIPES[regionOf(p.team)] || FLAG_STRIPES.OTHER);
+  const goldenRank = sortedGoldenBoot.findIndex(x => x.name === p.name) + 1;
+  const playmakerRank = sortedPlaymaker.findIndex(x => x.name === p.name) + 1;
+  const totalRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
+  const licenceRank = sortedLicence.findIndex(x => x.name === p.name) + 1;
+  const initials = p.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const cards = [];
+  if (p.yellow_meetings) cards.push('🟨');
+  if (p.yellow_gm) cards.push('🟨');
+
+  const stat = (label, value, sub) => `
+    <div class="pc-stat">
+      <div class="pc-stat-val">${value}</div>
+      <div class="pc-stat-label">${label}</div>
+      ${sub ? `<div class="pc-stat-sub">${sub}</div>` : ''}
+    </div>`;
+
+  return `
+    <div class="modal-overlay" id="player-overlay">
+      <div class="pc-modal" onclick="event.stopPropagation()">
+        <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
+        <div class="pc-card" style="--c:${color}">
+          <div class="pc-card-top">
+            <span class="pc-period">${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
+            <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+          </div>
+          <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : ''}</div>
+          <div class="pc-name">${escapeHtml(p.name)}</div>
+          <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
+          <div class="pc-rating-row">
+            <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
+            <div class="pc-rating"><b>${fmtPct(p.ps_total_gm)}</b><span>GM</span></div>
+            <div class="pc-rating"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
+          </div>
+        </div>
+        <div class="pc-stats">
+          ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB')}
+          ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created')}
+          ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
+          ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm)) : ''}
+        </div>
+        <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
+      </div>
+    </div>`;
+}
+
 function renderTeamModal() {
   if (!openTeamModal) return '';
   const team = teams.find(t => t.country === openTeamModal);
@@ -3405,6 +3510,7 @@ function render() {
     ${renderFooter()}
     ${renderTeamModal()}
     ${renderNationModal()}
+    ${renderPlayerModal()}
   `;
 
   // Update last update
@@ -3422,12 +3528,22 @@ function render() {
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
   document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
-  // Match-sheet ranked rows (Golden Boot / Playmaker / Spotlight) open the squad.
-  document.querySelectorAll('.ms-row[data-team]').forEach(row => row.addEventListener('click', () => {
-    openTeamModal = row.dataset.team;
+  // Match-sheet cards (hero + ranked rows) open the Panini-style player card.
+  document.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => {
+    openPlayerModal = el.dataset.player;
     render();
     document.body.style.overflow = 'hidden';
   }));
+  // Player modal: close + "view squad" link
+  const pOverlay = document.getElementById('player-overlay');
+  const closePlayer = () => { openPlayerModal = null; document.body.style.overflow = ''; render(); };
+  const pClose = document.getElementById('player-close-btn');
+  if (pClose) pClose.addEventListener('click', closePlayer);
+  if (pOverlay) pOverlay.addEventListener('click', e => { if (e.target === pOverlay) closePlayer(); });
+  const pTeamLink = document.querySelector('.pc-team-link[data-team]');
+  if (pTeamLink) pTeamLink.addEventListener('click', () => {
+    openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
+  });
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
@@ -3656,6 +3772,9 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') { tvGo(-1); return; }
     if (e.key === 'Escape') { exitTV(); return; }
     return;
+  }
+  if (e.key === 'Escape' && openPlayerModal) {
+    openPlayerModal = null; document.body.style.overflow = ''; render(); return;
   }
   if (e.key === 'Escape' && (openTeamModal || openNationModal)) {
     if (openTeamModal && nationReturnTo) { openTeamModal = null; openNationModal = nationReturnTo; nationReturnTo = null; }
