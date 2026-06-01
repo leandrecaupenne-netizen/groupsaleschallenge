@@ -1010,9 +1010,24 @@ input { font-family: inherit; }
 .pc-cards.pc-clean { filter: drop-shadow(0 0 4px rgba(34,197,94,0.7)); }
 .pc-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 6vw, 30px); line-height: 1.05; }
 .pc-team { font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 4px; }
-.pc-discipline { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.pc-discipline { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; transition: filter 0.12s; }
+.pc-discipline:hover { filter: brightness(1.1); }
 .pc-discipline.ok { background: rgba(34,197,94,0.22); color: #b9f6ca; border: 1px solid rgba(34,197,94,0.5); }
 .pc-discipline.warn { background: rgba(242,199,92,0.18); color: #ffe7a3; border: 1px solid rgba(242,199,92,0.5); }
+.pc-disc-i { font-size: 11px; opacity: 0.8; }
+/* Tap-to-reveal explanation of the discipline status (VAR rules + this player's
+   actual values) — works on touch where the hover title is useless. */
+.pc-discipline-pop {
+  margin: 10px auto 0; max-width: 300px;
+  background: rgba(0,0,0,0.30); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px; padding: 12px 14px; text-align: left;
+  animation: discPop 0.2s ease both;
+}
+@keyframes discPop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.pc-disc-head { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+.pc-rule { display: block; font-size: 12px; line-height: 1.5; font-family: ui-monospace, monospace; }
+.pc-rule.ok { color: #b9f6ca; }
+.pc-rule.bad { color: #ffe7a3; }
 .pc-rating-row { display: flex; justify-content: center; gap: 22px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.22); }
 .pc-rating { display: flex; flex-direction: column; }
 .pc-rating b { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1; }
@@ -3950,10 +3965,20 @@ function paniniCardInner(p) {
   // Sheet" when the player is playing fully by the rules (and has real data).
   const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
   const clean = !p.yellow_meetings && !p.yellow_gm && hasData;
-  const disciplineBadge = cards.length
-    ? `<span class="pc-discipline warn" title="On a yellow card — see meetings / GM below">${cards.join('')} On a yellow card</span>`
-    : clean
-    ? `<span class="pc-discipline ok" title="5+ meetings/week and GM ≥ 25%">✅ Playing by the rules</span>`
+  // Build a precise, per-player explanation (tap to reveal — works on touch,
+  // where the hover title is useless).
+  const meetOk = !p.yellow_meetings;
+  const gmOk = !p.yellow_gm;
+  const explainLines = [
+    `<span class="pc-rule ${meetOk ? 'ok' : 'bad'}">${meetOk ? '✅' : '🟨'} Meetings: ${fmtNum(p.meetings)}/week ${meetOk ? '(target 5+)' : '(below 5 — yellow card)'}</span>`,
+    `<span class="pc-rule ${gmOk ? 'ok' : 'bad'}">${gmOk ? '✅' : '🟨'} Gross Margin: ${fmtPct(p.ps_total_gm)} ${gmOk ? '(target ≥ 25%)' : '(below 25% — yellow card)'}</span>`
+  ].join('');
+  const explainHint = cards.length
+    ? 'Two yellows make a red. Here\'s why:'
+    : 'Fully by the rules — both VAR checks passed:';
+  const disciplineBadge = (cards.length || clean)
+    ? `<button class="pc-discipline ${cards.length ? 'warn' : 'ok'}" data-discipline aria-expanded="false">${cards.length ? cards.join('') + ' On a yellow card' : '✅ Playing by the rules'}<span class="pc-disc-i">ⓘ</span></button>
+       <div class="pc-discipline-pop" hidden><div class="pc-disc-head">${explainHint}</div>${explainLines}</div>`
     : '';
   // Collectible "honours" — Panini-style achievement badges earned from the
   // player's standings. Shown as a row of chips under the stats.
@@ -4364,6 +4389,7 @@ function render() {
   }));
   // Holographic tilt on the player-modal card.
   attachHolo(document.querySelector('#player-overlay .pc-card'));
+  bindDisciplineToggles(); // discipline badge → tap to reveal the VAR explanation
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
@@ -4592,6 +4618,24 @@ function render() {
   if (nClose) nClose.addEventListener('click', closeNation);
   if (nOverlay) nOverlay.addEventListener('click', e => {
     if (e.target === nOverlay) closeNation();
+  });
+}
+
+// Discipline badge: tap to reveal the explanation popover. Bound directly (not
+// delegated) because the card containers call event.stopPropagation(), which
+// would swallow a document-level click. bindDisciplineToggles() is called from
+// every place the card is shown (modal, My Position, TV overlay).
+function bindDisciplineToggles(root) {
+  (root || document).querySelectorAll('[data-discipline]').forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      const pop = btn.parentElement.querySelector('.pc-discipline-pop');
+      if (!pop) return;
+      const open = pop.hidden;
+      pop.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    });
   });
 }
 
@@ -5475,6 +5519,7 @@ function openTVPlayerCard(name) {
   const x = el.querySelector('#tv-pc-close');
   if (x) x.addEventListener('click', close);
   attachHolo(el.querySelector('.pc-card'));
+  bindDisciplineToggles(el);
 }
 function closeTVPlayerCard() {
   const el = document.getElementById('tv-player-overlay');
