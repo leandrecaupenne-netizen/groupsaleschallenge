@@ -1056,6 +1056,19 @@ input { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
   font-family: 'Anton', Impact, sans-serif; font-size: 38px; color: #fff;
 }
+/* When a Gemini portrait exists, show it bigger and rest it on a soft halo —
+   the transparent PNG (head + jersey) reads like a real trading-card cut-out. */
+.pc-avatar.pc-avatar-photo {
+  width: 132px; height: 132px; margin: 8px auto 6px;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.30), rgba(255,255,255,0.06) 62%, transparent 72%);
+  border: none; overflow: visible;
+}
+.pc-photo {
+  position: relative; z-index: 1; width: 100%; height: 100%;
+  object-fit: contain; object-position: center bottom;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+}
+.pc-avatar-photo .pc-photo-fallback { display: none; }
 .pc-cards { position: absolute; bottom: -4px; right: -4px; font-size: 16px; }
 .pc-cards.pc-clean { filter: drop-shadow(0 0 4px rgba(34,197,94,0.7)); }
 .pc-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 6vw, 30px); line-height: 1.05; }
@@ -1711,6 +1724,8 @@ img, table { max-width: 100%; }
 .tv-hero-flag { display: inline-flex; width: clamp(28px, 4vmin, 44px); height: clamp(18px, 2.6vmin, 28px); border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); flex: 0 0 auto; }
 .tv-hero-flag i { flex: 1; }
 .tv-hero-avatar { width: clamp(60px, 11vmin, 120px); height: clamp(60px, 11vmin, 120px); margin: 1.6vmin auto 1vmin; border-radius: 50%; background: rgba(255,255,255,0.15); border: 0.4vmin solid rgba(255,255,255,0.55); display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: clamp(26px, 5vmin, 54px); }
+.tv-hero-avatar.tv-hero-avatar-photo { width: clamp(110px, 20vmin, 220px); height: clamp(110px, 20vmin, 220px); border: none; background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.28), rgba(255,255,255,0.05) 62%, transparent 72%); overflow: visible; }
+.tv-hero-photo { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 0.8vmin 1.4vmin rgba(0,0,0,0.4)); }
 .tv-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 4vmin, 46px); line-height: 1.05; }
 .tv-hero-team { font-family: ui-monospace, monospace; font-size: clamp(10px, 1.6vmin, 16px); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-top: 0.6vmin; }
 .tv-hero-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 7vmin, 76px); color: var(--gold); line-height: 1; margin-top: 1.4vmin; text-shadow: 0 2px 16px rgba(0,0,0,0.35); }
@@ -2255,6 +2270,24 @@ const CONFIG = {
 
 // Reuse the base64 logo already embedded in the header (no duplication).
 const LOGO_DATA_URI = (document.querySelector('.logo-img') || {}).src || '';
+
+// === Player photos (Gemini-style cards) ===
+// Portraits live in /cards/<slug>.png. A player's name is slugified the same way
+// the files were named, so "Louis MASSON" → "louis-masson". Names not in the set
+// fall back to their initials avatar — so any number of photos can be added over
+// time without touching code. Updated as new batches are dropped into /cards/.
+const CARD_PHOTOS = new Set(['adel-chakouri','adeline-auclert','adife-akin','agon-hasani','alain-rossi','albert-schaffner','alejandro-rubio','alexandre-le-tai-van','alexandre-romano','alexis-loureiro','alexis-pieve','alice-colombe','aliha-mahmood','aline-fouillot','alix-salteur-de-la-serraz','alvaro-alvarez','alvaro-moreno','amandine-leoncini','amelia-giallella','amine-tahri','amr-el-awny','anais-vetillard','andra-chelaru','andreas-stokholm','ann-ryngaert','anne-godefroy','antoine-pierre','apollonie-santelli','arnaud-laot','arthur-chaize','arun-singh','arwid-baur','asma-mhaih','augustin-robic','aurelien-witz','aurore-bourcois','axel-wattiez','ayman-qammaz','baptiste-charrier','barbara-saravia','bassil-mohammed','benjamin-carpentier','benjamin-dupre','benjamin-raymond','benoit-corneillet','budimir-janosevic','caetano-pires','camille-ferrante','carlos-aguado','carlos-maraui','carlos-pino','casper-grewal','cecilio-del-campo','chadia-hassouni','charles-boiteux','charles-mille','charles-valet','chema-lasierra','chloe-berthelot','chloe-lema','christian-valdes','cindy-berard','clara-taunay','claudia-palma','claus-thorsager','clement-desbenoit','cyril-echevarria','cyrille-dumaine-martin','dalila-delecourt','damir-jukic','daniel-rondon','daod-abdul-rahimzai','darrell-woods','david-serfaty','delphine-briand','dietmar-werder','domenico-la-grasta','edouard-grincourt','eduardo-santos','egor-myshev','ella-batham-read','elsa-tome','emil-kjaer','emma-ginnelly','emre-emirlioglu','eric-tilleke','erjona-gurina','erjona-koldashi','erwan-benech','eustache-sander','evan-beugnon','evert-visser','fabrice-dos','fernando-santos','filipa-de-lima','flora-annerose','florence-ciavaldini','florent-hamlin','florent-rafoni','florian-desfarges','florian-kicherer','francisco-pelayo','franck-cormier','francois-devaux','francois-solano','frank-schmitt','franklin-murray','franz-josef-leick','gabrielle-coron','gaetan-petga','gemma-collado','gerald-aster','gert-van-tussenbroek','gilles-camoin','guilherme-engel','guilherme-porto','guillaume-arnoux','guillaume-duran-duran','hannes-leitner','harry-brunt','heinz-winter','helene-bouvier','henri-divay','herman-terra','hugo-vieira-pereira','ibtissame-abkary','idoia-corta','ines-fidalgo-valadas','ines-jacinto','ines-laurens','ines-mejri','isabel-vieira','isabelle-le-garles','isabelle-vinette','ivan-bergendorff','jacco-nieuwdorp','jacob-riedel','jacques-fauche','jaime-garcia','jared-scheepers','jasper-roelants','javier-cutillas','javier-salmeron','javier-urcelay','jazz-baarbe','jean-baptiste-bertrand','jean-gaeng','jean-philippe-guiraudios','jeremy-moles-rota','jerome-jambou','jesper-olsson','joakim-gunnlogsson','joana-costa','joana-lopes','johan-van-der-linden','jonny-clifford','jorge-ruiz','joris-van-engelen','jose-ignacio-navajas','josip-matosin','josselyn-nadi','juan-carlos-merizalde','juan-carlos-nieto','juan-manuel-bernal','julie-lecuyer','julien-deloziere','julien-kopp','julieta-grassi','juliette-morize','jurgen-hebovi','justine-voillot','kamel-rouis','kamil-fernandez','kay-torsten-puls','kevin-de-boever','kevin-gueperoux','kevin-liu','khader-al-ayrot','killian-dessolle','kim-siggaard','lars-habesland','laura-abescat','laura-braun-perent','laura-cohen','laura-diaz-gomez','laurent-chata','lea-linhardt','leen-verelst','lenaic-bouchard','leo-lefebvre','lewis-mawer','liang-van-den-bossche','lisa-boud','lise-frandsen','loay-hamdy','louis-axel-meiner','louis-benoist','louis-gueugnier','louis-le-moigne','louis-masson','louise-remy','louise-rossignol','louna-beguin','luboslav-cimbak','lucas-antonialli','lucas-femina','lucie-chartrain','lucy-powell','luis-folgoso','luis-guada','luis-toledo','lukas-lesnovsky','luke-gunsing','mael-gaudichon','maelys-bernard','majdouline-guediri','malek-rashid','manel-alvarez','manuel-pacheco','manuel-russo-monteiro','marc-monpeurt','marc-quatrehomme','marc-willemse','marcos-crespo','maria-de-fatima-santos','mariana-magina','marie-sierra','marine-vorillon','mario-kogler','marion-de-ferran','marjolein-keislair','maroua-jdaini','marta-a-silva','marta-castanheira','marta-godinho','marta-santos','martin-esslinger','mathieu-maquin','matthieu-austin','mauricette-krioua','maxence-coustaury','maxime-argentin','maxime-pirri','maxime-puaud','maxime-tardif','merveen-berchtikou','meryem-berrada','michelle-cauwels','miguel-angel-castano','miguel-fornes','mohamed-hatab','mohammad-aldahleh','mylan-vallaud','nasser-hama','nathan-abena','nicolas-correia','nicolas-degot','nicolas-maincent','nicolas-moulin','noemie-kordahi','nour-bennis','nuno-ribeiro','nuno-seixas-silva','nuno-soares','nuria-martinez','olav-adami','oliver-nelson','olivier-hendrickx','omar-fachar','oriane-demaretz','oscar-perrin','oscar-vaz','pablo-escudero','pascal-rouanet','paul-thierry','pauline-coin','pedro-lopes-silva','pedro-luengo','peter-tall','pierre-beauval','pierre-vecchio','quentin-bernard','quentin-beyt','quentin-jehl-musart','quitterie-videau','rafael-lopez','ramond-keesmekers','rasmus-molbjerg','rita-joia','roberto-tobar','robertson-okoumina','robin-degeling','robin-wendel','romain-margueritte','ronald-haagensen','rosa-gonzalez','rui-passinhas','rute-baiao','saad-bestajy','saif-alomari','saleh-sama-neh','salim-merabet','samir-zahi','sandra-rizzi','sandro-viola','sara-garcia','sebastien-couderc','sebastien-germain','sebastien-lefebvre','sergio-ibanez','sharan-singh','shaun-hudson','simon-dhont','simon-farastier','simon-roy','sinhxay-chansina','sonia-macario','souhail-el-aoud','souhila-bouchama','stefan-forster','stefan-sprenger','stephane-dubois','sven-hoeboer','tanguy-d-astorg','tanguy-de-drouas','tanguy-marechal','tess-ravassard','theo-delattre','theo-rozenberg','thibault-dausque','thomas-bruun','thomas-dayries','thomas-de-amorim-chevalier','thomas-perrot','thomas-riis-carstensen','thomas-schiessl','thomas-stricher','thomas-vinther','timothe-ruiz','timothy-dewelle','tome-beato','troels-astrup','vadim-georgieff','valentin-esteban','viktoria-heinrich','vincent-chevalier','vincent-dumont','vincent-vigne','walid-chelbab','william-silva','xavier-briand','xavier-du-perier-de-larsan','xavier-fayolle','yasmine-ziani','yves-godon']);
+const ACCENTS = { 'á':'a','à':'a','â':'a','ä':'a','ã':'a','å':'a','é':'e','è':'e','ê':'e','ë':'e','í':'i','ì':'i','î':'i','ï':'i','ó':'o','ò':'o','ô':'o','ö':'o','õ':'o','ú':'u','ù':'u','û':'u','ü':'u','ç':'c','ñ':'n','š':'s','ž':'z','č':'c','ř':'r','ý':'y','ľ':'l','ĺ':'l','ť':'t','ď':'d','ň':'n','ě':'e','ů':'u','ø':'o','æ':'ae' };
+function nameSlug(name) {
+  let s = String(name || '').toLowerCase();
+  s = s.replace(/[^\x00-\x7f]/g, ch => ACCENTS[ch] || ch); // transliterate accents
+  return s.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+// Returns the photo URL for a player if we have one, else ''.
+function photoFor(name) {
+  const slug = nameSlug(name);
+  return CARD_PHOTOS.has(slug) ? `cards/${slug}.png` : '';
+}
 
 // === DATA (populated live from the Apps Script API) ===
 let DATA = null;
@@ -4587,7 +4620,7 @@ function paniniCardInner(p) {
         <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       </div>
       <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
-      <div class="pc-avatar"><span>${escapeHtml(initials)}</span>${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
+      <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
       ${disciplineBadge}
@@ -6135,7 +6168,7 @@ function tvMatchSheet(items, opts) {
         <span class="tv-hero-badge">${opts.badge || '🏆 LEADER'}</span>
         <span class="tv-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span>
       </div>
-      <div class="tv-hero-avatar">${initials || '—'}</div>
+      <div class="tv-hero-avatar${photoFor(top.name) ? ' tv-hero-avatar-photo' : ''}">${photoFor(top.name) ? `<img class="tv-hero-photo" src="${photoFor(top.name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('tv-hero-avatar-photo');this.remove()" />` : (initials || '—')}</div>
       <div class="tv-hero-name">${escapeHtml(top.name)}</div>
       ${top.team ? `<div class="tv-hero-team">${escapeHtml(top.team)}</div>` : ''}
       <div class="tv-hero-val">${top.val}</div>
