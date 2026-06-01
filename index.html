@@ -1537,18 +1537,23 @@ img, table { max-width: 100%; }
 .tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 34px); color: var(--gold); text-align: center; margin-bottom: 1.4vh; letter-spacing: 0.02em; }
 .tv-awcol .tv-list { gap: 1vh; }
 .tv-row {
-  display: flex; align-items: center; gap: 3vw;
+  /* Cap the vw-based spacing so it doesn't explode on large screens and starve
+     the name column (which used to force ugly char-by-char wrapping). */
+  display: flex; align-items: center; gap: clamp(10px, 1.4vw, 26px);
   background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; padding: 1.3vh 2.4vw;
+  border-radius: 14px; padding: 1.3vh clamp(12px, 1.6vw, 26px);
 }
 .tv-row.lead { background: linear-gradient(90deg, rgba(242,199,92,0.28), rgba(242,199,92,0.06)); border-color: rgba(242,199,92,0.6); }
 .tv-row.tv-row-clean { background: linear-gradient(90deg, rgba(22,163,74,0.22), rgba(22,163,74,0.04)); border-color: rgba(22,163,74,0.5); }
 .tv-row.tv-row-clean .tv-val { color: #34D399; }
 .tv-pos { font-size: clamp(24px, 4.5vmin, 52px); min-width: 1.4em; flex: 0 0 auto; text-align: center; }
-/* min-width:0 + overflow-wrap keep a long name inside its own box so it never
-   slides under the € value; the value never shrinks and never wraps. */
-.tv-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
-.tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
+/* break-word only breaks a word when it genuinely can't fit (it does NOT shrink
+   the column to one character like overflow-wrap:anywhere did), so names stay on
+   one line whenever there's room and never slide under the € value. */
+.tv-name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
+/* Team always on its own line under the name — cleaner than trailing inline,
+   especially with long names on a big screen. */
+.tv-name em { display: block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-top: 4px; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
 .tv-val { flex: 0 0 auto; white-space: nowrap; font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
 
