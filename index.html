@@ -3337,7 +3337,13 @@ function varBreakers() {
     if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} meetings/wk (needs 5)`);
     if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)} (needs 25%)`);
     return { p, reasons, verdict: (verdicts[p.name] && verdicts[p.name].verdict) || 'pending' };
-  }).sort((a, b) => b.reasons.length - a.reasons.length || (a.p.meetings || 0) - (b.p.meetings || 0));
+  }).sort((a, b) =>
+    // Top performers first — a high-revenue rep breaking the rules is the most
+    // interesting case to review. Tie-break on number of strikes (2 before 1),
+    // then on the lowest meetings/week.
+    (b.p.ps_total || 0) - (a.p.ps_total || 0)
+    || b.reasons.length - a.reasons.length
+    || (a.p.meetings || 0) - (b.p.meetings || 0));
 }
 
 const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', NL: '🇳🇱 Netherlands', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
