@@ -1920,7 +1920,13 @@ img, table { max-width: 100%; }
   box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
 .coach-kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--gold), var(--usa-red)); }
-.coach-kpi-icon { font-size: 20px; }
+.coach-kpi-click { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s; }
+.coach-kpi-click:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.10); border-color: var(--ink-2); }
+.coach-kpi-click:active { transform: scale(0.99); }
+.coach-kpi-click.on { border-color: var(--usa-red); box-shadow: 0 0 0 2px rgba(200,16,46,0.18); }
+.coach-kpi-icon { font-size: 20px; display: flex; align-items: center; justify-content: space-between; }
+.coach-kpi-dd { font-family: ui-monospace, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; color: var(--usa-red); text-transform: uppercase; opacity: 0.75; }
+:root[data-theme="dark"] .coach-kpi-dd { color: #ff8aa0; }
 .coach-kpi-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(26px, 4vw, 34px); color: var(--ink); line-height: 1; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .coach-kpi-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-top: 6px; letter-spacing: 0.02em; }
 .coach-kpi-sub { font-size: 10.5px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 3px; }
@@ -2803,8 +2809,8 @@ function renderTabs() {
   // The admin-only "VAR TIME" review tab is appended when admin mode is active.
   const tabs = isAdmin()
     ? [...TABS,
-        { id: 'coach', label: 'Coach Room 📋', tip: 'Admin · totals & objectives tracking, with contributor breakdown' },
-        { id: 'vartime', label: 'VAR TIME 🟥', tip: 'Admin · Friday review of players outside the rules' }]
+        { id: 'vartime', label: 'VAR TIME 🟥', tip: 'Admin · Friday review of players outside the rules' },
+        { id: 'coach', label: 'Coach Room 📋', tip: 'Admin · totals & objectives tracking, with contributor breakdown' }]
     : TABS;
   return `
     <div class="tabs-wrap">
@@ -3516,38 +3522,40 @@ function renderCoachRoom() {
 
   const sum = k => pool.reduce((a, p) => a + (Number(p[k]) || 0), 0);
   const totalPS = sum('ps_total'), totalNB = sum('ps_nb'), totalOpps = sum('opps');
-  const totalLic = sum('licence_gm');
+  const totalLic = sum('licence_gm'), totalMeet = sum('meetings');
   const headcount = pool.length;
-  const avgMeet = headcount ? sum('meetings') / headcount : 0;
+  const avgMeet = headcount ? totalMeet / headcount : 0;
   // Weighted average margin (GM €) / PS € — more correct than averaging percentages.
   const gmEuros = pool.reduce((a, p) => a + (Number(p.ps_total) || 0) * (Number(p.ps_total_gm) || 0), 0);
   const avgGM = totalPS ? gmEuros / totalPS : 0;
+  // Discipline across the WHOLE scope (everyone, not just rookies): a player is
+  // "playing by the rules" when they break neither VAR rule.
   const onCard = pool.filter(p => p.yellow_meetings || p.yellow_gm).length;
-  const clean = pool.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0)).length;
+  const clean = headcount - onCard;
   const rookies = pool.filter(p => p.is_rookie).length;
   const nbShare = totalPS ? (totalNB / totalPS) : 0;
   const teamsCount = new Set(pool.map(p => p.team)).size;
 
-  // Big KPI tiles.
-  const kpi = (icon, val, label, sub) => `
-    <div class="coach-kpi">
-      <div class="coach-kpi-icon">${icon}</div>
+  // Big KPI tiles. Tiles tied to a contributor metric are clickable → they
+  // switch the breakdown below to that metric (deep-dive who drives the total).
+  const kpi = (icon, val, label, sub, metric) => `
+    <div class="coach-kpi${metric ? ' coach-kpi-click' : ''}${metric && coachMetric === metric ? ' on' : ''}"${metric ? ` data-kpi="${metric}" role="button" tabindex="0" title="See top contributors to ${label}"` : ''}>
+      <div class="coach-kpi-icon">${icon}${metric ? '<span class="coach-kpi-dd">↳ deep dive</span>' : ''}</div>
       <div class="coach-kpi-val">${val}</div>
       <div class="coach-kpi-label">${label}</div>
       ${sub ? `<div class="coach-kpi-sub">${sub}</div>` : ''}
     </div>`;
   const kpis = [
-    kpi('💰', fmtMoney(totalPS), 'Total PS Bookings', `${teamsCount} team${teamsCount === 1 ? '' : 's'} · ${headcount} people`),
-    kpi('🥇', fmtMoney(totalNB), 'New Business', `${(nbShare * 100).toFixed(0)}% of total PS`),
+    kpi('💰', fmtMoney(totalPS), 'Total PS Bookings', `${teamsCount} team${teamsCount === 1 ? '' : 's'} · ${headcount} people`, 'ps_total'),
+    kpi('🥇', fmtMoney(totalNB), 'New Business', `${(nbShare * 100).toFixed(0)}% of total PS`, 'ps_nb'),
     kpi('📈', fmtPct(avgGM), 'Avg Gross Margin', 'weighted by PS €'),
-    kpi('🤝', fmtNum(avgMeet), 'Avg Meetings / week', `target 5+`),
-    kpi('🎯', coachFmt(totalOpps, 'int'), 'Opportunities created', 'Stage 2+ · > €50K'),
-    kpi('📜', fmtMoney(totalLic), 'Licence GM', 'cumulated')
+    kpi('🤝', coachFmt(totalMeet, 'int'), 'Total Meetings / week', `${fmtNum(avgMeet)} avg · target 5+`, 'meetings'),
+    kpi('🎯', coachFmt(totalOpps, 'int'), 'Opportunities created', 'Stage 2+ · > €50K', 'opps'),
+    kpi('📜', fmtMoney(totalLic), 'Licence GM', 'cumulated', 'licence_gm')
   ].join('');
 
-  // Discipline snapshot bar (clean vs on a card).
-  const discTotal = clean + onCard;
-  const cleanPct = discTotal ? Math.round((clean / discTotal) * 100) : 0;
+  // Discipline snapshot bar (clean vs on a card) — across everyone in scope.
+  const cleanPct = headcount ? Math.round((clean / headcount) * 100) : 0;
 
   // Contributor breakdown for the selected metric.
   const m = COACH_METRICS.find(x => x.key === coachMetric) || COACH_METRICS[0];
@@ -3598,7 +3606,7 @@ function renderCoachRoom() {
       <div class="coach-disc">
         <div class="coach-disc-head"><span>🟢 Playing by the rules</span><span><b>${clean}</b> clean · <b>${onCard}</b> on a yellow card</span></div>
         <div class="coach-disc-bar"><span style="width:${cleanPct}%"></span></div>
-        <div class="coach-disc-foot">${cleanPct}% of active players are fully compliant · 🌱 ${rookies} rookies in scope</div>
+        <div class="coach-disc-foot">${cleanPct}% of all ${headcount} players in scope are fully compliant · 🌱 ${rookies} rookies</div>
       </div>
 
       <div class="coach-contrib">
@@ -4851,6 +4859,17 @@ function render() {
     const cClear = document.getElementById('coach-clear');
     if (cClear) cClear.addEventListener('click', () => { coachRegion = 'all'; coachTeam = 'all'; reRender(); });
     document.querySelectorAll('.coach-metric').forEach(btn => btn.addEventListener('click', () => { coachMetric = btn.dataset.metric; reRender(); }));
+    // Clickable KPI tiles → switch the contributor breakdown to that metric and
+    // scroll down to it (deep-dive who drives the total).
+    const deepDive = (metric) => {
+      coachMetric = metric; render();
+      const c = document.querySelector('.coach-contrib');
+      if (c) c.scrollIntoView({ behavior: (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'auto' : 'smooth', block: 'start' });
+    };
+    document.querySelectorAll('.coach-kpi-click[data-kpi]').forEach(t => {
+      t.addEventListener('click', () => deepDive(t.dataset.kpi));
+      t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); deepDive(t.dataset.kpi); } });
+    });
     const cCopy = document.getElementById('coach-copy');
     if (cCopy) cCopy.addEventListener('click', () => {
       const sc = people.filter(p => (coachRegion === 'all' || regionOf(p.team) === coachRegion) && (coachTeam === 'all' || p.team === coachTeam));
