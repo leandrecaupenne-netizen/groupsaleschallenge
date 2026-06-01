@@ -1424,21 +1424,13 @@ input { font-family: inherit; }
 }
 .loader-screen.kicked { opacity: 0; transform: scale(1.02); }
 
-/* "Player tunnel" intro: dark walls frame the pitch and a small line-up of
-   players walks out onto the field, like a real match entrance. */
-.loader-tunnel { position: relative; width: 100%; max-width: 360px; height: 0; }
-.tw { position: absolute; top: -120px; bottom: -120px; width: 22vw; max-width: 130px; pointer-events: none; z-index: 0; }
-.tw-l { left: -10vw; background: linear-gradient(90deg, rgba(0,0,0,0.42), transparent); }
-.tw-r { right: -10vw; background: linear-gradient(270deg, rgba(0,0,0,0.42), transparent); }
-.loader-lineup { position: absolute; left: 50%; top: -34px; transform: translateX(-50%); display: flex; gap: 10px; z-index: 1; }
-.lu-player { font-size: 26px; opacity: 0; animation: luWalk 1.6s ease-out var(--d, 0ms) infinite; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3)); }
-@keyframes luWalk {
-  0% { opacity: 0; transform: translateY(-22px) scale(0.8); }
-  35% { opacity: 1; }
-  70% { opacity: 1; transform: translateY(4px) scale(1); }
-  100% { opacity: 0; transform: translateY(10px) scale(1.04); }
-}
-@media (prefers-reduced-motion: reduce) { .lu-player { animation: none; opacity: 0.9; transform: none; } }
+/* Stadium floodlights sweeping over the pitch for atmosphere. */
+.loader-flood { position: absolute; top: -30%; width: 60%; height: 160%; z-index: 0; pointer-events: none; opacity: 0.55; transform-origin: 50% 0; }
+.loader-flood-l { left: -8%; background: conic-gradient(from 200deg at 16% 0%, transparent 0deg, rgba(255,255,255,0.16) 13deg, transparent 28deg); animation: floodL 6s ease-in-out infinite alternate; }
+.loader-flood-r { right: -8%; background: conic-gradient(from 160deg at 84% 0%, transparent 0deg, rgba(242,199,92,0.16) 13deg, transparent 28deg); animation: floodR 6s ease-in-out infinite alternate; }
+@keyframes floodL { 0% { transform: rotate(-3deg); } 100% { transform: rotate(3deg); } }
+@keyframes floodR { 0% { transform: rotate(3deg); } 100% { transform: rotate(-3deg); } }
+@media (prefers-reduced-motion: reduce) { .loader-flood { animation: none; } }
 
 /* A self-contained LANDSCAPE pitch (top-down), with the ball at the centre spot. */
 .loader-pitch {
@@ -1450,6 +1442,19 @@ input { font-family: inherit; }
 .lf-half { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-1px); background: rgba(255,255,255,0.55); }
 .lf-circle { position: absolute; left: 50%; top: 50%; width: 34%; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.55); border-radius: 50%; }
 .lf-spot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); background: rgba(255,255,255,0.8); border-radius: 50%; z-index: 1; }
+/* Energy waves radiating from the centre spot under the ball. */
+.lf-wave { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; z-index: 1; animation: lfWave 1.8s ease-out infinite; }
+.lf-wave-2 { animation-delay: 0.6s; }
+.lf-wave-3 { animation-delay: 1.2s; }
+@keyframes lfWave { 0% { transform: scale(0.3); opacity: 0.8; } 100% { transform: scale(4.2); opacity: 0; } }
+/* Two glints orbiting the centre circle, like the ball being passed around. */
+.lf-orbit { position: absolute; left: 50%; top: 50%; width: 34%; aspect-ratio: 1; margin: 0; transform: translate(-50%, -50%); z-index: 1; }
+.lf-orbit-1 { animation: lfSpin 2.6s linear infinite; }
+.lf-orbit-2 { animation: lfSpin 3.8s linear infinite reverse; }
+.lf-orbit .lf-dot { position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px 2px rgba(242,199,92,0.7); }
+.lf-orbit-2 .lf-dot { background: #fff; box-shadow: 0 0 8px 2px rgba(255,255,255,0.7); }
+@keyframes lfSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lf-wave, .lf-orbit { animation: none; } .lf-wave { opacity: 0.2; } }
 /* Penalty + goal areas on the LEFT and RIGHT goal lines. */
 .lf-pbox { position: absolute; top: 50%; transform: translateY(-50%); width: 16%; height: 56%; border: 2px solid rgba(255,255,255,0.55); }
 .lf-gbox { position: absolute; top: 50%; transform: translateY(-50%); width: 7%; height: 30%; border: 2px solid rgba(255,255,255,0.55); }
@@ -2345,7 +2350,7 @@ const I18N = {
     'pos.start': 'Start typing your name above ↑', 'pos.none': 'No salesperson found with that name. Check spelling or try last name only.',
     'login.sub': 'Sales Challenge 2026 — Internal Access', 'login.ph': 'Enter access code', 'login.btn': 'ACCESS THE LEADERBOARD',
     'login.bad': 'Incorrect access code. Try again.', 'login.err': 'Could not reach the server. Check your connection and retry.', 'login.checking': 'CHECKING...',
-    'load.title': 'PLAYERS ENTERING THE PITCH', 'load.sub': 'Loading the live leaderboard…',
+    'load.title': 'WARMING UP', 'load.sub': 'Loading the live leaderboard…',
     'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
     'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
     'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m {s}s to the Final', 'cd.live': '🏆 The Final is on — Paris!',
@@ -5653,6 +5658,8 @@ function prewarmBackend() {
 function renderLoader() {
   return `
     <div class="loader-screen">
+      <span class="loader-flood loader-flood-l" aria-hidden="true"></span>
+      <span class="loader-flood loader-flood-r" aria-hidden="true"></span>
       <div class="loader-pitch" aria-hidden="true">
         <span class="lf-half"></span>
         <span class="lf-circle"></span>
@@ -5664,15 +5671,12 @@ function renderLoader() {
         <span class="lf-corner tr"></span>
         <span class="lf-corner bl"></span>
         <span class="lf-corner br"></span>
+        <span class="lf-spot"></span>
+        <span class="lf-wave"></span><span class="lf-wave lf-wave-2"></span><span class="lf-wave lf-wave-3"></span>
+        <span class="lf-orbit lf-orbit-1"><span class="lf-dot"></span></span>
+        <span class="lf-orbit lf-orbit-2"><span class="lf-dot"></span></span>
         <div class="loader-ball-shadow"></div>
         <div class="loader-ball">⚽</div>
-        <span class="lf-spot"></span>
-      </div>
-      <div class="loader-tunnel" aria-hidden="true">
-        <span class="tw tw-l"></span><span class="tw tw-r"></span>
-        <div class="loader-lineup">
-          ${['🟦','🟥','🟩','🟨','⬜'].map((_, i) => `<span class="lu-player" style="--d:${i * 120}ms">🧍</span>`).join('')}
-        </div>
       </div>
       <div>
         <div class="loader-title">${t('load.title')}</div>
