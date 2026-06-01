@@ -825,18 +825,30 @@ input { font-family: inherit; }
   border: 1px dashed var(--line);
 }
 
+/* Suggestions sit on the green pitch, so wrap them in a readable card. */
+.suggestion-card {
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+}
+.suggestion-head { margin: 0 0 8px; font-weight: 700; color: var(--ink); }
 .suggestion-list {
   list-style: none;
-  padding: 0; margin: 8px 0 0;
+  padding: 0; margin: 0;
 }
 .suggestion-item {
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 11px 12px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.1s;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
 }
+.suggestion-item + .suggestion-item { border-top: 1px solid var(--line); }
 .suggestion-item:hover { background: var(--cream); }
+.suggestion-name { font-weight: 700; color: var(--ink); }
+.suggestion-team { color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; letter-spacing: 0.04em; }
 
 /* === FOOTER === */
 .app-footer {
@@ -1532,11 +1544,13 @@ img, table { max-width: 100%; }
 .tv-row.lead { background: linear-gradient(90deg, rgba(242,199,92,0.28), rgba(242,199,92,0.06)); border-color: rgba(242,199,92,0.6); }
 .tv-row.tv-row-clean { background: linear-gradient(90deg, rgba(22,163,74,0.22), rgba(22,163,74,0.04)); border-color: rgba(22,163,74,0.5); }
 .tv-row.tv-row-clean .tv-val { color: #34D399; }
-.tv-pos { font-size: clamp(24px, 4.5vmin, 52px); min-width: 1.4em; text-align: center; }
-.tv-name { flex: 1; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
+.tv-pos { font-size: clamp(24px, 4.5vmin, 52px); min-width: 1.4em; flex: 0 0 auto; text-align: center; }
+/* min-width:0 + overflow-wrap keep a long name inside its own box so it never
+   slides under the € value; the value never shrinks and never wraps. */
+.tv-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
 .tv-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-left: 0.5em; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
-.tv-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
+.tv-val { flex: 0 0 auto; white-space: nowrap; font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
 
 /* === TV "Panini" match-sheet: featured hero card + chasing pack === */
 .tv-matchsheet { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 2.5vw; align-items: stretch; max-width: 1200px; width: 100%; margin: 0 auto; }
@@ -3435,15 +3449,17 @@ function renderMyPosition() {
       } else {
         resultHtml = `
           <div class="position-result">
-            <p style="margin:0 0 10px 0;font-weight:600">Multiple matches found · pick one:</p>
-            <ul class="suggestion-list">
-              ${matches.slice(0, 8).map(p => `
-                <li class="suggestion-item" data-name="${escapeHtml(p.name)}">
-                  <span style="font-weight:600">${escapeHtml(p.name)}</span>
-                  <span style="color:var(--muted);font-size:12px;font-family:ui-monospace,monospace">· ${escapeHtml(p.team)}</span>
-                </li>
-              `).join('')}
-            </ul>
+            <div class="suggestion-card">
+              <p class="suggestion-head">Multiple matches found · pick one:</p>
+              <ul class="suggestion-list">
+                ${matches.slice(0, 8).map(p => `
+                  <li class="suggestion-item" data-name="${escapeHtml(p.name)}">
+                    <span class="suggestion-name">${escapeHtml(p.name)}</span>
+                    <span class="suggestion-team">· ${escapeHtml(p.team)}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
           </div>
         `;
       }
