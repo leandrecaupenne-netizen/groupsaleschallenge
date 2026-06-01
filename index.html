@@ -32,14 +32,20 @@
   --silver: #9CA3AF;
   --bronze: #B45309;
 }
-/* Dark mode: flip the neutral surfaces; brand accents (navy/gold/red/green) stay. */
+/* Dark mode: flip the neutral surfaces; brand accents (navy/gold/red/green) stay.
+   Surfaces are kept distinctly lighter than the hero band so content pops. */
 :root[data-theme="dark"] {
-  --cream: #0E1322;
-  --paper: #18203A;
-  --ink: #E8ECF5;
-  --ink-2: #C2C9D6;
-  --muted: #93A0B5;
-  --line: #2A3350;
+  --cream: #131A2E;   /* page background */
+  --paper: #1E2742;   /* cards / tables — clearly lighter than the page + hero */
+  --ink: #EEF2FA;
+  --ink-2: #C8D0DE;
+  --muted: #97A4BA;
+  --line: #313C5E;
+}
+/* In dark mode the hero gets a brighter, more saturated blue so it reads as a
+   vivid band instead of melting into the dark page. */
+:root[data-theme="dark"] .hero {
+  background: linear-gradient(135deg, #2F4099 0%, #3C4E86 55%, #46508c 100%);
 }
 :root[data-theme="dark"] .teams-table-row:hover { background: rgba(255,255,255,0.04); }
 :root[data-theme="dark"] .search-input,
