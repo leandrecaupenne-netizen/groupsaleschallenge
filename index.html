@@ -35,13 +35,23 @@
 /* Dark mode: flip the neutral surfaces; brand accents (navy/gold/red/green) stay.
    Surfaces are kept distinctly lighter than the hero band so content pops. */
 :root[data-theme="dark"] {
-  --cream: #131A2E;   /* page background */
-  --paper: #1E2742;   /* cards / tables — clearly lighter than the page + hero */
-  --ink: #EEF2FA;
-  --ink-2: #C8D0DE;
-  --muted: #97A4BA;
-  --line: #313C5E;
+  --cream: #0D1424;   /* page background — deeper, so cards stand out more */
+  --paper: #232E4F;   /* cards / tables — noticeably lighter than the page + hero */
+  --ink: #F4F7FC;     /* near-white text for max readability */
+  --ink-2: #D3DAE8;
+  --muted: #A6B2C8;   /* lighter muted so labels stay legible */
+  --line: #3A476C;    /* more visible borders between cards/rows */
 }
+/* Lift cards off the dark page with a subtle outline + soft shadow. */
+:root[data-theme="dark"] .teams-table,
+:root[data-theme="dark"] .coach-kpi,
+:root[data-theme="dark"] .coach-disc,
+:root[data-theme="dark"] .vt-card,
+:root[data-theme="dark"] .award-card,
+:root[data-theme="dark"] .position-result,
+:root[data-theme="dark"] .fr-row,
+:root[data-theme="dark"] .coach-row,
+:root[data-theme="dark"] .cd-row { box-shadow: 0 2px 10px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.05); }
 /* In dark mode the hero gets a brighter, more saturated blue so it reads as a
    vivid band instead of melting into the dark page. */
 :root[data-theme="dark"] .hero {
