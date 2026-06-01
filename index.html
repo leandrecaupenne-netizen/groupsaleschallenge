@@ -4517,6 +4517,7 @@ function render() {
     attachHolo(vrOverlay.querySelector('.pc-card'));
     bindDisciplineToggles(vrOverlay);
     bindHonourToggles(vrOverlay);
+    bindCardOutsideClose(vrOverlay);
     vrOverlay.querySelectorAll('.vt-verdict[data-vrverdict]').forEach(btn => btn.addEventListener('click', () => {
       const verdict = btn.dataset.vrverdict;
       setVerdict(varReviewName, verdict);
@@ -4556,6 +4557,7 @@ function render() {
   attachHolo(document.querySelector('#player-overlay .pc-card'));
   bindDisciplineToggles(); // discipline badge → tap to reveal the VAR explanation
   bindHonourToggles();     // honour chips → tap to reveal what each one means
+  bindCardOutsideClose();  // tap elsewhere in the card closes the popovers
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
@@ -4826,6 +4828,29 @@ function bindHonourToggles(root) {
       pop.hidden = false;
       btn.classList.add('on');
       btn.setAttribute('aria-expanded', 'true');
+    });
+  });
+}
+
+// Close any open honour / discipline popover (and deselect its chip). Used when
+// the user taps elsewhere inside the card.
+function closeCardPopovers(scope) {
+  (scope || document).querySelectorAll('.pc-honour-pop:not([hidden])').forEach(pop => { pop.hidden = true; });
+  (scope || document).querySelectorAll('.pc-honour.on').forEach(c => { c.classList.remove('on'); c.setAttribute('aria-expanded', 'false'); });
+  (scope || document).querySelectorAll('.pc-discipline-pop:not([hidden])').forEach(pop => {
+    pop.hidden = true;
+    const btn = pop.parentElement && pop.parentElement.querySelector('[data-discipline]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  });
+}
+// A click anywhere inside the card that isn't on a toggle chip closes the popovers.
+function bindCardOutsideClose(root) {
+  (root || document).querySelectorAll('.pc-modal, .position-result').forEach(c => {
+    if (c.dataset.outclose) return;
+    c.dataset.outclose = '1';
+    c.addEventListener('click', e => {
+      if (e.target.closest('.pc-honour, .pc-discipline, .pc-honour-pop, .pc-discipline-pop')) return;
+      closeCardPopovers(c);
     });
   });
 }
@@ -5715,6 +5740,7 @@ function openTVPlayerCard(name) {
   attachHolo(el.querySelector('.pc-card'));
   bindDisciplineToggles(el);
   bindHonourToggles(el);
+  bindCardOutsideClose(el);
 }
 function closeTVPlayerCard() {
   const el = document.getElementById('tv-player-overlay');
