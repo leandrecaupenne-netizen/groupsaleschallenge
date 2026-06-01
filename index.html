@@ -3628,8 +3628,8 @@ function renderCoachRoom() {
 
       <div class="coach-kpis">${kpis}</div>
 
-      <div class="coach-disc">
-        <div class="coach-disc-head"><span>🟢 Playing by the rules</span><span><b>${clean}</b> clean · <b>${onCard}</b> on a yellow card</span></div>
+      <div class="coach-disc coach-disc-click" data-kpi="discipline" role="button" tabindex="0" title="See who's compliant vs on a yellow card">
+        <div class="coach-disc-head"><span>🟢 Playing by the rules <span class="coach-kpi-dd">↳ deep dive</span></span><span><b>${clean}</b> clean · <b>${onCard}</b> on a yellow card</span></div>
         <div class="coach-disc-bar"><span style="width:${cleanPct}%"></span></div>
         <div class="coach-disc-foot">${cleanPct}% of all ${headcount} players in scope are fully compliant · 🌱 ${rookies} rookies</div>
       </div>
@@ -3648,63 +3648,114 @@ function renderCoachRoom() {
 // Team Ranking drill-down. Nations → (open a nation) → its entities + top players.
 function renderCoachDiveModal() {
   if (!coachDive) return '';
-  const m = COACH_METRICS.find(x => x.key === coachDive.metric) || COACH_METRICS[0];
-  const val = p => Number(p[m.key]) || 0;
   const initials = (name) => String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
-  const grandTotal = people.reduce((a, p) => a + val(p), 0) || 1;
-
   // A reusable contribution row (bar + value + share of a given total).
   const row = (opts) => {
-    const share = (opts.value / opts.of) * 100;
+    const share = opts.of ? (opts.value / opts.of) * 100 : 0;
     return `
       <div class="cd-row ${opts.cls || ''}" ${opts.attr || ''}>
         <span class="cd-rank">${opts.rank}</span>
         ${opts.avatar ? `<span class="cd-avatar" style="--ac:${opts.color}">${opts.avatar}</span>` : `<span class="cd-flag">${(opts.flag || []).map(c => `<i style="background:${c}"></i>`).join('')}</span>`}
         <span class="cd-name">${escapeHtml(opts.name)}${opts.sub ? `<em>${escapeHtml(opts.sub)}</em>` : ''}</span>
-        <span class="cd-bar"><span style="width:${Math.max(2, share).toFixed(1)}%;--bc:${opts.color || 'var(--usa-red)'}"></span></span>
-        <span class="cd-val">${coachFmt(opts.value, m.rowFmt)}<small>${share.toFixed(1)}%</small></span>
+        <span class="cd-bar"><span style="width:${Math.max(2, opts.barPct != null ? opts.barPct : share).toFixed(1)}%;--bc:${opts.color || 'var(--usa-red)'}"></span></span>
+        <span class="cd-val">${opts.valText != null ? opts.valText : coachFmt(opts.value, opts.fmt)}<small>${opts.shareText != null ? opts.shareText : share.toFixed(1) + '%'}</small></span>
       </div>`;
   };
 
-  let body, subtitle, backBtn = '';
-  if (!coachDiveRegion) {
-    // Level 1 — nations.
-    const groups = {};
-    people.forEach(p => { const r = regionOf(p.team); (groups[r] || (groups[r] = { region: r, v: 0, n: 0 })); groups[r].v += val(p); groups[r].n++; });
-    const nations = Object.values(groups).filter(g => g.v > 0).sort((a, b) => b.v - a.v);
-    subtitle = `By nation · ${coachFmt(grandTotal, m.sumFmt)} total`;
-    body = nations.map((g, i) => row({
-      rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
-      value: g.v, of: grandTotal, flag: FLAG_STRIPES[g.region], color: FLAG_STRIPES[g.region] ? FLAG_STRIPES[g.region][0] : 'var(--navy)',
-      cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
-    })).join('') || `<div class="no-result">No contribution recorded yet.</div>`;
+  let body, subtitle, title, backBtn = '';
+
+  if (coachDive.metric === 'discipline') {
+    // === Discipline deep-dive: compliance % by nation → entities + the players on a card ===
+    title = 'Playing by the rules — who complies';
+    const isClean = p => !p.yellow_meetings && !p.yellow_gm;
+    const compliance = list => { const n = list.length, c = list.filter(isClean).length; return { n, c, pct: n ? (c / n) * 100 : 0 }; };
+    if (!coachDiveRegion) {
+      const groups = {};
+      people.forEach(p => { const r = regionOf(p.team); (groups[r] || (groups[r] = [])).push(p); });
+      const nations = Object.entries(groups).map(([region, list]) => ({ region, ...compliance(list) }))
+        .filter(g => g.n > 0).sort((a, b) => b.pct - a.pct);
+      const overall = compliance(people);
+      subtitle = `By nation · ${Math.round(overall.pct)}% of ${overall.n} players compliant`;
+      body = nations.map((g, i) => row({
+        rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+        barPct: g.pct, color: '#16a34a', flag: FLAG_STRIPES[g.region],
+        valText: Math.round(g.pct) + '%', shareText: `${g.c}/${g.n} clean`,
+        cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+      })).join('') || `<div class="no-result">No players in scope.</div>`;
+    } else {
+      const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+      const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
+      const rc = compliance(inReg);
+      backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
+      subtitle = `${regLabel} · ${Math.round(rc.pct)}% of ${rc.n} compliant`;
+      const teamMap = {};
+      inReg.forEach(p => { (teamMap[p.team] || (teamMap[p.team] = [])).push(p); });
+      const ents = Object.entries(teamMap).map(([team, list]) => ({ team, ...compliance(list) })).sort((a, b) => b.pct - a.pct);
+      const entRows = ents.map((t, i) => row({
+        rank: '#' + (i + 1), name: t.team, sub: `${t.n} people`, barPct: t.pct, color: '#16a34a',
+        avatar: '🏢', valText: Math.round(t.pct) + '%', shareText: `${t.c}/${t.n} clean`,
+        cls: 'cd-row-click', attr: `data-cd-team="${escapeHtml(t.team)}"`
+      })).join('') || `<div class="no-result">No entity data.</div>`;
+      // The players on a yellow card in this nation (the ones to coach).
+      const onCard = inReg.filter(p => !isClean(p)).sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
+      const cardRows = onCard.map((p, i) => {
+        const reasons = [];
+        if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} mtg/wk`);
+        if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)}`);
+        return row({
+          rank: '🟨', name: p.name, sub: p.team, barPct: 0, color: colorForTeam(p.team),
+          avatar: initials(p.name), valText: reasons.join(' · '), shareText: 'to coach',
+          cls: 'cd-row-click cd-row-card', attr: `data-player="${escapeHtml(p.name)}"`
+        });
+      }).join('') || `<div class="no-result">✅ Everyone here is playing by the rules!</div>`;
+      body = `
+        <h3 class="cd-h">🏢 Entities · compliance</h3>
+        ${entRows}
+        <h3 class="cd-h">🟨 On a yellow card${onCard.length ? ` · ${onCard.length}` : ''}</h3>
+        ${cardRows}`;
+    }
   } else {
-    // Level 2 — inside a nation: its entities (teams) + top players.
-    const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
-    const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
-    const regTotal = inReg.reduce((a, p) => a + val(p), 0) || 1;
-    backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
-    subtitle = `${regLabel} · ${coachFmt(regTotal, m.sumFmt)} · ${inReg.length} people`;
-    // Entities (teams) in this nation.
-    const teamMap = {};
-    inReg.forEach(p => { (teamMap[p.team] || (teamMap[p.team] = { team: p.team, v: 0, n: 0 })); teamMap[p.team].v += val(p); teamMap[p.team].n++; });
-    const ents = Object.values(teamMap).filter(t => t.v > 0).sort((a, b) => b.v - a.v);
-    const entRows = ents.map((t, i) => row({
-      rank: '#' + (i + 1), name: t.team, sub: `${t.n} people`, value: t.v, of: regTotal,
-      color: colorForTeam(t.team), avatar: '🏢'
-    })).join('') || `<div class="no-result">No entity data.</div>`;
-    // Top players in this nation.
-    const players = inReg.filter(p => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 15);
-    const playerRows = players.map((p, i) => row({
-      rank: '#' + (i + 1), name: p.name, sub: p.team, value: val(p), of: regTotal,
-      color: colorForTeam(p.team), avatar: initials(p.name),
-      cls: 'cd-row-click', attr: `data-player="${escapeHtml(p.name)}"`
-    })).join('') || `<div class="no-result">No players.</div>`;
-    body = `
-      <h3 class="cd-h">🏢 Entities</h3>
-      ${entRows}
-      <h3 class="cd-h">⚽ Top contributors${players.length >= 15 ? ' · top 15' : ''}</h3>
-      ${playerRows}`;
+    // === Value-metric deep-dive (PS Total, NB, meetings, opps, licence) ===
+    const m = COACH_METRICS.find(x => x.key === coachDive.metric) || COACH_METRICS[0];
+    title = m.label.replace(/^\S+\s/, '') + ' — who contributes';
+    const val = p => Number(p[m.key]) || 0;
+    const grandTotal = people.reduce((a, p) => a + val(p), 0) || 1;
+    if (!coachDiveRegion) {
+      const groups = {};
+      people.forEach(p => { const r = regionOf(p.team); (groups[r] || (groups[r] = { region: r, v: 0, n: 0 })); groups[r].v += val(p); groups[r].n++; });
+      const nations = Object.values(groups).filter(g => g.v > 0).sort((a, b) => b.v - a.v);
+      subtitle = `By nation · ${coachFmt(grandTotal, m.sumFmt)} total`;
+      body = nations.map((g, i) => row({
+        rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+        value: g.v, of: grandTotal, fmt: m.rowFmt, flag: FLAG_STRIPES[g.region], color: FLAG_STRIPES[g.region] ? FLAG_STRIPES[g.region][0] : 'var(--navy)',
+        cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+      })).join('') || `<div class="no-result">No contribution recorded yet.</div>`;
+    } else {
+      const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+      const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
+      const regTotal = inReg.reduce((a, p) => a + val(p), 0) || 1;
+      backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
+      subtitle = `${regLabel} · ${coachFmt(regTotal, m.sumFmt)} · ${inReg.length} people`;
+      const teamMap = {};
+      inReg.forEach(p => { (teamMap[p.team] || (teamMap[p.team] = { team: p.team, v: 0, n: 0 })); teamMap[p.team].v += val(p); teamMap[p.team].n++; });
+      const ents = Object.values(teamMap).filter(t => t.v > 0).sort((a, b) => b.v - a.v);
+      const entRows = ents.map((t, i) => row({
+        rank: '#' + (i + 1), name: t.team, sub: `${t.n} people`, value: t.v, of: regTotal, fmt: m.rowFmt,
+        color: colorForTeam(t.team), avatar: '🏢',
+        cls: 'cd-row-click', attr: `data-cd-team="${escapeHtml(t.team)}"`
+      })).join('') || `<div class="no-result">No entity data.</div>`;
+      const players = inReg.filter(p => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 15);
+      const playerRows = players.map((p, i) => row({
+        rank: '#' + (i + 1), name: p.name, sub: p.team, value: val(p), of: regTotal, fmt: m.rowFmt,
+        color: colorForTeam(p.team), avatar: initials(p.name),
+        cls: 'cd-row-click', attr: `data-player="${escapeHtml(p.name)}"`
+      })).join('') || `<div class="no-result">No players.</div>`;
+      body = `
+        <h3 class="cd-h">🏢 Entities</h3>
+        ${entRows}
+        <h3 class="cd-h">⚽ Top contributors${players.length >= 15 ? ' · top 15' : ''}</h3>
+        ${playerRows}`;
+    }
   }
 
   return `
@@ -3712,7 +3763,7 @@ function renderCoachDiveModal() {
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-title-block">
-            <h2 class="modal-title">${m.label.replace(/^\S+\s/, '')} — who contributes</h2>
+            <h2 class="modal-title">${title}</h2>
             <div class="modal-subtitle">${subtitle}</div>
           </div>
           <button class="modal-close" id="cd-close" aria-label="Close">×</button>
@@ -4969,7 +5020,7 @@ function render() {
     // Clickable KPI tiles → open the deep-dive modal (nations → entities →
     // players contribution to that metric, like the Team Ranking drill-down).
     const openDive = (metric) => { coachDive = { metric }; coachDiveRegion = null; render(); document.body.style.overflow = 'hidden'; };
-    document.querySelectorAll('.coach-kpi-click[data-kpi]').forEach(t => {
+    document.querySelectorAll('.coach-kpi-click[data-kpi], .coach-disc-click[data-kpi]').forEach(t => {
       t.addEventListener('click', () => openDive(t.dataset.kpi));
       t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDive(t.dataset.kpi); } });
     });
@@ -4981,6 +5032,12 @@ function render() {
       const x = document.getElementById('cd-close'); if (x) x.addEventListener('click', closeDive);
       const back = document.getElementById('cd-back'); if (back) back.addEventListener('click', () => { coachDiveRegion = null; render(); });
       cdOverlay.querySelectorAll('[data-cd-region]').forEach(r => r.addEventListener('click', () => { coachDiveRegion = r.dataset.cdRegion; render(); }));
+      // Entity rows → open that team's page (squad + contributors), closing the
+      // dive so the modals don't stack; the team modal has its own drill-down.
+      cdOverlay.querySelectorAll('[data-cd-team]').forEach(tr => tr.addEventListener('click', () => {
+        coachDive = null; coachDiveRegion = null;
+        openTeamModal = tr.dataset.cdTeam; render(); document.body.style.overflow = 'hidden';
+      }));
       // Player rows inside the dive open that player's card (over the dive).
       cdOverlay.querySelectorAll('[data-player]').forEach(pr => pr.addEventListener('click', () => {
         openPlayerModal = pr.dataset.player; render(); document.body.style.overflow = 'hidden';
