@@ -555,6 +555,19 @@ input { font-family: inherit; }
 
 /* Ranked chasing pack (#2…#5) */
 .ms-list { display: flex; flex-direction: column; gap: 10px; }
+/* Full ranking under the podium (show who's close to the top). */
+.full-rank { margin-top: 16px; }
+.full-rank-toggle { width: 100%; padding: 12px; border-radius: 10px; border: 1px dashed var(--line); background: var(--paper); color: var(--ink-2); font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.full-rank-toggle:hover { background: var(--cream); border-color: var(--ink-2); }
+.fr-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.fr-row { display: grid; grid-template-columns: 44px 30px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 9px; cursor: pointer; transition: background 0.12s, transform 0.12s, border-color 0.12s; }
+.fr-row:hover { background: var(--cream); transform: translateX(2px); border-color: var(--ink-2); }
+.fr-rank { font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--muted); text-align: center; }
+.fr-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 11px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.fr-name { min-width: 0; font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fr-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10.5px; color: var(--muted); text-transform: uppercase; margin-left: 8px; }
+.fr-val { font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 420px) { .fr-name em { display: none; } }
 .ms-row {
   position: relative; overflow: hidden;
   display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) clamp(110px, 28%, 210px); align-items: center; gap: 11px;
@@ -2292,6 +2305,7 @@ let coachTeam = 'all';     // COACH ROOM entity (team) filter
 let coachMetric = 'ps_total'; // COACH ROOM contributor metric
 let coachDive = null;      // open deep-dive: { metric } | null
 let coachDiveRegion = null; // drill-down: region opened inside the deep-dive (null = nations level)
+let fullRankOpen = {}; // { golden: bool, playmaker: bool } — show the full ranking under a board
 let varRegion = 'all';     // VAR Room country/region filter
 let varTeam = 'all';       // VAR Room entity (team) filter
 let varSearch = '';        // VAR Room player name search
@@ -2861,9 +2875,9 @@ function regionOf(c) {
   if (c.startsWith('FR') || c === 'Devoteam France') return 'FR';
   if (c.startsWith('ES')) return 'ES';
   if (u.includes('PORTUGAL') || u.startsWith('PT ') || u.startsWith('PT-') || u === 'PT') return 'PT';
-  // Netherlands stands as its own nation (broken out from the Benelux group).
-  if (u === 'NETHERLANDS' || u === 'HOLLAND' || u.startsWith('NETHERLANDS') || u.startsWith('NL ') || u.startsWith('NL-')) return 'NL';
-  if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM'].indexOf(u) !== -1) return 'BENELUX';
+  // Benelux = Belgium + Netherlands + Luxembourg (NL is part of Benelux).
+  if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM', 'NETHERLANDS', 'HOLLAND'].indexOf(u) !== -1
+      || u.startsWith('NETHERLANDS') || u.startsWith('NL ') || u.startsWith('NL-')) return 'BENELUX';
   // careful: "DENMARK" starts with "DE" but must stay Nordics, so match GERMANY/DACH/"DE - ..." only
   if (u.includes('GERMANY') || u.startsWith('DACH') || u.startsWith('DE -') || u.startsWith('DE-')) return 'DE';
   // Denmark stands as its own nation (broken out from the Nordics group).
@@ -2946,7 +2960,7 @@ function renderTeamRanking() {
   const filtered = sortedTeams.filter(t =>
     (!search || t.country.toLowerCase().includes(search)) &&
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
-  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['NL', '🇳🇱 Netherlands'], ['PT', '🇵🇹 Portugal'], ['DK', '🇩🇰 Denmark'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
+  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['DK', '🇩🇰 Denmark'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
@@ -3161,6 +3175,35 @@ function renderMatchSheet(list, opts) {
   return `<div class="matchsheet"><div>${hero}</div><div class="ms-list">${rows}</div></div>`;
 }
 
+// The full ranking below the top podium — so everyone can see how close they are
+// to the leaders, not just the top 5 (Alexis' feedback). Collapsed by default,
+// starting at the rank right after the podium; every row opens the player card.
+function fullRankingList(key, list, valueOf, fmt, podiumCount) {
+  const ranked = list.filter(p => valueOf(p) > 0);
+  if (ranked.length <= podiumCount) return '';
+  const open = !!fullRankOpen[key];
+  const rest = ranked.slice(podiumCount);
+  const rows = open ? rest.map((p, i) => {
+    const rank = podiumCount + i + 1;
+    const rc = colorForTeam(p.team);
+    const ini = String(p.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
+    return `
+      <div class="fr-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
+        <span class="fr-rank">#${rank}</span>
+        <span class="fr-avatar" style="--ac:${rc}">${ini}</span>
+        <span class="fr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+        <span class="fr-val">${fmtByType(valueOf(p), fmt)}</span>
+      </div>`;
+  }).join('') : '';
+  return `
+    <div class="full-rank">
+      <button class="full-rank-toggle" data-fullrank="${key}" aria-expanded="${open}">
+        ${open ? '▲ Hide full ranking' : `▼ Show full ranking (${ranked.length} players)`}
+      </button>
+      ${open ? `<div class="fr-list">${rows}</div>` : ''}
+    </div>`;
+}
+
 function renderGoldenBoot() {
   const top5 = sortedGoldenBoot.filter(p => p.ps_nb > 0).slice(0, 6);
   const race = tightRace(sortedGoldenBoot, p => p.ps_nb || 0, 'money');
@@ -3176,6 +3219,7 @@ function renderGoldenBoot() {
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
         line: pickHeadlineFor('scorer')
       })}
+      ${fullRankingList('golden', sortedGoldenBoot, p => p.ps_nb || 0, 'money', 6)}
     </div>
   `;
 }
@@ -3195,6 +3239,7 @@ function renderPlaymaker() {
         valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created',
         line: pickHeadlineFor('playmaker')
       })}
+      ${fullRankingList('playmaker', sortedPlaymaker, p => p.opps || 0, 'int', 6)}
     </div>
   `;
 }
@@ -3525,8 +3570,8 @@ function varBreakers() {
     || (a.p.meetings || 0) - (b.p.meetings || 0));
 }
 
-const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', NL: '🇳🇱 Netherlands', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
-const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'NL', 'PT', 'DK', 'NORDICS', 'OTHER'];
+const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
+const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'DK', 'NORDICS', 'OTHER'];
 
 // === Admin "COACH ROOM": challenge totals/objectives + contributor breakdown ===
 // The metrics a coach actually tracks toward the big group targets: total PS
@@ -4879,6 +4924,11 @@ function render() {
   const exportBtn = document.getElementById('export-standings');
   if (exportBtn) exportBtn.addEventListener('click', generateStandingsImage);
   document.querySelectorAll('.js-compare').forEach(btn => btn.addEventListener('click', openCompare));
+  // Full-ranking toggle under Golden Boot / Playmaker (keep scroll position).
+  document.querySelectorAll('[data-fullrank]').forEach(btn => btn.addEventListener('click', () => {
+    const k = btn.dataset.fullrank; fullRankOpen[k] = !fullRankOpen[k];
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }));
   // Any player element (match-sheet cards/rows, Players-view rows, VAR rows)
   // opens the SAME Panini-style player card — one consistent experience.
   document.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => {
