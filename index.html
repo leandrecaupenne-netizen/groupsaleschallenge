@@ -540,6 +540,14 @@ input { font-family: inherit; }
   box-shadow: 0 14px 36px rgba(0,0,0,0.22);
   display: flex; flex-direction: column;
 }
+/* The #1's portrait — a round avatar disc near the top of the hero. */
+.ms-hero-avatar {
+  width: clamp(96px, 30vw, 140px); height: clamp(96px, 30vw, 140px);
+  margin: 6px auto 8px; border-radius: 50%; overflow: hidden; position: relative;
+  background: radial-gradient(circle at 50% 36%, rgba(255,255,255,0.30), rgba(255,255,255,0.05) 62%, transparent 72%);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3), inset 0 0 0 2px rgba(255,255,255,0.4);
+}
+.ms-hero-avatar-img { width: 132%; height: 132%; object-fit: cover; object-position: center top; display: block; margin: -4% auto 0; }
 /* faint pitch stripes for texture */
 .ms-hero::before {
   content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
@@ -1069,6 +1077,11 @@ input { font-family: inherit; }
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
 }
 .pc-avatar-photo .pc-photo-fallback { display: none; }
+/* Universal photo inside any small round avatar disc (ms/fr/coach/cd/vt/aw…).
+   The portrait fills the disc, anchored to the bottom (head shows), and the
+   disc clips it to a circle. Scaled up a touch so the face isn't tiny. */
+.has-photo { overflow: hidden; }
+.av-photo { width: 132%; height: 132%; object-fit: cover; object-position: center top; display: block; }
 .pc-cards { position: absolute; bottom: -4px; right: -4px; font-size: 16px; }
 .pc-cards.pc-clean { filter: drop-shadow(0 0 4px rgba(34,197,94,0.7)); }
 .pc-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 6vw, 30px); line-height: 1.05; }
@@ -2168,6 +2181,8 @@ img, table { max-width: 100%; }
 .cmp-card-flag { display: inline-flex; width: 26px; height: 17px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); margin-top: 6px; }
 .cmp-card-flag i { flex: 1; }
 .cmp-card-badge { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; margin: 8px auto 8px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5); font-family: 'Anton', Impact, sans-serif; font-size: 22px; }
+.cmp-card-badge.cmp-card-badge-photo { width: 82px; height: 82px; border: none; background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.28), rgba(255,255,255,0.05) 62%, transparent 72%); overflow: visible; }
+.cmp-card-photo { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 4px 7px rgba(0,0,0,0.35)); }
 .cmp-card-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(14px, 4vw, 19px); line-height: 1.1; word-break: break-word; }
 .cmp-card-sub { font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.75); margin-top: 3px; }
 .cmp-card-wins { font-family: 'Anton', Impact, sans-serif; font-size: 30px; color: var(--gold); line-height: 1; margin-top: 10px; }
@@ -2294,6 +2309,19 @@ function nameSlug(name) {
 function photoFor(name) {
   const slug = nameSlug(name);
   return CARD_PHOTOS.has(slug) ? `cards/${slug}.png` : '';
+}
+function avatarInitials(name) {
+  return String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
+}
+// Universal avatar content for a small round disc: the player's photo when we
+// have it (falling back to initials if it 404s), else the initials. Drop this
+// inside any element that already styles a circular avatar. Adds the
+// `has-photo` class on the parent so CSS can switch to image styling.
+function avatarInner(name) {
+  const ph = photoFor(name);
+  if (!ph) return avatarInitials(name);
+  const ini = avatarInitials(name);
+  return `<img class="av-photo" src="${ph}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
 }
 
 // === DATA (populated live from the Apps Script API) ===
@@ -3196,6 +3224,7 @@ function renderMatchSheet(list, opts) {
         <span class="ms-hero-badge">${opts.badge}</span>
         <span class="ms-hero-flag">${heroFlag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       </div>
+      ${photoFor(top.name) ? `<div class="ms-hero-avatar"><img class="ms-hero-avatar-img" src="${photoFor(top.name)}" alt="" loading="lazy" onerror="this.parentElement.remove()" /></div>` : ''}
       <div class="ms-hero-rank">#1</div>
       <div class="ms-hero-name">${escapeHtml(top.name)}</div>
       <div class="ms-hero-team">${escapeHtml(top.team)}${top.is_rookie ? ' · 🌱 Rookie' : ''}</div>
@@ -3212,7 +3241,7 @@ function renderMatchSheet(list, opts) {
     return `
       <div class="ms-row" data-player="${escapeHtml(p.name)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.name)}'s card">
         <div class="ms-rank">#${i + 2}</div>
-        <div class="ms-avatar" style="--ac:${rc}">${initials || '—'}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
+        <div class="ms-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
         <div class="ms-who">
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
           <div class="ms-who-team">${escapeHtml(p.team)}</div>
@@ -3240,7 +3269,7 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount) {
     return `
       <div class="fr-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
         <span class="fr-rank">#${rank}</span>
-        <span class="fr-avatar" style="--ac:${rc}">${ini}</span>
+        <span class="fr-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}</span>
         <span class="fr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
         <span class="fr-val">${fmtByType(valueOf(p), fmt)}</span>
       </div>`;
@@ -3479,7 +3508,7 @@ function renderSpotlight() {
     return `
     <div class="ms-row${anim}" data-player="${escapeHtml(s.person.name)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.name)}'s card">
       <div class="ms-rank" style="font-size:18px">${s.icon}</div>
-      <div class="ms-avatar" style="--ac:${colorForTeam(s.person.team)}">${initials || '—'}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
+      <div class="ms-avatar${photoFor(s.person.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(s.person.team)}">${avatarInner(s.person.name)}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
       <div class="ms-who">
         <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
         <div class="ms-who-team">${s.cat} · ${escapeHtml(s.person.team)}</div>
@@ -3697,7 +3726,7 @@ function renderCoachRoom() {
     return `
       <div class="coach-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
         <span class="coach-row-rank">#${i + 1}</span>
-        <span class="coach-avatar" style="--ac:${rc}">${initials(p.name)}</span>
+        <span class="coach-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}</span>
         <span class="coach-row-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
         <span class="coach-row-bar"><span style="width:${Math.max(2, share).toFixed(1)}%;--bc:${rc}"></span></span>
         <span class="coach-row-val">${coachFmt(v, m.rowFmt)}<small>${share.toFixed(1)}%</small></span>
@@ -3778,7 +3807,7 @@ function renderCoachDiveModal() {
     return `
       <div class="cd-row ${opts.cls || ''}" ${opts.attr || ''}>
         <span class="cd-rank">${opts.rank}</span>
-        ${opts.avatar ? `<span class="cd-avatar" style="--ac:${opts.color}">${opts.avatar}</span>` : `<span class="cd-flag">${(opts.flag || []).map(c => `<i style="background:${c}"></i>`).join('')}</span>`}
+        ${opts.avatar ? `<span class="cd-avatar${(opts.photoName && photoFor(opts.photoName)) ? ' has-photo' : ''}" style="--ac:${opts.color}">${(opts.photoName && photoFor(opts.photoName)) ? avatarInner(opts.photoName) : opts.avatar}</span>` : `<span class="cd-flag">${(opts.flag || []).map(c => `<i style="background:${c}"></i>`).join('')}</span>`}
         <span class="cd-name">${escapeHtml(opts.name)}${opts.sub ? `<em>${escapeHtml(opts.sub)}</em>` : ''}</span>
         <span class="cd-bar"><span style="width:${Math.max(2, opts.barPct != null ? opts.barPct : share).toFixed(1)}%;--bc:${opts.color || 'var(--usa-red)'}"></span></span>
         <span class="cd-val">${opts.valText != null ? opts.valText : coachFmt(opts.value, opts.fmt)}<small>${opts.shareText != null ? opts.shareText : share.toFixed(1) + '%'}</small></span>
@@ -3827,7 +3856,7 @@ function renderCoachDiveModal() {
         if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)}`);
         return row({
           rank: '🟨', name: p.name, sub: p.team, barPct: 0, color: colorForTeam(p.team),
-          avatar: initials(p.name), valText: reasons.join(' · '), shareText: 'to coach',
+          avatar: initials(p.name), photoName: p.name, valText: reasons.join(' · '), shareText: 'to coach',
           cls: 'cd-row-click cd-row-card', attr: `data-player="${escapeHtml(p.name)}"`
         });
       }).join('') || `<div class="no-result">✅ Everyone here is playing by the rules!</div>`;
@@ -3870,7 +3899,7 @@ function renderCoachDiveModal() {
       const players = inReg.filter(p => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 15);
       const playerRows = players.map((p, i) => row({
         rank: '#' + (i + 1), name: p.name, sub: p.team, value: val(p), of: regTotal, fmt: m.rowFmt,
-        color: colorForTeam(p.team), avatar: initials(p.name),
+        color: colorForTeam(p.team), avatar: initials(p.name), photoName: p.name,
         cls: 'cd-row-click', attr: `data-player="${escapeHtml(p.name)}"`
       })).join('') || `<div class="no-result">No players.</div>`;
       body = `
@@ -3946,7 +3975,7 @@ function renderVarTime() {
     <div class="vt-card vt-card-click v-${b.verdict}" data-vtreview="${escapeHtml(b.p.name)}" title="Review ${escapeHtml(b.p.name)}">
       <span class="vt-flash"></span>
       <div class="vt-card-head">
-        <div class="vt-avatar" style="--ac:${rc}">${initials(b.p.name)}<span class="vt-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
+        <div class="vt-avatar${photoFor(b.p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(b.p.name)}<span class="vt-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
         <div class="vt-who"><span class="vt-name">${escapeHtml(b.p.name)}</span><span class="vt-team">${escapeHtml(b.p.team)}</span></div>
         <div class="vt-refcard-slot">${refcard(b)}${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes</span>' : ''}</div>
       </div>
@@ -4032,7 +4061,7 @@ function awardHero(p, stat, statLabel) {
     <div class="aw-hero" style="--tc:${c}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       <div class="aw-hero-ribbon">🏆 LEADER</div>
       <div class="aw-hero-card">
-        <div class="aw-hero-avatar">${awardInitials(p.name)}<span class="aw-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span></div>
+        <div class="aw-hero-avatar${photoFor(p.name) ? ' has-photo' : ''}">${avatarInner(p.name)}<span class="aw-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span></div>
         <div class="aw-hero-info">
           <div class="aw-hero-name">${escapeHtml(p.name)}</div>
           <div class="aw-hero-team">${escapeHtml(p.team)}</div>
@@ -4051,7 +4080,7 @@ function awardMiniRow(p, rank, stat) {
   return `
     <div class="aw-mini" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       <span class="aw-mini-rank">${['', '🥈', '🥉'][rank] || ('#' + rank)}</span>
-      <span class="aw-mini-avatar" style="--tc:${c}">${awardInitials(p.name)}</span>
+      <span class="aw-mini-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--tc:${c}">${avatarInner(p.name)}</span>
       <span class="aw-mini-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="aw-mini-stat">${stat}</span>
     </div>`;
@@ -6052,7 +6081,7 @@ function openCompare() {
       <div class="cmp-card${isLeader ? ' cmp-card-win' : ''}" style="--c:${colorOf(name)}">
         ${isLeader ? '<span class="cmp-crown">👑</span>' : ''}
         <span class="cmp-card-flag">${flagOf(name).map(c => `<i style="background:${c}"></i>`).join('')}</span>
-        <span class="cmp-card-badge">${initialsOf(name) || '—'}</span>
+        <span class="cmp-card-badge${(mode === 'players' && photoFor(name)) ? ' cmp-card-badge-photo' : ''}">${(mode === 'players' && photoFor(name)) ? `<img class="cmp-card-photo" src="${photoFor(name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('cmp-card-badge-photo');this.outerHTML='${initialsOf(name) || '—'}'" />` : (initialsOf(name) || '—')}</span>
         <div class="cmp-card-name">${escapeHtml(name)}</div>
         <div class="cmp-card-sub">${subOf(name)}</div>
         <div class="cmp-card-wins">${wins}<small>${wins === 1 ? 'win' : 'wins'}</small></div>
