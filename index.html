@@ -1966,6 +1966,29 @@ img, table { max-width: 100%; }
 /* Very narrow (foldables): the team qualifier would overflow the name cell. */
 @media (max-width: 360px) { .coach-row-name em { display: none; } }
 @media (hover: none) { .coach-row:active { transform: scale(0.99); } }
+/* Deep-dive modal contribution rows (nations → entities → players). */
+.cd-body { display: flex; flex-direction: column; gap: 7px; }
+.cd-back { align-self: flex-start; font-size: 12px; font-weight: 700; color: var(--usa-red); background: var(--cream); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; margin-bottom: 4px; }
+.cd-back:hover { background: var(--line); }
+.cd-h { font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.03em; color: var(--ink); margin: 12px 0 2px; }
+.cd-row { display: grid; grid-template-columns: 34px 30px minmax(0, 1.4fr) minmax(60px, 2fr) auto; align-items: center; gap: 10px; padding: 9px 12px; background: var(--cream); border: 1px solid var(--line); border-radius: 10px; }
+.cd-row-click { cursor: pointer; transition: background 0.12s, transform 0.12s, border-color 0.12s; }
+.cd-row-click:hover { background: var(--paper); transform: translateX(2px); border-color: var(--ink-2); }
+.cd-rank { font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--muted); text-align: center; }
+.cd-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 11px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.cd-flag { width: 26px; height: 17px; border-radius: 3px; overflow: hidden; display: inline-flex; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+.cd-flag i { flex: 1; }
+.cd-name { min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10.5px; color: var(--muted); text-transform: uppercase; margin-left: 8px; }
+.cd-bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.cd-bar span { display: block; height: 100%; border-radius: 99px; background: var(--bc, var(--usa-red)); }
+.cd-val { font-family: ui-monospace, monospace; font-weight: 700; font-size: 13px; color: var(--ink); text-align: right; white-space: nowrap; }
+.cd-val small { display: block; font-weight: 600; font-size: 10px; color: var(--muted); }
+@media (max-width: 560px) {
+  .cd-row { grid-template-columns: 28px 28px minmax(0, 1fr) auto; gap: 8px; }
+  .cd-bar { display: none; }
+  .cd-name em { display: none; }
+}
 
 .vt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 10px; }
 .vt-card {
@@ -2261,6 +2284,8 @@ let vartimeSearch = '';    // VAR TIME player name search
 let coachRegion = 'all';   // COACH ROOM country/region filter
 let coachTeam = 'all';     // COACH ROOM entity (team) filter
 let coachMetric = 'ps_total'; // COACH ROOM contributor metric
+let coachDive = null;      // open deep-dive: { metric } | null
+let coachDiveRegion = null; // drill-down: region opened inside the deep-dive (null = nations level)
 let varRegion = 'all';     // VAR Room country/region filter
 let varTeam = 'all';       // VAR Room entity (team) filter
 let varSearch = '';        // VAR Room player name search
@@ -3615,6 +3640,88 @@ function renderCoachRoom() {
         <div class="coach-contrib-sub">${escapeHtml(m.desc)} · in scope total: <b>${coachFmt(metricTotal, m.sumFmt)}</b> · showing top ${Math.min(TOPN, ranked.length)} of ${ranked.length}</div>
         <div class="coach-rows">${contribRows}</div>
       </div>
+    </div>
+    ${renderCoachDiveModal()}`;
+}
+
+// Deep-dive modal: contribution to a metric broken down hierarchically, like the
+// Team Ranking drill-down. Nations → (open a nation) → its entities + top players.
+function renderCoachDiveModal() {
+  if (!coachDive) return '';
+  const m = COACH_METRICS.find(x => x.key === coachDive.metric) || COACH_METRICS[0];
+  const val = p => Number(p[m.key]) || 0;
+  const initials = (name) => String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
+  const grandTotal = people.reduce((a, p) => a + val(p), 0) || 1;
+
+  // A reusable contribution row (bar + value + share of a given total).
+  const row = (opts) => {
+    const share = (opts.value / opts.of) * 100;
+    return `
+      <div class="cd-row ${opts.cls || ''}" ${opts.attr || ''}>
+        <span class="cd-rank">${opts.rank}</span>
+        ${opts.avatar ? `<span class="cd-avatar" style="--ac:${opts.color}">${opts.avatar}</span>` : `<span class="cd-flag">${(opts.flag || []).map(c => `<i style="background:${c}"></i>`).join('')}</span>`}
+        <span class="cd-name">${escapeHtml(opts.name)}${opts.sub ? `<em>${escapeHtml(opts.sub)}</em>` : ''}</span>
+        <span class="cd-bar"><span style="width:${Math.max(2, share).toFixed(1)}%;--bc:${opts.color || 'var(--usa-red)'}"></span></span>
+        <span class="cd-val">${coachFmt(opts.value, m.rowFmt)}<small>${share.toFixed(1)}%</small></span>
+      </div>`;
+  };
+
+  let body, subtitle, backBtn = '';
+  if (!coachDiveRegion) {
+    // Level 1 — nations.
+    const groups = {};
+    people.forEach(p => { const r = regionOf(p.team); (groups[r] || (groups[r] = { region: r, v: 0, n: 0 })); groups[r].v += val(p); groups[r].n++; });
+    const nations = Object.values(groups).filter(g => g.v > 0).sort((a, b) => b.v - a.v);
+    subtitle = `By nation · ${coachFmt(grandTotal, m.sumFmt)} total`;
+    body = nations.map((g, i) => row({
+      rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+      value: g.v, of: grandTotal, flag: FLAG_STRIPES[g.region], color: FLAG_STRIPES[g.region] ? FLAG_STRIPES[g.region][0] : 'var(--navy)',
+      cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+    })).join('') || `<div class="no-result">No contribution recorded yet.</div>`;
+  } else {
+    // Level 2 — inside a nation: its entities (teams) + top players.
+    const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+    const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
+    const regTotal = inReg.reduce((a, p) => a + val(p), 0) || 1;
+    backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
+    subtitle = `${regLabel} · ${coachFmt(regTotal, m.sumFmt)} · ${inReg.length} people`;
+    // Entities (teams) in this nation.
+    const teamMap = {};
+    inReg.forEach(p => { (teamMap[p.team] || (teamMap[p.team] = { team: p.team, v: 0, n: 0 })); teamMap[p.team].v += val(p); teamMap[p.team].n++; });
+    const ents = Object.values(teamMap).filter(t => t.v > 0).sort((a, b) => b.v - a.v);
+    const entRows = ents.map((t, i) => row({
+      rank: '#' + (i + 1), name: t.team, sub: `${t.n} people`, value: t.v, of: regTotal,
+      color: colorForTeam(t.team), avatar: '🏢'
+    })).join('') || `<div class="no-result">No entity data.</div>`;
+    // Top players in this nation.
+    const players = inReg.filter(p => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 15);
+    const playerRows = players.map((p, i) => row({
+      rank: '#' + (i + 1), name: p.name, sub: p.team, value: val(p), of: regTotal,
+      color: colorForTeam(p.team), avatar: initials(p.name),
+      cls: 'cd-row-click', attr: `data-player="${escapeHtml(p.name)}"`
+    })).join('') || `<div class="no-result">No players.</div>`;
+    body = `
+      <h3 class="cd-h">🏢 Entities</h3>
+      ${entRows}
+      <h3 class="cd-h">⚽ Top contributors${players.length >= 15 ? ' · top 15' : ''}</h3>
+      ${playerRows}`;
+  }
+
+  return `
+    <div class="modal-overlay" id="cd-overlay">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-block">
+            <h2 class="modal-title">${m.label.replace(/^\S+\s/, '')} — who contributes</h2>
+            <div class="modal-subtitle">${subtitle}</div>
+          </div>
+          <button class="modal-close" id="cd-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-body cd-body">
+          ${backBtn}
+          ${body}
+        </div>
+      </div>
     </div>`;
 }
 
@@ -4859,17 +4966,26 @@ function render() {
     const cClear = document.getElementById('coach-clear');
     if (cClear) cClear.addEventListener('click', () => { coachRegion = 'all'; coachTeam = 'all'; reRender(); });
     document.querySelectorAll('.coach-metric').forEach(btn => btn.addEventListener('click', () => { coachMetric = btn.dataset.metric; reRender(); }));
-    // Clickable KPI tiles → switch the contributor breakdown to that metric and
-    // scroll down to it (deep-dive who drives the total).
-    const deepDive = (metric) => {
-      coachMetric = metric; render();
-      const c = document.querySelector('.coach-contrib');
-      if (c) c.scrollIntoView({ behavior: (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'auto' : 'smooth', block: 'start' });
-    };
+    // Clickable KPI tiles → open the deep-dive modal (nations → entities →
+    // players contribution to that metric, like the Team Ranking drill-down).
+    const openDive = (metric) => { coachDive = { metric }; coachDiveRegion = null; render(); document.body.style.overflow = 'hidden'; };
     document.querySelectorAll('.coach-kpi-click[data-kpi]').forEach(t => {
-      t.addEventListener('click', () => deepDive(t.dataset.kpi));
-      t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); deepDive(t.dataset.kpi); } });
+      t.addEventListener('click', () => openDive(t.dataset.kpi));
+      t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDive(t.dataset.kpi); } });
     });
+    // Deep-dive modal interactions.
+    const cdOverlay = document.getElementById('cd-overlay');
+    if (cdOverlay) {
+      const closeDive = () => { coachDive = null; coachDiveRegion = null; document.body.style.overflow = ''; render(); };
+      cdOverlay.addEventListener('click', e => { if (e.target === cdOverlay) closeDive(); });
+      const x = document.getElementById('cd-close'); if (x) x.addEventListener('click', closeDive);
+      const back = document.getElementById('cd-back'); if (back) back.addEventListener('click', () => { coachDiveRegion = null; render(); });
+      cdOverlay.querySelectorAll('[data-cd-region]').forEach(r => r.addEventListener('click', () => { coachDiveRegion = r.dataset.cdRegion; render(); }));
+      // Player rows inside the dive open that player's card (over the dive).
+      cdOverlay.querySelectorAll('[data-player]').forEach(pr => pr.addEventListener('click', () => {
+        openPlayerModal = pr.dataset.player; render(); document.body.style.overflow = 'hidden';
+      }));
+    }
     const cCopy = document.getElementById('coach-copy');
     if (cCopy) cCopy.addEventListener('click', () => {
       const sc = people.filter(p => (coachRegion === 'all' || regionOf(p.team) === coachRegion) && (coachTeam === 'all' || p.team === coachTeam));
@@ -5163,8 +5279,13 @@ document.addEventListener('keydown', e => {
     openPlayerModal = null;
     if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; }
     else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; }
+    else if (coachDive) { /* card was opened over the dive → keep the dive open */ }
     else { document.body.style.overflow = ''; }
     render(); return;
+  }
+  if (e.key === 'Escape' && coachDive) {
+    if (coachDiveRegion) { coachDiveRegion = null; render(); return; } // step back a level first
+    coachDive = null; document.body.style.overflow = ''; render(); return;
   }
   if (e.key === 'Escape' && (openTeamModal || openNationModal)) {
     if (openTeamModal && nationReturnTo) { openTeamModal = null; openNationModal = nationReturnTo; nationReturnTo = null; }
