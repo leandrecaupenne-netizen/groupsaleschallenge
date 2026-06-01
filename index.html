@@ -5260,15 +5260,17 @@ function openSearch() {
   };
   const renderResults = () => {
     const q = query.trim().toLowerCase();
+    // Ranked by PS Total desc — same metric as the player ranking, so search
+    // results line up with the leaderboard.
     let list = people.filter(p => matchFilter(p) && (!q || p.name.toLowerCase().includes(q)))
-      .sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
+      .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
     const total = list.length; list = list.slice(0, 40);
     const box = el.querySelector('#search-results');
     box.innerHTML = list.length ? (list.map(p => {
-      const gRank = sortedGoldenBoot.findIndex(x => x.name === p.name) + 1;
+      const tRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
       return `<button class="search-result" data-name="${escapeHtml(p.name)}">
         <span class="sr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
-        <span class="sr-stat">${fmtMoney(p.ps_nb)} NB${gRank ? ` · GB #${gRank}` : ''}</span></button>`;
+        <span class="sr-stat">${fmtMoney(p.ps_total)}${tRank ? ` · #${tRank}` : ''}</span></button>`;
     }).join('') + (total > 40 ? `<div class="var-more">+ ${total - 40} more — refine your search</div>` : ''))
       : `<div class="no-result">No player found.</div>`;
     box.querySelectorAll('.search-result').forEach(btn => btn.addEventListener('click', () => {
