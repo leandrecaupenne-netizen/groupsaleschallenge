@@ -567,6 +567,13 @@ input { font-family: inherit; }
 .ms-avatar-flag { position: absolute; bottom: -2px; right: -3px; display: inline-flex; width: 15px; height: 10px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
 .ms-avatar-flag i { flex: 1; }
 .ms-row:hover { transform: translateX(2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-color: color-mix(in srgb, var(--c, var(--usa-red)) 45%, var(--line)); }
+/* Tap feedback on touch devices — a quick press-down on the main clickable rows
+   and cards so a tap feels responsive. */
+@media (hover: none) {
+  .ms-row:active, .teams-table-row:active, .nation-row:active, .var-row:active,
+  .vt-card:active, .members-table-row:active, .suggestion-item:active { transform: scale(0.985); transition: transform 0.06s; }
+  .podium-card:active { transform: scale(0.97); transition: transform 0.06s; }
+}
 /* subtle proportion bar behind each row, scaled to the leader */
 .ms-row::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 0%);
@@ -1418,6 +1425,30 @@ input { font-family: inherit; }
 .loader-bar::before { content: ''; position: absolute; top: 0; left: -42%; height: 100%; width: 42%; border-radius: 99px; background: linear-gradient(90deg, var(--usa-red), #fff, var(--gold)); animation: loaderSweep 1.1s ease-in-out infinite; }
 @keyframes loaderSweep { 0% { left: -42%; } 100% { left: 100%; } }
 @keyframes appEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* First-visit coach hint under the tabs. */
+.intro-hint {
+  max-width: 1400px; margin: 12px auto 0; padding: 11px 16px;
+  display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  background: linear-gradient(90deg, rgba(242,199,92,0.18), rgba(200,16,46,0.10));
+  border: 1px solid rgba(242,199,92,0.4); border-radius: 12px;
+  animation: introIn 0.4s ease both;
+}
+.intro-hint-txt { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.intro-hint-txt b { color: var(--ink); }
+.intro-hint-x { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--usa-red); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.intro-hint-x:hover { background: var(--cream); }
+.intro-hint.intro-hint-out { animation: introOut 0.25s ease forwards; }
+@keyframes introIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes introOut { to { opacity: 0; transform: translateY(-6px); } }
+:root[data-theme="dark"] .intro-hint-txt { color: rgba(255,255,255,0.85); }
+:root[data-theme="dark"] .intro-hint-txt b { color: #fff; }
+@media (max-width: 600px) { .intro-hint { margin: 10px 14px 0; flex-wrap: wrap; } .intro-hint-txt { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .intro-hint, .intro-hint.intro-hint-out { animation: none; } }
+
+/* Quick content transition when switching tabs. */
+.tab-enter { animation: tabEnter 0.32s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes tabEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tab-enter { animation: none; } }
 @media (prefers-reduced-motion: reduce) {
   .loader-ball, .loader-ball-shadow { animation: none; }
   .loader-ball.kicked, .loader-ball-shadow.kicked { animation: none; }
@@ -2698,6 +2729,18 @@ const TABS = [
   { id: 'var', label: 'VAR Room 🟨', tip: 'Discipline watch — yellow cards for low meetings or low margin' },
   { id: 'position', label: 'My Position 🔍', tip: 'Search your name to see all your rankings in the challenge' },
 ];
+
+// First-visit coach hint: a one-line, dismissible banner that tells newcomers
+// the leaderboard is interactive. Shown once, then never again.
+const INTRO_KEY = 'devoteam_wc_intro_seen_v1';
+function renderIntroHint() {
+  if (safeGet(INTRO_KEY) === '1') return '';
+  return `
+    <div class="intro-hint" id="intro-hint">
+      <span class="intro-hint-txt">👋 Welcome! Tap any <b>player</b> or <b>team</b> to open their card · check <b>My Position 🔍</b> to find yourself</span>
+      <button class="intro-hint-x" id="intro-hint-x" aria-label="Got it">Got it ✕</button>
+    </div>`;
+}
 
 function renderTabs() {
   // The admin-only "VAR TIME" review tab is appended when admin mode is active.
@@ -4460,6 +4503,7 @@ function render() {
   document.getElementById('app').innerHTML = `
     ${renderHero()}
     ${renderTabs()}
+    ${renderIntroHint()}
     ${content}
     ${renderFooter()}
     ${renderTeamModal()}
@@ -4618,14 +4662,35 @@ function render() {
     });
   }
 
+  // First-visit hint: dismiss + remember.
+  const introX = document.getElementById('intro-hint-x');
+  if (introX) introX.addEventListener('click', () => {
+    safeSet(INTRO_KEY, '1');
+    const h = document.getElementById('intro-hint');
+    if (h) { h.classList.add('intro-hint-out'); setTimeout(() => h.remove(), 250); }
+  });
+
   // Bind events
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const changed = currentTab !== btn.dataset.tab;
       currentTab = btn.dataset.tab;
       if (currentTab !== 'teams') currentSearch = '';
       if (currentTab !== 'position') positionQuery = '';
       setTabUrl(currentTab);
       render();
+      if (changed) {
+        // Bring the new tab's content into view (so you don't stay stranded at
+        // the bottom of the previous list) and play a quick enter transition.
+        const sec = document.querySelector('#app .section');
+        if (sec) {
+          const y = sec.getBoundingClientRect().top + window.scrollY - 8;
+          if (window.scrollY > y) window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+          if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+            sec.classList.remove('tab-enter'); void sec.offsetWidth; sec.classList.add('tab-enter');
+          }
+        }
+      }
     });
   });
   // Keep the active tab visible: on narrow screens the tab bar scrolls
