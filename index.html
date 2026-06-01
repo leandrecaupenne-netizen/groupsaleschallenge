@@ -1878,6 +1878,29 @@ img, table { max-width: 100%; }
 .vt-card.v-red { border-color: rgba(200,16,46,0.4); }
 .vt-card.v-yellow { border-color: rgba(242,199,92,0.55); }
 .vt-card.v-excused { border-color: rgba(22,163,74,0.4); }
+.vt-card-click { cursor: pointer; }
+.vt-card-click:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.12); border-color: var(--ink-2); }
+/* Call-to-action footer replacing the inline verdict buttons. */
+.vt-cta { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--ink-2); font-family: ui-monospace, monospace; letter-spacing: 0.02em; }
+.vt-card.v-yellow .vt-cta { color: #b78a16; }
+.vt-card.v-red .vt-cta { color: var(--usa-red); }
+.vt-card.v-excused .vt-cta { color: var(--green); }
+:root[data-theme="dark"] .vt-card.v-yellow .vt-cta { color: var(--gold); }
+/* VAR review modal: verdict bar under the player card + decision flash. */
+.vr-modal { position: relative; }
+.vr-review { margin-top: 14px; }
+.vr-review-title { font-size: 12px; font-weight: 700; color: var(--muted); font-family: ui-monospace, monospace; text-align: center; margin-bottom: 10px; }
+.vr-verdicts { gap: 8px; }
+.vr-flash { position: absolute; inset: 0; pointer-events: none; border-radius: 16px; opacity: 0; z-index: 6; }
+.vr-flash.go { animation: vrFlash 0.65s ease; }
+@keyframes vrFlash { 0% { opacity: 0.55; } 100% { opacity: 0; } }
+.vr-flash.f-yellow { background: radial-gradient(circle at 50% 30%, rgba(242,199,92,0.7), transparent 70%); }
+.vr-flash.f-red { background: radial-gradient(circle at 50% 30%, rgba(200,16,46,0.65), transparent 70%); }
+.vr-flash.f-excused { background: radial-gradient(circle at 50% 30%, rgba(22,163,74,0.6), transparent 70%); }
+.vr-flash.f-pending { background: radial-gradient(circle at 50% 30%, rgba(120,130,150,0.5), transparent 70%); }
+.vr-modal.vr-decided { animation: vrDecide 0.65s ease; }
+@keyframes vrDecide { 0% { transform: scale(1); } 22% { transform: scale(1.03); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .vr-flash.go, .vr-modal.vr-decided { animation: none; } }
 .vt-card-head { display: flex; align-items: center; gap: 11px; }
 /* Team-coloured avatar disc with mini flag — same language as the rest of the app. */
 .vt-avatar {
@@ -2136,6 +2159,7 @@ let varSearch = '';        // VAR Room player name search
 let openTeamModal = null; // country name si modal ouverte
 let openNationModal = null; // region key when a nation drilldown modal is open
 let openPlayerModal = null; // player name shown in the Panini-style player card modal
+let varReviewName = null;   // player under VAR review (their card + verdict buttons in a modal)
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
 let playerReturnToTeam = null; // team to reopen when closing a player card opened from a team modal
 let playerReturnToNation = null; // nation to reopen when closing a player card opened from a nation modal
@@ -3247,8 +3271,10 @@ function renderVAR() {
     (!q || p.name.toLowerCase().includes(q));
   const pool = people.filter(match);
 
-  const lowMeet = pool.filter(p => p.yellow_meetings).sort((a, b) => (a.meetings || 0) - (b.meetings || 0));
-  const lowGm = pool.filter(p => p.yellow_gm).sort((a, b) => (a.ps_total_gm || 0) - (b.ps_total_gm || 0));
+  // Ordered like the player ranking (PS Total desc) so the whole app stays
+  // consistent — the top performer shows first in every VAR list too.
+  const lowMeet = pool.filter(p => p.yellow_meetings).sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
+  const lowGm = pool.filter(p => p.yellow_gm).sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
   const names = new Set(); lowMeet.forEach(p => names.add(p.name)); lowGm.forEach(p => names.add(p.name));
   // Clean Sheet: players respecting every rule (no cards) — the positive side of the VAR.
   const clean = pool.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
@@ -3288,7 +3314,7 @@ function renderVAR() {
     </div>`;
   };
 
-  const cleanSorted = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
+  const cleanSorted = [...clean].sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
 
   return `
     <div class="section">
@@ -3304,7 +3330,7 @@ function renderVAR() {
         ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`,
           filtersActive ? 'Nobody here for this filter. ✅' : 'Margins are healthy. ✅',
           { icon: '🟨', sub: 'Not following — Gross Margin below 25%' })}
-        ${col('🧤 Clean Sheet — Fair Play', cleanSorted, p => fmtMoney(p.ps_nb),
+        ${col('🧤 Clean Sheet — Fair Play', cleanSorted, p => fmtMoney(p.ps_total),
           filtersActive ? 'No clean sheets match this filter.' : 'No clean sheets yet — everyone has a card.',
           { cls: 'var-col-clean', icon: '✅', rowCls: 'var-row-clean',
             sub: 'Following — 5+ meetings / week and GM ≥ 25%',
@@ -3393,7 +3419,7 @@ function renderVarTime() {
     const rc = colorForTeam(b.p.team);
     const fl = flagForTeam(b.p.team);
     return `
-    <div class="vt-card v-${b.verdict}" data-name="${escapeHtml(b.p.name)}">
+    <div class="vt-card vt-card-click v-${b.verdict}" data-vtreview="${escapeHtml(b.p.name)}" title="Review ${escapeHtml(b.p.name)}">
       <span class="vt-flash"></span>
       <div class="vt-card-head">
         <div class="vt-avatar" style="--ac:${rc}">${initials(b.p.name)}<span class="vt-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
@@ -3401,7 +3427,7 @@ function renderVarTime() {
         <div class="vt-refcard-slot">${refcard(b)}${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes</span>' : ''}</div>
       </div>
       <div class="vt-reasons">${b.reasons.map(r => `<span class="vt-reason">🟨 ${escapeHtml(r)}</span>`).join('')}</div>
-      <div class="vt-verdicts">${verdictBtns(b)}</div>
+      <div class="vt-cta">${b.verdict === 'pending' ? '👋 Tap to review &amp; decide' : VERDICT_META[b.verdict].icon + ' ' + VERDICT_META[b.verdict].label + ' · tap to change'}</div>
     </div>`;
   };
 
@@ -4017,6 +4043,33 @@ function renderPlayerModal() {
     </div>`;
 }
 
+// VAR review modal (admin): the player's Panini card + verdict buttons. Picking a
+// verdict plays a decision animation, saves it, then closes the modal.
+function renderVarReviewModal() {
+  if (!varReviewName) return '';
+  const p = people.find(x => x.name === varReviewName);
+  if (!p) return '';
+  const cur = (getVerdicts()[p.name] && getVerdicts()[p.name].verdict) || 'pending';
+  const reasons = [];
+  if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} meetings/wk (needs 5)`);
+  if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)} (needs 25%)`);
+  const btns = Object.keys(VERDICT_META).map(k =>
+    `<button class="vt-verdict ${cur === k ? 'on ' + k : ''}" data-vrverdict="${k}">${VERDICT_META[k].icon} ${VERDICT_META[k].label}</button>`
+  ).join('');
+  return `
+    <div class="modal-overlay" id="vr-overlay">
+      <div class="pc-modal vr-modal" onclick="event.stopPropagation()">
+        <button class="modal-close pc-close" id="vr-close-btn" aria-label="Close">×</button>
+        <span class="vr-flash" id="vr-flash"></span>
+        ${paniniCardInner(p)}
+        <div class="vr-review">
+          <div class="vr-review-title">🟥 VAR review${reasons.length ? ' · ' + reasons.map(escapeHtml).join(' · ') : ''}</div>
+          <div class="vt-verdicts vr-verdicts">${btns}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 // The Panini card body (foil card + stats grid) — shared by the player modal
 // and the My Position page so the player view is identical everywhere.
 function paniniCardInner(p) {
@@ -4398,6 +4451,7 @@ function render() {
     ${renderTeamModal()}
     ${renderNationModal()}
     ${renderPlayerModal()}
+    ${renderVarReviewModal()}
   `;
 
   // Update last update
@@ -4438,6 +4492,33 @@ function render() {
   const pClose = document.getElementById('player-close-btn');
   if (pClose) pClose.addEventListener('click', closePlayer);
   if (pOverlay) pOverlay.addEventListener('click', e => { if (e.target === pOverlay) closePlayer(); });
+
+  // VAR review modal: close, and verdict buttons (decide → animate → close).
+  const vrOverlay = document.getElementById('vr-overlay');
+  if (vrOverlay) {
+    const closeVr = () => { varReviewName = null; document.body.style.overflow = ''; render(); };
+    const vrClose = document.getElementById('vr-close-btn');
+    if (vrClose) vrClose.addEventListener('click', closeVr);
+    vrOverlay.addEventListener('click', e => { if (e.target === vrOverlay) closeVr(); });
+    attachHolo(vrOverlay.querySelector('.pc-card'));
+    bindDisciplineToggles(vrOverlay);
+    vrOverlay.querySelectorAll('.vt-verdict[data-vrverdict]').forEach(btn => btn.addEventListener('click', () => {
+      const verdict = btn.dataset.vrverdict;
+      setVerdict(varReviewName, verdict);
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Highlight the chosen verdict + a colour flash, then close the modal.
+      vrOverlay.querySelectorAll('.vt-verdict').forEach(x => {
+        x.classList.remove('on', 'pending', 'yellow', 'red', 'excused');
+        if (x.dataset.vrverdict === verdict) x.classList.add('on', verdict);
+      });
+      const flash = document.getElementById('vr-flash');
+      const modal = vrOverlay.querySelector('.vr-modal');
+      if (flash && !reduce) { flash.className = 'vr-flash f-' + verdict; void flash.offsetWidth; flash.classList.add('go'); }
+      if (modal && !reduce) { modal.classList.add('vr-decided'); }
+      const delay = reduce ? 0 : 700;
+      setTimeout(() => { varReviewName = null; document.body.style.overflow = ''; render(); }, delay);
+    }));
+  }
   const pTeamLink = document.querySelector('.pc-team-link[data-team]');
   if (pTeamLink) pTeamLink.addEventListener('click', () => {
     openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
@@ -4482,36 +4563,11 @@ function render() {
   // Admin VAR TIME: verdict buttons, filter, copy, reset (re-render, keep scroll)
   if (currentTab === 'vartime') {
     const reRender = () => { const y = window.scrollY; render(); window.scrollTo(0, y); };
-    document.querySelectorAll('.vt-verdict').forEach(btn => btn.addEventListener('click', () => {
-      const name = btn.dataset.name, verdict = btn.dataset.verdict;
-      setVerdict(name, verdict);
-      // Animate the decision in place (a full re-render would discard the
-      // animation). Update the card's verdict classes, refresh the verdict
-      // buttons + referee card, play the flip/flash, then re-render quietly so
-      // the summary pills and the "pending" filter stay in sync.
-      const cardEl = btn.closest('.vt-card');
-      if (cardEl && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-        cardEl.classList.remove('v-pending', 'v-yellow', 'v-red', 'v-excused', 'vt-decided');
-        cardEl.classList.add('v-' + verdict);
-        // toggle the active verdict button
-        cardEl.querySelectorAll('.vt-verdict').forEach(x => {
-          x.classList.remove('on', 'pending', 'yellow', 'red', 'excused');
-          if (x.dataset.verdict === verdict) x.classList.add('on', verdict);
-        });
-        // swap the referee card visual
-        const slot = cardEl.querySelector('.vt-refcard');
-        if (slot) {
-          slot.className = 'vt-refcard vt-rc-' + verdict;
-          slot.textContent = verdict === 'pending' ? '?' : verdict === 'excused' ? '✓' : '';
-        }
-        const flash = cardEl.querySelector('.vt-flash');
-        if (flash) { flash.className = 'vt-flash f-' + verdict; }
-        void cardEl.offsetWidth; // restart animation
-        cardEl.classList.add('vt-decided');
-        setTimeout(() => { const y = window.scrollY; render(); window.scrollTo(0, y); }, 650);
-      } else {
-        reRender();
-      }
+    // Tap a card → open the player's card in the VAR review modal.
+    document.querySelectorAll('[data-vtreview]').forEach(c => c.addEventListener('click', () => {
+      varReviewName = c.dataset.vtreview;
+      render();
+      document.body.style.overflow = 'hidden';
     }));
     document.querySelectorAll('.vt-filter').forEach(btn => btn.addEventListener('click', () => {
       vartimeFilter = btn.dataset.f; reRender();
@@ -4746,6 +4802,9 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') { tvGo(-1); return; }
     if (e.key === 'Escape') { exitTV(); return; }
     return;
+  }
+  if (e.key === 'Escape' && varReviewName) {
+    varReviewName = null; document.body.style.overflow = ''; render(); return;
   }
   if (e.key === 'Escape' && openPlayerModal) {
     openPlayerModal = null;
