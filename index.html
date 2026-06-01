@@ -1658,6 +1658,10 @@ img, table { max-width: 100%; }
 .tv-name em { display: block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.5em; color: var(--gold); letter-spacing: 0.06em; margin-top: 4px; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
 .tv-val { flex: 0 0 auto; white-space: nowrap; font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
+/* VAR reason value: a bit smaller (it can carry two metrics) with the target
+   in a lighter, non-bold qualifier so "GM 18.7% (needs 25%)" reads clearly. */
+.tv-val-reason { font-size: clamp(16px, 2.7vmin, 30px); white-space: normal; text-align: right; }
+.tv-val-reason em { font-style: normal; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.62em; color: rgba(255,255,255,0.62); }
 
 /* === TV "Panini" match-sheet: featured hero card + chasing pack === */
 .tv-matchsheet { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 2.5vw; align-items: stretch; max-width: 1200px; width: 100%; margin: 0 auto; }
@@ -5717,13 +5721,16 @@ function tvPanelHTML(kind) {
     const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
       .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
     const n = union.length;
+    const shown = Math.min(5, n);
     const rows = union.slice(0, 5).map(p => {
+      // Show the value AND the target it's missing, like the admin VAR review.
       const bits = [];
-      if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk`);
-      if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)}`);
-      return `<div class="tv-row"><span class="tv-pos">🟨</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val">${bits.join(' · ')}</span></div>`;
+      if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk <em>(needs 5)</em>`);
+      if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)} <em>(needs 25%)</em>`);
+      return `<div class="tv-row"><span class="tv-pos">🟨</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
     }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;
-    return tvSection('🟨 VAR ROOM — ON A YELLOW CARD', `${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red`, rows);
+    const sub = n ? `Top ${shown} by PS Total · ${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red` : 'two yellows make a red';
+    return tvSection('🟨 VAR ROOM — ON A YELLOW CARD', sub, rows);
   }
   if (kind === 'fairplay') {
     const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
