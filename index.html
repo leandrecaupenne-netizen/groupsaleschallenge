@@ -1784,19 +1784,6 @@ img, table { max-width: 100%; }
 @keyframes numPulse { 0% { color: var(--gold); text-shadow: 0 0 12px rgba(242,199,92,0.7); } 100% { color: inherit; text-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { .animnum.animnum-changed { animation: none; } }
 
-/* === #1 halo — a gentle living glow on the current leader's rank === */
-.rank-halo { position: relative; }
-.rank-halo::after {
-  content: ''; position: absolute; inset: -4px; border-radius: inherit; pointer-events: none;
-  box-shadow: 0 0 0 0 rgba(242,199,92,0.55);
-  animation: rankHalo 2.4s ease-in-out infinite;
-}
-@keyframes rankHalo {
-  0%,100% { box-shadow: 0 0 8px 1px rgba(242,199,92,0.35); }
-  50% { box-shadow: 0 0 18px 4px rgba(242,199,92,0.65); }
-}
-@media (prefers-reduced-motion: reduce) { .rank-halo::after { animation: none; box-shadow: 0 0 10px 2px rgba(242,199,92,0.45); } }
-
 /* === Rank-change flash — a row that moved since the last refresh === */
 .rank-bump { animation: rankBump 1.6s ease; }
 @keyframes rankBump {
@@ -2864,7 +2851,7 @@ function renderTeamRanking() {
           const topClass = realRank === 1 ? 'top-1' : realRank === 2 ? 'top-2' : realRank === 3 ? 'top-3' : '';
           return `
             <div class="teams-table-row ${topClass}" data-team="${escapeHtml(t.country)}">
-              <div class="tt-rank ${topClass}${realRank === 1 ? ' rank-halo' : ''}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
+              <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${escapeHtml(t.country)}
                 <div class="click-hint">${clickHint}</div>
