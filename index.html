@@ -966,9 +966,23 @@ input { font-family: inherit; }
   letter-spacing: 0.04em; text-transform: uppercase;
   padding: 5px 9px; border-radius: 999px;
   background: var(--cream); color: var(--ink-2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
 }
+.pc-honour:hover { border-color: var(--ink-2); }
+.pc-honour:active { transform: scale(0.95); }
+.pc-honour.on { background: var(--navy); color: #fff; border-color: var(--navy); }
 :root[data-theme="dark"] .pc-honour { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); }
+:root[data-theme="dark"] .pc-honour.on { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+/* Shared explanation popover for honour chips (tap to reveal). */
+.pc-honour-pop {
+  margin: 8px auto 0; max-width: 300px; text-align: center;
+  font-size: 12px; line-height: 1.45; color: var(--ink-2);
+  background: rgba(0,0,0,0.04); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 12px;
+  animation: discPop 0.2s ease both;
+}
+:root[data-theme="dark"] .pc-honour-pop { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); }
 
 /* "Photo finish" tight-race strip above a leaderboard. */
 .race-strip {
@@ -4141,7 +4155,7 @@ function paniniCardInner(p) {
       ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
       ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'awards') : ''}
     </div>
-    ${honours.length ? `<div class="pc-honours">${honours.map(h => `<span class="pc-honour" title="${escapeHtml(h.tip)}">${h.icon} ${h.label}</span>`).join('')}</div>` : ''}`;
+    ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div>` : ''}`;
 }
 
 // Collectible honours from a player's standings — small, motivating milestones.
@@ -4502,6 +4516,7 @@ function render() {
     vrOverlay.addEventListener('click', e => { if (e.target === vrOverlay) closeVr(); });
     attachHolo(vrOverlay.querySelector('.pc-card'));
     bindDisciplineToggles(vrOverlay);
+    bindHonourToggles(vrOverlay);
     vrOverlay.querySelectorAll('.vt-verdict[data-vrverdict]').forEach(btn => btn.addEventListener('click', () => {
       const verdict = btn.dataset.vrverdict;
       setVerdict(varReviewName, verdict);
@@ -4540,6 +4555,7 @@ function render() {
   // Holographic tilt on the player-modal card.
   attachHolo(document.querySelector('#player-overlay .pc-card'));
   bindDisciplineToggles(); // discipline badge → tap to reveal the VAR explanation
+  bindHonourToggles();     // honour chips → tap to reveal what each one means
 
   // VAR Room (public): country + entity + name filters, scoping cards and clean sheets.
   if (currentTab === 'var') {
@@ -4788,6 +4804,28 @@ function bindDisciplineToggles(root) {
       const open = pop.hidden;
       pop.hidden = !open;
       btn.setAttribute('aria-expanded', String(open));
+    });
+  });
+}
+
+// Honour chips: tap to reveal what the achievement means (the hover title is
+// useless on touch). The explanation shows in a shared popover under the row;
+// tapping the same chip again hides it.
+function bindHonourToggles(root) {
+  (root || document).querySelectorAll('.pc-honour[data-honour]').forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      const row = btn.parentElement;
+      const pop = row.parentElement.querySelector('.pc-honour-pop');
+      if (!pop) return;
+      const same = btn.classList.contains('on') && !pop.hidden;
+      row.querySelectorAll('.pc-honour').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-expanded', 'false'); });
+      if (same) { pop.hidden = true; return; }
+      pop.textContent = btn.dataset.honour;
+      pop.hidden = false;
+      btn.classList.add('on');
+      btn.setAttribute('aria-expanded', 'true');
     });
   });
 }
@@ -5676,6 +5714,7 @@ function openTVPlayerCard(name) {
   if (x) x.addEventListener('click', close);
   attachHolo(el.querySelector('.pc-card'));
   bindDisciplineToggles(el);
+  bindHonourToggles(el);
 }
 function closeTVPlayerCard() {
   const el = document.getElementById('tv-player-overlay');
