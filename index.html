@@ -5645,8 +5645,10 @@ function tvPanelHTML(kind) {
     return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true });
   }
   if (kind === 'var') {
+    // Ordered by PS Total desc — consistent with the player ranking, so the top
+    // performer on a yellow card shows first.
     const union = people.filter(p => p.yellow_meetings || p.yellow_gm)
-      .sort((a, b) => ((b.yellow_meetings ? 1 : 0) + (b.yellow_gm ? 1 : 0)) - ((a.yellow_meetings ? 1 : 0) + (a.yellow_gm ? 1 : 0)) || (a.meetings || 0) - (b.meetings || 0));
+      .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
     const n = union.length;
     const rows = union.slice(0, 5).map(p => {
       const bits = [];
@@ -5658,9 +5660,10 @@ function tvPanelHTML(kind) {
   }
   if (kind === 'fairplay') {
     const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
-    const top = [...clean].sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0)).slice(0, 5);
-    const items = top.map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
+    // Ranked by PS Total desc (same metric as the player ranking).
+    const top = [...clean].sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0)).slice(0, 5);
+    const items = top.map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_total) }));
+    return tvMatchSheet(items, { title: '🧤 CLEAN SHEET — FAIR PLAY', sub: `${clean.length} playing fully by the rules · 5+ meetings/week and GM ≥ 25%`, badge: '✅ FAIR PLAY', valLabel: 'PS TOTAL', unit: 'PS TOTAL', clickable: true });
   }
   if (kind === 'awards') {
     const awRows = (list, valFn) => list.length
