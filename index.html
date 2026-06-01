@@ -1981,6 +1981,13 @@ img, table { max-width: 100%; }
 .coach-disc-bar { height: 12px; border-radius: 99px; background: rgba(200,16,46,0.18); overflow: hidden; margin: 10px 0 8px; }
 .coach-disc-bar span { display: block; height: 100%; background: linear-gradient(90deg, #16a34a, #34d399); border-radius: 99px; transition: width 0.5s ease; }
 .coach-disc-foot { font-size: 11.5px; color: var(--muted); font-family: ui-monospace, monospace; }
+/* Photo coverage panel */
+.coach-coverage { margin-top: 20px; padding-top: 4px; }
+.cov-actions { margin: 12px 0 10px; }
+.cov-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.cov-miss { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; border-radius: 8px; background: var(--cream); border: 1px solid var(--line); font-size: 12.5px; font-weight: 700; color: var(--ink); cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.cov-miss:hover { background: var(--paper); border-color: var(--ink-2); }
+.cov-miss em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10px; color: var(--muted); text-transform: uppercase; }
 /* Contributor breakdown */
 .coach-contrib { margin-top: 18px; }
 .coach-h { font-family: 'Anton', Impact, sans-serif; font-size: 22px; letter-spacing: 0.03em; color: var(--ink); margin: 0 0 10px; }
@@ -3734,8 +3741,30 @@ function renderCoachRoom() {
         <div class="coach-contrib-sub">${escapeHtml(m.desc)} · in scope total: <b>${coachFmt(metricTotal, m.sumFmt)}</b> · showing top ${Math.min(TOPN, ranked.length)} of ${ranked.length}</div>
         <div class="coach-rows">${contribRows}</div>
       </div>
+
+      ${renderPhotoCoverage(pool)}
     </div>
     ${renderCoachDiveModal()}`;
+}
+
+// Photo coverage: compares the live player list (the app's source of truth) with
+// the portraits we have, so the admin can see exactly who's still missing a card
+// photo. The missing list is copyable to hand back for new Gemini renders.
+function renderPhotoCoverage(pool) {
+  const withPhoto = pool.filter(p => photoFor(p.name));
+  const missing = pool.filter(p => !photoFor(p.name))
+    .sort((a, b) => String(a.team).localeCompare(String(b.team)) || String(a.name).localeCompare(String(b.name)));
+  const pct = pool.length ? Math.round((withPhoto.length / pool.length) * 100) : 0;
+  const missRows = missing.map(p => `<span class="cov-miss" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span>`).join('');
+  return `
+    <div class="coach-coverage">
+      <h3 class="coach-h">🖼️ Photo coverage</h3>
+      <div class="coach-disc-bar"><span style="width:${pct}%; background:linear-gradient(90deg,#3b82f6,#60a5fa)"></span></div>
+      <div class="coach-contrib-sub" style="margin-top:8px">${withPhoto.length} of ${pool.length} players have a card photo (<b>${pct}%</b>)${missing.length ? ` · <b>${missing.length}</b> missing` : ' · ✅ all covered!'}</div>
+      ${missing.length ? `
+        <div class="cov-actions"><button id="cov-copy" class="copy-btn">📋 Copy missing list</button></div>
+        <div class="cov-list">${missRows}</div>` : ''}
+    </div>`;
 }
 
 // Deep-dive modal: contribution to a metric broken down hierarchically, like the
@@ -5157,6 +5186,19 @@ function render() {
         cCopy.textContent = '✓ Copied'; setTimeout(() => { cCopy.textContent = '📋 Copy summary'; }, 1500);
       }).catch(() => {});
     });
+    // Photo coverage: copy the missing-photo list + click a missing name → card.
+    const covCopy = document.getElementById('cov-copy');
+    if (covCopy) covCopy.addEventListener('click', () => {
+      const sc = people.filter(p => (coachRegion === 'all' || regionOf(p.team) === coachRegion) && (coachTeam === 'all' || p.team === coachTeam));
+      const miss = sc.filter(p => !photoFor(p.name)).sort((a, b) => String(a.team).localeCompare(String(b.team)) || String(a.name).localeCompare(String(b.name)));
+      const text = `Missing card photos (${miss.length}):\n` + miss.map(p => `- ${p.name} (${p.team})`).join('\n');
+      navigator.clipboard?.writeText(text).then(() => {
+        covCopy.textContent = '✓ Copied'; setTimeout(() => { covCopy.textContent = '📋 Copy missing list'; }, 1500);
+      }).catch(() => {});
+    });
+    document.querySelectorAll('.cov-miss[data-player]').forEach(el => el.addEventListener('click', () => {
+      openPlayerModal = el.dataset.player; render(); document.body.style.overflow = 'hidden';
+    }));
   }
 
   // First-visit hint: dismiss + remember.
