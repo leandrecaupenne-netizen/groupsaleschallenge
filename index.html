@@ -200,6 +200,20 @@ input { font-family: inherit; }
     repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 20px);
   pointer-events: none;
 }
+/* Animated stadium: two soft floodlight beams that slowly sweep behind the hero
+   for a sense of depth/atmosphere (kept very subtle, paused for reduced-motion). */
+.hero::after {
+  content: ''; position: absolute; inset: -20% -10% auto -10%; height: 140%;
+  pointer-events: none; z-index: 0; opacity: 0.5;
+  background:
+    conic-gradient(from 200deg at 18% -10%, transparent 0deg, rgba(255,255,255,0.10) 12deg, transparent 26deg),
+    conic-gradient(from 160deg at 82% -10%, transparent 0deg, rgba(242,199,92,0.10) 12deg, transparent 26deg);
+  transform-origin: 50% 0;
+  animation: floodSweep 14s ease-in-out infinite alternate;
+}
+@keyframes floodSweep { 0% { transform: rotate(-2.5deg); } 100% { transform: rotate(2.5deg); } }
+@media (prefers-reduced-motion: reduce) { .hero::after { animation: none; } }
+.hero-inner { z-index: 1; }
 .hero-inner { max-width: 1400px; margin: 0 auto; position: relative; }
 .hero-eyebrow {
   font-family: ui-monospace, monospace;
@@ -1192,6 +1206,18 @@ input { font-family: inherit; }
   .hero-title { font-size: 32px; }
 }
 
+/* Idle-pause banner: a forgotten tab stops polling; tap to resume. */
+.idle-banner {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 850; display: none; align-items: center; gap: 8px;
+  background: var(--navy); color: #fff; border: 1px solid rgba(255,255,255,0.18);
+  padding: 11px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  box-shadow: 0 8px 26px rgba(0,0,0,0.35); cursor: pointer;
+  animation: idleIn 0.3s ease both;
+}
+.idle-banner:hover { background: var(--navy-2); }
+@keyframes idleIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
 /* === LIVE: header status, refresh, sync warning === */
 .header-status {
   margin-left: auto;
@@ -1306,6 +1332,22 @@ input { font-family: inherit; }
   transition: opacity 0.45s ease, transform 0.45s ease;
 }
 .loader-screen.kicked { opacity: 0; transform: scale(1.02); }
+
+/* "Player tunnel" intro: dark walls frame the pitch and a small line-up of
+   players walks out onto the field, like a real match entrance. */
+.loader-tunnel { position: relative; width: 100%; max-width: 360px; height: 0; }
+.tw { position: absolute; top: -120px; bottom: -120px; width: 22vw; max-width: 130px; pointer-events: none; z-index: 0; }
+.tw-l { left: -10vw; background: linear-gradient(90deg, rgba(0,0,0,0.42), transparent); }
+.tw-r { right: -10vw; background: linear-gradient(270deg, rgba(0,0,0,0.42), transparent); }
+.loader-lineup { position: absolute; left: 50%; top: -34px; transform: translateX(-50%); display: flex; gap: 10px; z-index: 1; }
+.lu-player { font-size: 26px; opacity: 0; animation: luWalk 1.6s ease-out var(--d, 0ms) infinite; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.3)); }
+@keyframes luWalk {
+  0% { opacity: 0; transform: translateY(-22px) scale(0.8); }
+  35% { opacity: 1; }
+  70% { opacity: 1; transform: translateY(4px) scale(1); }
+  100% { opacity: 0; transform: translateY(10px) scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) { .lu-player { animation: none; opacity: 0.9; transform: none; } }
 
 /* A self-contained LANDSCAPE pitch (top-down), with the ball at the centre spot. */
 .loader-pitch {
@@ -1727,6 +1769,28 @@ img, table { max-width: 100%; }
 @keyframes numPulse { 0% { color: var(--gold); text-shadow: 0 0 12px rgba(242,199,92,0.7); } 100% { color: inherit; text-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { .animnum.animnum-changed { animation: none; } }
 
+/* === #1 halo — a gentle living glow on the current leader's rank === */
+.rank-halo { position: relative; }
+.rank-halo::after {
+  content: ''; position: absolute; inset: -4px; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 0 rgba(242,199,92,0.55);
+  animation: rankHalo 2.4s ease-in-out infinite;
+}
+@keyframes rankHalo {
+  0%,100% { box-shadow: 0 0 8px 1px rgba(242,199,92,0.35); }
+  50% { box-shadow: 0 0 18px 4px rgba(242,199,92,0.65); }
+}
+@media (prefers-reduced-motion: reduce) { .rank-halo::after { animation: none; box-shadow: 0 0 10px 2px rgba(242,199,92,0.45); } }
+
+/* === Rank-change flash — a row that moved since the last refresh === */
+.rank-bump { animation: rankBump 1.6s ease; }
+@keyframes rankBump {
+  0% { background: rgba(242,199,92,0.0); }
+  18% { background: rgba(242,199,92,0.32); }
+  100% { background: rgba(242,199,92,0.0); }
+}
+@media (prefers-reduced-motion: reduce) { .rank-bump { animation: none; } }
+
 /* === Rules & Awards modal === */
 .rules-modal { max-width: 640px; }
 .rules-body { padding: 8px 24px 28px; }
@@ -1933,7 +1997,10 @@ img, table { max-width: 100%; }
 const CONFIG = {
   // Deployed Apps Script /exec endpoint (Web App, access: Anyone).
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec',
-  POLL_INTERVAL_MS: 45000,  // 45 seconds (base; jittered ±25% per client to avoid herd spikes)
+  POLL_INTERVAL_MS: 120000,  // 2 min base (jittered ±25%). Data only changes ~weekly,
+                             // so this is plenty live while keeping the Apps Script
+                             // quota comfortable for ~400 concurrent users.
+  IDLE_TIMEOUT_MS: 15 * 60 * 1000, // pause polling after 15 min with no interaction
   SESSION_KEY: 'devoteam_wc_session_v1',
   PWD_KEY: 'devoteam_wc_pwd_v1',   // stored access code, sent with each data request
   // Manual refresh is admin-only. Activate on YOUR device by opening the site with
@@ -1971,7 +2038,7 @@ const I18N = {
     'pos.start': 'Start typing your name above ↑', 'pos.none': 'No salesperson found with that name. Check spelling or try last name only.',
     'login.sub': 'Sales Challenge 2026 — Internal Access', 'login.ph': 'Enter access code', 'login.btn': 'ACCESS THE LEADERBOARD',
     'login.bad': 'Incorrect access code. Try again.', 'login.err': 'Could not reach the server. Check your connection and retry.', 'login.checking': 'CHECKING...',
-    'load.title': 'KICK-OFF', 'load.sub': 'Loading the live leaderboard…',
+    'load.title': 'PLAYERS ENTERING THE PITCH', 'load.sub': 'Loading the live leaderboard…',
     'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
     'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
     'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m {s}s to the Final', 'cd.live': '🏆 The Final is on — Paris!',
@@ -2420,6 +2487,39 @@ function runAnimNums() {
   });
 }
 
+// Flash leaderboard rows whose rank changed since the previous render. We read
+// the DOM order of the visible rows and compare each row's id to where it sat
+// last time; movers get a brief gold "bump". Only fires on live updates (when
+// suppressAnim is set during a background refresh), never on the first paint.
+let prevRowOrder = {};
+function flashRankChanges() {
+  // Each leaderboard family has a stable container + per-row id attribute.
+  const groups = [
+    { sel: '.teams-table-row[data-team]', attr: 'team' },
+    { sel: '.ms-row[data-player]', attr: 'player' },
+    { sel: '.nation-row[data-nation]', attr: 'nation' }
+  ];
+  groups.forEach(g => {
+    const rows = [...document.querySelectorAll(g.sel)];
+    if (!rows.length) return;
+    const order = {};
+    rows.forEach((el, i) => { order[el.dataset[g.attr]] = i; });
+    const prev = prevRowOrder[g.sel];
+    // Only flash on a live refresh, and only when we have a baseline to compare.
+    if (suppressAnim && prev) {
+      rows.forEach((el, i) => {
+        const id = el.dataset[g.attr];
+        if (prev[id] !== undefined && prev[id] !== i) {
+          el.classList.remove('rank-bump'); void el.offsetWidth; // restart anim
+          el.classList.add('rank-bump');
+          setTimeout(() => el.classList.remove('rank-bump'), 1700);
+        }
+      });
+    }
+    prevRowOrder[g.sel] = order;
+  });
+}
+
 // Animate [data-countup] numbers from 0 to their value, respecting their format.
 // Uses dash-free formatters so the zero frame shows "0"/"0.0%" rather than "—".
 function animateCountUps() {
@@ -2749,7 +2849,7 @@ function renderTeamRanking() {
           const topClass = realRank === 1 ? 'top-1' : realRank === 2 ? 'top-2' : realRank === 3 ? 'top-3' : '';
           return `
             <div class="teams-table-row ${topClass}" data-team="${escapeHtml(t.country)}">
-              <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
+              <div class="tt-rank ${topClass}${realRank === 1 ? ' rank-halo' : ''}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${escapeHtml(t.country)}
                 <div class="click-hint">${clickHint}</div>
@@ -4211,6 +4311,7 @@ function render() {
   updateCountdown();
   updateTicker();
   runAnimNums();
+  flashRankChanges();
 
   // Count-up the spotlight stats on first view / tab change (not on background polls).
   if (!suppressAnim && currentTab === 'spotlight') animateCountUps();
@@ -4665,6 +4766,12 @@ function renderLoader() {
         <div class="loader-ball-shadow"></div>
         <div class="loader-ball">⚽</div>
         <span class="lf-spot"></span>
+      </div>
+      <div class="loader-tunnel" aria-hidden="true">
+        <span class="tw tw-l"></span><span class="tw tw-r"></span>
+        <div class="loader-lineup">
+          ${['🟦','🟥','🟩','🟨','⬜'].map((_, i) => `<span class="lu-player" style="--d:${i * 120}ms">🧍</span>`).join('')}
+        </div>
       </div>
       <div>
         <div class="loader-title">${t('load.title')}</div>
@@ -5421,7 +5528,7 @@ async function backgroundRefresh() {
 }
 
 function nextPollDelay() {
-  // Base 45s ± jitter (0.75x–1.25x → ~34–56s) so clients don't poll in lockstep.
+  // Base interval ± jitter (0.75x–1.25x) so clients don't poll in lockstep.
   // This spreads requests out and avoids the "thundering herd" spikes at launch.
   return Math.round(CONFIG.POLL_INTERVAL_MS * (0.75 + Math.random() * 0.5));
 }
@@ -5439,11 +5546,56 @@ function stopPolling() {
   if (pollIntervalId) { clearTimeout(pollIntervalId); pollIntervalId = null; }
 }
 
+// === Idle auto-pause ===
+// A forgotten open tab shouldn't keep polling for hours (that's what blows the
+// Apps Script quota at scale). After IDLE_TIMEOUT_MS with no interaction we
+// stop polling and show a small "paused" banner; any interaction resumes it.
+let idleTimer = null;
+let idlePaused = false;
+function showIdleBanner(show) {
+  let el = document.getElementById('idle-banner');
+  if (show) {
+    if (!el) {
+      el = document.createElement('button');
+      el.id = 'idle-banner';
+      el.className = 'idle-banner';
+      el.innerHTML = '⏸️ Live updates paused · tap to resume';
+      el.addEventListener('click', resumeFromIdle);
+      document.body.appendChild(el);
+    }
+    el.style.display = 'flex';
+  } else if (el) {
+    el.style.display = 'none';
+  }
+}
+function goIdle() {
+  if (idlePaused) return;
+  idlePaused = true;
+  stopPolling();
+  showIdleBanner(true);
+}
+function resumeFromIdle() {
+  if (idlePaused) {
+    idlePaused = false;
+    showIdleBanner(false);
+    backgroundRefresh(); // catch up immediately
+    startPolling();
+  }
+  armIdleTimer();
+}
+function armIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(goIdle, CONFIG.IDLE_TIMEOUT_MS);
+}
+// Any meaningful interaction re-arms the idle timer (and resumes if paused).
+['click', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+  window.addEventListener(evt, () => { if (idlePaused) resumeFromIdle(); else armIdleTimer(); }, { passive: true }));
+
 // Pause polling when the tab is hidden (saves Apps Script quota).
 document.addEventListener('visibilitychange', () => {
   if (!isLoggedIn()) return;
-  if (document.hidden) stopPolling();
-  else { backgroundRefresh(); startPolling(); } // cached refresh, not a cache-bypass
+  if (document.hidden) { stopPolling(); if (idleTimer) clearTimeout(idleTimer); }
+  else if (!idlePaused) { backgroundRefresh(); startPolling(); armIdleTimer(); }
 });
 
 // === LIVE: manual refresh (header button) ===
@@ -5560,6 +5712,7 @@ async function init() {
   initScrollTop();
 
   startPolling();
+  armIdleTimer(); // auto-pause polling on a forgotten/idle tab
 
   // Projection screens: ?tv=1 launches straight into TV mode (param kept so a
   // reload re-enters it). Fullscreen itself may need one click/F11 (browser rule).
