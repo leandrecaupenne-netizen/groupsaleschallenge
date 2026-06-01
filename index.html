@@ -1863,25 +1863,82 @@ img, table { max-width: 100%; }
 .vt-reset { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 11px; border-radius: 8px; border: 1px solid var(--line); background: transparent; cursor: pointer; }
 .vt-reset:hover { color: var(--usa-red); border-color: var(--usa-red); }
 .vt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 10px; }
-.vt-card { background: var(--paper); border: 1px solid var(--line); border-left: 5px solid #9aa1ac; border-radius: 12px; padding: 14px 16px; }
-.vt-card.v-yellow { border-left-color: var(--gold); }
-.vt-card.v-red { border-left-color: var(--usa-red); }
-.vt-card.v-excused { border-left-color: var(--green); }
-.vt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.vt-who { display: flex; flex-direction: column; min-width: 0; }
-.vt-name { font-weight: 800; font-size: 15px; color: var(--ink); }
+.vt-card {
+  position: relative; overflow: hidden;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  transition: box-shadow 0.18s, border-color 0.18s, transform 0.18s;
+}
+/* A coloured accent bar across the top reflects the verdict. */
+.vt-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: #9aa1ac; transition: background 0.2s; }
+.vt-card.v-yellow::before { background: var(--gold); }
+.vt-card.v-red::before { background: var(--usa-red); }
+.vt-card.v-excused::before { background: var(--green); }
+.vt-card.v-red { border-color: rgba(200,16,46,0.4); }
+.vt-card.v-yellow { border-color: rgba(242,199,92,0.55); }
+.vt-card.v-excused { border-color: rgba(22,163,74,0.4); }
+.vt-card-head { display: flex; align-items: center; gap: 11px; }
+/* Team-coloured avatar disc with mini flag — same language as the rest of the app. */
+.vt-avatar {
+  position: relative; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 16px; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.vt-avatar-flag { position: absolute; bottom: -2px; right: -3px; display: inline-flex; width: 16px; height: 11px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
+.vt-avatar-flag i { flex: 1; }
+.vt-who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.vt-name { font-weight: 800; font-size: 15px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vt-team { font-size: 11px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; font-family: ui-monospace, monospace; }
-.vt-double { font-size: 11px; font-weight: 800; color: var(--usa-red); background: rgba(200,16,46,0.1); padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
-.vt-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.vt-refcard-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+/* The referee card itself — a little card that flips in when a verdict is set. */
+.vt-refcard {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 36px; border-radius: 4px; font-size: 15px; color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25); transform: rotate(6deg);
+}
+.vt-rc-pending { background: repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0 4px, rgba(0,0,0,0.02) 4px 8px), var(--line); color: var(--muted); box-shadow: none; transform: rotate(0deg); }
+.vt-rc-yellow { background: linear-gradient(160deg, #ffd95b, #e0a93a); }
+.vt-rc-red { background: linear-gradient(160deg, #e23052, #b00d26); }
+.vt-rc-excused { background: linear-gradient(160deg, #34d399, #16a34a); transform: rotate(0deg); }
+.vt-double { font-size: 9px; font-weight: 800; color: var(--usa-red); background: rgba(200,16,46,0.12); padding: 3px 6px; border-radius: 99px; white-space: nowrap; }
+.vt-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin: 11px 0 12px; }
 .vt-reason { font-size: 12px; font-weight: 600; color: var(--ink-2); background: rgba(242,199,92,0.16); padding: 4px 9px; border-radius: 6px; }
 .vt-verdicts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.vt-verdict { font-size: 11.5px; font-weight: 700; padding: 8px 3px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink-2); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; white-space: nowrap; }
+.vt-verdict { font-size: 11.5px; font-weight: 700; padding: 8px 3px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink-2); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s; white-space: nowrap; }
 .vt-verdict:hover { border-color: var(--ink-2); }
+.vt-verdict:active { transform: scale(0.94); }
 .vt-verdict.on.pending { background: #6b7280; border-color: #6b7280; color: #fff; }
 .vt-verdict.on.yellow { background: var(--gold); border-color: var(--gold); color: var(--navy); }
 .vt-verdict.on.red { background: var(--usa-red); border-color: var(--usa-red); color: #fff; }
 .vt-verdict.on.excused { background: var(--green); border-color: var(--green); color: #fff; }
 @media (max-width: 480px) { .vt-verdict { font-size: 10.5px; padding: 8px 2px; } }
+
+/* === VAR TIME decision animation === */
+/* When a verdict is set, the whole card pulses and the referee card flips in. */
+.vt-card.vt-decided { animation: vtDecide 0.6s ease; }
+@keyframes vtDecide { 0% { transform: scale(1); } 30% { transform: scale(1.025); } 100% { transform: scale(1); } }
+.vt-card.vt-decided.v-red { box-shadow: 0 0 0 3px rgba(200,16,46,0.35), 0 8px 22px rgba(200,16,46,0.25); }
+.vt-card.vt-decided.v-yellow { box-shadow: 0 0 0 3px rgba(242,199,92,0.5), 0 8px 22px rgba(242,199,92,0.3); }
+.vt-card.vt-decided.v-excused { box-shadow: 0 0 0 3px rgba(22,163,74,0.35), 0 8px 22px rgba(22,163,74,0.25); }
+.vt-card.vt-decided .vt-refcard { animation: vtFlip 0.55s cubic-bezier(.2,.7,.3,1.2); }
+@keyframes vtFlip {
+  0% { transform: rotateY(90deg) rotate(6deg) scale(0.6); opacity: 0; }
+  60% { transform: rotateY(-12deg) rotate(6deg) scale(1.12); opacity: 1; }
+  100% { transform: rotateY(0deg) rotate(6deg) scale(1); opacity: 1; }
+}
+/* A brief full-card flash overlay in the verdict colour. */
+.vt-flash { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; opacity: 0; }
+.vt-card.vt-decided .vt-flash { animation: vtFlash 0.6s ease; }
+@keyframes vtFlash { 0% { opacity: 0.5; } 100% { opacity: 0; } }
+.vt-flash.f-yellow { background: radial-gradient(circle at 80% 0%, rgba(242,199,92,0.6), transparent 70%); }
+.vt-flash.f-red { background: radial-gradient(circle at 80% 0%, rgba(200,16,46,0.55), transparent 70%); }
+.vt-flash.f-excused { background: radial-gradient(circle at 80% 0%, rgba(22,163,74,0.5), transparent 70%); }
+@media (prefers-reduced-motion: reduce) {
+  .vt-card.vt-decided, .vt-card.vt-decided .vt-refcard, .vt-card.vt-decided .vt-flash { animation: none; }
+}
 .cmp-vs { font-family: 'Anton', Impact, sans-serif; color: var(--usa-red); font-size: 16px; }
 .cmp-table { width: 100%; border-collapse: collapse; }
 .cmp-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); padding: 8px 6px; border-bottom: 2px solid var(--line); text-align: center; }
@@ -3313,15 +3370,34 @@ function renderVarTime() {
     `<button class="vt-verdict ${b.verdict === k ? 'on ' + k : ''}" data-name="${escapeHtml(b.p.name)}" data-verdict="${k}">${VERDICT_META[k].icon} ${VERDICT_META[k].label}</button>`
   ).join('');
 
-  const card = (b) => `
-    <div class="vt-card v-${b.verdict}">
+  const initials = (name) => String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
+  // The referee-card visual that reflects the current verdict (this is the
+  // "card" the review is about). Pending shows a faint blank card.
+  const refcard = (b) => {
+    const map = {
+      pending: { cls: 'pending', face: '?', label: 'No decision yet' },
+      yellow:  { cls: 'yellow',  face: '', label: 'Yellow card' },
+      red:     { cls: 'red',     face: '', label: 'Red card' },
+      excused: { cls: 'excused', face: '✓', label: 'Excused' }
+    };
+    const m = map[b.verdict] || map.pending;
+    return `<span class="vt-refcard vt-rc-${m.cls}" title="${m.label}" aria-label="${m.label}">${m.face}</span>`;
+  };
+  const card = (b) => {
+    const rc = colorForTeam(b.p.team);
+    const fl = flagForTeam(b.p.team);
+    return `
+    <div class="vt-card v-${b.verdict}" data-name="${escapeHtml(b.p.name)}">
+      <span class="vt-flash"></span>
       <div class="vt-card-head">
+        <div class="vt-avatar" style="--ac:${rc}">${initials(b.p.name)}<span class="vt-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
         <div class="vt-who"><span class="vt-name">${escapeHtml(b.p.name)}</span><span class="vt-team">${escapeHtml(b.p.team)}</span></div>
-        ${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes 🟥</span>' : ''}
+        <div class="vt-refcard-slot">${refcard(b)}${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes</span>' : ''}</div>
       </div>
       <div class="vt-reasons">${b.reasons.map(r => `<span class="vt-reason">🟨 ${escapeHtml(r)}</span>`).join('')}</div>
       <div class="vt-verdicts">${verdictBtns(b)}</div>
     </div>`;
+  };
 
   return `
     <div class="section">
@@ -4401,7 +4477,35 @@ function render() {
   if (currentTab === 'vartime') {
     const reRender = () => { const y = window.scrollY; render(); window.scrollTo(0, y); };
     document.querySelectorAll('.vt-verdict').forEach(btn => btn.addEventListener('click', () => {
-      setVerdict(btn.dataset.name, btn.dataset.verdict); reRender();
+      const name = btn.dataset.name, verdict = btn.dataset.verdict;
+      setVerdict(name, verdict);
+      // Animate the decision in place (a full re-render would discard the
+      // animation). Update the card's verdict classes, refresh the verdict
+      // buttons + referee card, play the flip/flash, then re-render quietly so
+      // the summary pills and the "pending" filter stay in sync.
+      const cardEl = btn.closest('.vt-card');
+      if (cardEl && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        cardEl.classList.remove('v-pending', 'v-yellow', 'v-red', 'v-excused', 'vt-decided');
+        cardEl.classList.add('v-' + verdict);
+        // toggle the active verdict button
+        cardEl.querySelectorAll('.vt-verdict').forEach(x => {
+          x.classList.remove('on', 'pending', 'yellow', 'red', 'excused');
+          if (x.dataset.verdict === verdict) x.classList.add('on', verdict);
+        });
+        // swap the referee card visual
+        const slot = cardEl.querySelector('.vt-refcard');
+        if (slot) {
+          slot.className = 'vt-refcard vt-rc-' + verdict;
+          slot.textContent = verdict === 'pending' ? '?' : verdict === 'excused' ? '✓' : '';
+        }
+        const flash = cardEl.querySelector('.vt-flash');
+        if (flash) { flash.className = 'vt-flash f-' + verdict; }
+        void cardEl.offsetWidth; // restart animation
+        cardEl.classList.add('vt-decided');
+        setTimeout(() => { const y = window.scrollY; render(); window.scrollTo(0, y); }, 650);
+      } else {
+        reRender();
+      }
     }));
     document.querySelectorAll('.vt-filter').forEach(btn => btn.addEventListener('click', () => {
       vartimeFilter = btn.dataset.f; reRender();
