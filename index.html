@@ -649,9 +649,12 @@ input { font-family: inherit; }
 /* === SPECIAL AWARDS === */
 .awards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  /* Four balanced columns on desktop (Licence · Rookie · AI Play · Transformative);
+     2×2 on tablet pairs the two data awards over the two jury awards; 1 col on phones. */
+  grid-template-columns: repeat(4, 1fr);
   gap: 18px;
 }
+@media (max-width: 1100px) { .awards-grid { grid-template-columns: repeat(2, 1fr); } }
 .award-card {
   background: var(--paper);
   border-radius: 14px;
@@ -1550,6 +1553,35 @@ input { font-family: inherit; }
 :root[data-theme="dark"] .intro-hint-txt b { color: #fff; }
 @media (max-width: 600px) { .intro-hint { margin: 10px 14px 0; flex-wrap: wrap; } .intro-hint-txt { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .intro-hint, .intro-hint.intro-hint-out { animation: none; } }
+
+/* First-visit guided tour — a short, dismissible 3-step welcome overlay. */
+.tour-ov { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: radial-gradient(120% 120% at 50% 0%, rgba(30,42,120,0.82), rgba(11,16,46,0.92));
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: tourFade 0.3s ease both; }
+.tour-ov.tour-out { animation: tourFade 0.25s ease reverse forwards; }
+.tour-card { background: var(--paper); border-radius: 18px; padding: 30px 26px 22px; max-width: 380px; width: 100%;
+  text-align: center; box-shadow: 0 24px 70px rgba(0,0,0,0.45); position: relative; overflow: hidden; }
+.tour-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+  background: linear-gradient(90deg, var(--usa-red), var(--gold), var(--mex-green)); }
+.tour-step { animation: tourStep 0.3s ease both; }
+.tour-icon { font-size: 46px; line-height: 1; margin: 6px 0 14px; }
+.tour-title { font-family: 'Anton', Impact, sans-serif; font-size: 24px; letter-spacing: 0.02em; color: var(--ink); margin-bottom: 10px; }
+.tour-text { font-size: 14px; line-height: 1.5; color: var(--muted); margin-bottom: 22px; }
+.tour-text b { color: var(--ink); }
+.tour-dots { display: flex; gap: 7px; justify-content: center; margin-bottom: 18px; }
+.tour-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background 0.2s, transform 0.2s; }
+.tour-dot.on { background: var(--usa-red); transform: scale(1.3); }
+.tour-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tour-skip { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; padding: 8px; }
+.tour-skip:hover { color: var(--ink); }
+.tour-next { flex: 1; padding: 13px; background: var(--usa-red); color: #fff; font-weight: 700; font-size: 13px;
+  letter-spacing: 0.08em; border: none; border-radius: 9px; cursor: pointer; transition: background 0.15s; }
+.tour-next:hover { background: #A00D26; }
+@keyframes tourFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tourStep { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+:root[data-theme="dark"] .tour-title { color: #fff; }
+:root[data-theme="dark"] .tour-text b { color: #fff; }
+@media (prefers-reduced-motion: reduce) { .tour-ov, .tour-step { animation: none; } }
 
 /* Quick content transition when switching tabs. */
 .tab-enter { animation: tabEnter 0.32s cubic-bezier(.2,.7,.3,1) both; }
@@ -2832,6 +2864,7 @@ function setSyncWarning(show) {
 
 // === Animate numbers that change between refreshes ===
 let prevValues = {};
+let introCountup = false; // armed once on the cold-start path → podium figures count up from 0
 function fmtByType(v, fmt) {
   if (fmt === 'money') return fmtMoney(v);
   if (fmt === 'pct') return fmtPct(v);
@@ -2849,6 +2882,16 @@ function animNum(key, value, fmt) {
   return `<span class="animnum" data-akey="${escapeHtml(key)}" data-ato="${value}" data-afmt="${fmt}">${fmtByType(value, fmt)}</span>`;
 }
 function runAnimNums() {
+  if (introCountup) {
+    // One-time kick-off flourish: seed the podium figures at 0 so they count up
+    // from zero on the first paint. Other boards keep their normal behaviour
+    // (animate only when a value actually changes on a live update).
+    document.querySelectorAll('.animnum').forEach(el => {
+      const k = el.getAttribute('data-akey');
+      if (k && k.indexOf('pod:') === 0) prevValues[k] = 0;
+    });
+    introCountup = false;
+  }
   document.querySelectorAll('.animnum').forEach(el => {
     const key = el.getAttribute('data-akey');
     const to = parseFloat(el.getAttribute('data-ato'));
@@ -2985,15 +3028,60 @@ const TABS = [
 ];
 
 // First-visit coach hint: a one-line, dismissible banner that tells newcomers
-// the leaderboard is interactive. Shown once, then never again.
+// the leaderboard is interactive. Shown once, then never again. For brand-new
+// visitors the richer guided tour (below) takes over, so the banner is held
+// back until the tour has run.
 const INTRO_KEY = 'devoteam_wc_intro_seen_v1';
+const TOUR_KEY = 'devoteam_wc_tour_v1';
 function renderIntroHint() {
   if (safeGet(INTRO_KEY) === '1') return '';
+  if (safeGet(TOUR_KEY) !== '1') return ''; // tour will onboard this newcomer instead
   return `
     <div class="intro-hint" id="intro-hint">
       <span class="intro-hint-txt">👋 Welcome! Tap any <b>player</b> or <b>team</b> to open their card · check <b>My Position 🔍</b> to find yourself</span>
       <button class="intro-hint-x" id="intro-hint-x" aria-label="Got it">Got it ✕</button>
     </div>`;
+}
+
+// First-visit guided tour: a short 3-step welcome overlay. Shown once to brand-new
+// visitors only (anyone who has already used the app — INTRO_KEY set — is skipped).
+const TOUR_STEPS = [
+  { icon: '🏆', title: 'WELCOME TO THE WORLD CUP', text: 'The Devoteam <b>Sales Challenge</b> live leaderboard. Standings update through the challenge — June 1 to July 3, final in Paris.' },
+  { icon: '👆', title: 'OPEN ANY CARD', text: 'Tap any <b>player</b> or <b>team</b> to flip their full stats card — rankings, gross margin and yellow cards.' },
+  { icon: '🔍', title: 'FIND YOURSELF', text: 'Head to <b>My Position</b> and search your name to see all your rankings across the challenge.' }
+];
+function maybeShowTour() {
+  if (safeGet(TOUR_KEY) === '1' || safeGet(INTRO_KEY) === '1') return; // only true newcomers
+  if (document.getElementById('tour-ov')) return; // already on screen
+  let i = 0;
+  const ov = document.createElement('div');
+  ov.className = 'tour-ov'; ov.id = 'tour-ov';
+  const finish = () => {
+    safeSet(TOUR_KEY, '1'); safeSet(INTRO_KEY, '1'); // tour supersedes the one-line hint
+    const hint = document.getElementById('intro-hint'); if (hint) hint.remove();
+    ov.classList.add('tour-out'); setTimeout(() => ov.remove(), 250);
+  };
+  const paint = () => {
+    const s = TOUR_STEPS[i];
+    const last = i === TOUR_STEPS.length - 1;
+    ov.innerHTML = `
+      <div class="tour-card">
+        <div class="tour-step">
+          <div class="tour-icon">${s.icon}</div>
+          <div class="tour-title">${s.title}</div>
+          <div class="tour-text">${s.text}</div>
+        </div>
+        <div class="tour-dots">${TOUR_STEPS.map((_, k) => `<span class="tour-dot${k === i ? ' on' : ''}"></span>`).join('')}</div>
+        <div class="tour-actions">
+          <button class="tour-skip" id="tour-skip">Skip</button>
+          <button class="tour-next" id="tour-next">${last ? "LET'S GO ⚽" : 'NEXT'}</button>
+        </div>
+      </div>`;
+    ov.querySelector('#tour-skip').addEventListener('click', finish);
+    ov.querySelector('#tour-next').addEventListener('click', () => { if (last) finish(); else { i++; paint(); } });
+  };
+  paint();
+  document.body.appendChild(ov);
 }
 
 function renderTabs() {
@@ -6848,10 +6936,14 @@ async function init() {
     if (elapsed < 350) await new Promise(r => setTimeout(r, 350 - elapsed));
     await playKickoff();
     restoreTab();
+    introCountup = true; // first real paint → podium scores count up from 0
     render();
     app.style.animation = 'appEnter 0.45s ease both';
     setTimeout(() => { app.style.animation = ''; }, 500);
   }
+
+  // Brand-new visitor? Run the short guided tour (once).
+  maybeShowTour();
 
   // Bind the header refresh button once (it lives outside #app, so it survives re-renders).
   const refreshBtn = document.getElementById('refresh-btn');
