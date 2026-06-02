@@ -965,7 +965,7 @@ input { font-family: inherit; }
   display: flex; flex-direction: column; gap: 14px;
 }
 .pc-close {
-  position: absolute; top: 12px; right: 12px; z-index: 6;
+  position: absolute; top: 6px; right: 10px; z-index: 6;
   display: flex; align-items: center; justify-content: center;
   background: #fff; color: #0d0f24;
   border: 2px solid rgba(13,15,36,0.12);
@@ -978,7 +978,7 @@ input { font-family: inherit; }
 .pc-close:active { transform: scale(0.94); }
 @media (hover: none) { .pc-close { width: 44px; height: 44px; } }
 .pc-back {
-  position: absolute; top: 12px; left: 12px; z-index: 6;
+  position: absolute; top: 6px; left: 10px; z-index: 6;
   display: flex; align-items: center; gap: 4px;
   background: #fff; color: #0d0f24;
   border: 2px solid rgba(13,15,36,0.12);
@@ -991,7 +991,7 @@ input { font-family: inherit; }
 .pc-back:active { transform: scale(0.95); }
 @media (hover: none) { .pc-back { height: 44px; } }
 .pc-card {
-  position: relative; overflow: hidden; border-radius: 16px; padding: 20px 18px 22px;
+  position: relative; overflow: hidden; border-radius: 16px; padding: 40px 18px 22px;
   color: #fff; text-align: center;
   background:
     radial-gradient(120% 90% at 50% -10%, rgba(255,255,255,0.18), rgba(255,255,255,0) 55%),
@@ -4360,14 +4360,27 @@ function renderPositionDetails(person) {
 // === Shareable player card (PNG via canvas) ===
 function generatePlayerCard(person) {
   if (!person) return;
-  const img = new Image();
-  img.onload = () => drawPlayerCard(person, img);
-  img.onerror = () => drawPlayerCard(person, null);
-  img.src = LOGO_DATA_URI || '';
-  if (!LOGO_DATA_URI) drawPlayerCard(person, null);
+  // Load the logo AND the player's portrait (same-origin /cards/*.png → no canvas
+  // taint), then draw once both have settled (loaded or failed).
+  const photoSrc = photoFor(person.name);
+  let logo = null, photo = null, pending = 0, done = false;
+  const tryDraw = () => { if (pending <= 0 && !done) { done = true; drawPlayerCard(person, logo, photo); } };
+  if (LOGO_DATA_URI) {
+    pending++; const li = new Image();
+    li.onload = () => { logo = li; pending--; tryDraw(); };
+    li.onerror = () => { pending--; tryDraw(); };
+    li.src = LOGO_DATA_URI;
+  }
+  if (photoSrc) {
+    pending++; const pi = new Image();
+    pi.onload = () => { photo = pi; pending--; tryDraw(); };
+    pi.onerror = () => { pending--; tryDraw(); };
+    pi.src = photoSrc;
+  }
+  if (pending === 0) tryDraw();
 }
 
-function drawPlayerCard(person, logo) {
+function drawPlayerCard(person, logo, photo) {
   const W = 760, H = 1080, s = 2; // 2x for crisp output
   const cv = document.createElement('canvas');
   cv.width = W * s; cv.height = H * s;
@@ -4389,23 +4402,60 @@ function drawPlayerCard(person, logo) {
   const bw = (W - 56) / 3;
   flagForTeam(person.team).forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(28 + i * bw, 34, bw, 10); });
 
-  // logo
-  if (logo) { const lw = 120, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 66, lw, lh); }
+  // logo + titles
+  if (logo) { const lw = 84, lh = logo.height * (lw / logo.width); ctx.drawImage(logo, (W - lw) / 2, 52, lw, lh); }
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#F2C75C'; ctx.font = '700 22px Inter, sans-serif';
-  ctx.fillText('DEVOTEAM WORLD CUP', W / 2, 220);
-  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = '600 13px monospace';
-  ctx.fillText('SALES CHALLENGE 2026', W / 2, 244);
+  ctx.fillStyle = '#F2C75C'; ctx.font = '700 20px Inter, sans-serif';
+  ctx.fillText('DEVOTEAM WORLD CUP', W / 2, 158);
+  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = '600 12px monospace';
+  ctx.fillText('SALES CHALLENGE 2026', W / 2, 180);
+
+  // player portrait — cut-out resting on a soft halo (mirrors the on-screen card)
+  const cx = W / 2, cy = 306, R = 94;
+  const halo = ctx.createRadialGradient(cx, cy - 8, R * 0.25, cx, cy, R * 1.3);
+  halo.addColorStop(0, 'rgba(255,255,255,0.30)');
+  halo.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+  halo.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, R * 1.32, 0, Math.PI * 2); ctx.fill();
+  if (photo && photo.width) {
+    // bottom-anchored so the head shows above the halo, like .pc-photo
+    const dW = R * 2.15, dH = dW * (photo.height / photo.width);
+    ctx.drawImage(photo, cx - dW / 2, cy + R - dH + 4, dW, dH);
+  } else {
+    // fallback: initials disc
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 3; ctx.stroke();
+    const initials = person.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    ctx.fillStyle = '#fff'; ctx.font = '700 60px "Arial Narrow", Impact, sans-serif';
+    ctx.fillText(initials, cx, cy + 22);
+  }
 
   // name + team
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
   let name = person.name.toUpperCase();
   ctx.font = '700 44px "Arial Narrow", Impact, sans-serif';
   if (ctx.measureText(name).width > W - 80) ctx.font = '700 32px "Arial Narrow", Impact, sans-serif';
-  ctx.fillText(name, W / 2, 312);
-  ctx.fillStyle = color === '#FFFFFF' ? '#F2C75C' : '#F2C75C';
-  ctx.font = '700 18px Inter, sans-serif';
-  ctx.fillText(person.team.toUpperCase() + (person.is_rookie ? '  ·  🌱 ROOKIE' : ''), W / 2, 342);
+  ctx.fillText(name, W / 2, 452);
+  ctx.fillStyle = '#F2C75C'; ctx.font = '700 18px Inter, sans-serif';
+  ctx.fillText(person.team.toUpperCase() + (person.is_rookie ? '  ·  🌱 ROOKIE' : ''), W / 2, 481);
+
+  // discipline pastille (same logic as the on-screen card)
+  const yc = [];
+  if (person.yellow_meetings) yc.push('🟨');
+  if (person.yellow_gm) yc.push('🟨');
+  const hasData = (person.ps_total || 0) > 0 || (person.ps_nb || 0) > 0 || (person.meetings || 0) > 0;
+  const clean = !person.yellow_meetings && !person.yellow_gm && hasData;
+  let badgeText = '', badgeBg = '', badgeFg = '';
+  if (yc.length) { badgeText = yc.join('') + ' On a yellow card'; badgeBg = 'rgba(242,199,92,0.20)'; badgeFg = '#F2C75C'; }
+  else if (clean) { badgeText = '✅ Playing by the rules'; badgeBg = 'rgba(48,200,140,0.22)'; badgeFg = '#5CE0A0'; }
+  if (badgeText) {
+    ctx.font = '700 17px Inter, sans-serif';
+    const tw = ctx.measureText(badgeText).width;
+    const pillW = tw + 44, pillH = 38, px = (W - pillW) / 2, py = 502;
+    rr(px, py, pillW, pillH, 19); ctx.fillStyle = badgeBg; ctx.fill();
+    ctx.fillStyle = badgeFg; ctx.textAlign = 'center'; ctx.fillText(badgeText, W / 2, py + 25);
+  }
 
   // stat rows
   const gRank = sortedGoldenBoot.findIndex(p => p.name === person.name) + 1;
@@ -4418,22 +4468,22 @@ function drawPlayerCard(person, logo) {
     ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : '✅ on target'],
     ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : '✅ on target']
   ];
-  let y = 392;
+  let y = 558;
   rows.forEach(r => {
-    rr(40, y, W - 80, 96, 16); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill();
-    rr(40, y, 6, 96, 3); ctx.fillStyle = color; ctx.fill();
+    rr(40, y, W - 80, 82, 16); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill();
+    rr(40, y, 6, 82, 3); ctx.fillStyle = color; ctx.fill();
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 16px Inter, sans-serif';
-    ctx.fillText(r[0], 64, y + 36);
-    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 14px Inter, sans-serif';
-    ctx.fillText(r[2], 64, y + 66);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#F2C75C'; ctx.font = '700 40px "Arial Narrow", Impact, sans-serif';
-    ctx.fillText(r[1], W - 64, y + 58);
-    y += 110;
+    ctx.fillText(r[0], 64, y + 32);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 13px Inter, sans-serif';
+    ctx.fillText(r[2], 64, y + 58);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#F2C75C'; ctx.font = '700 38px "Arial Narrow", Impact, sans-serif';
+    ctx.fillText(r[1], W - 64, y + 54);
+    y += 94;
   });
 
   // footer
   ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 14px Inter, sans-serif';
-  ctx.fillText('Final in Paris · 9 July 2026 · Victoria Paris (l’Arc)', W / 2, H - 46);
+  ctx.fillText('Final in Paris · 9 July 2026 · Victoria Paris (l’Arc)', W / 2, H - 40);
 
   downloadCanvas(cv, person.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-world-cup-card.png');
 }
