@@ -673,6 +673,9 @@ input { font-family: inherit; }
   font-size: 11px; color: var(--muted);
   font-family: ui-monospace, monospace;
   letter-spacing: 0.06em; margin-top: 2px;
+  /* Reserve two lines so a wrapping subtitle (e.g. Rookie) keeps every column's
+     header — and therefore the leader card + rows below — vertically aligned. */
+  min-height: 2.4em;
 }
 /* === Panini-style award winners === */
 /* #1 hero: a mini trading card with avatar disc, flag, big stat and ribbon. */
@@ -706,7 +709,7 @@ input { font-family: inherit; }
 .aw-hero-flag { position: absolute; bottom: -3px; right: -4px; display: inline-flex; width: 20px; height: 13px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.25); }
 .aw-hero-flag i { flex: 1; }
 .aw-hero-info { flex: 1; min-width: 0; }
-.aw-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: 19px; letter-spacing: 0.01em; color: #fff; line-height: 1.05; overflow-wrap: break-word; }
+.aw-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: 19px; letter-spacing: 0.01em; color: #fff; line-height: 1.1; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2em; }
 .aw-hero-team { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 3px; }
 .aw-hero-figure { flex: 0 0 auto; text-align: right; }
 .aw-hero-stat { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
@@ -2353,7 +2356,7 @@ const CONFIG = {
 const LOGO_DATA_URI = (document.querySelector('.logo-img') || {}).src || '';
 
 // === Player photos (Gemini-style cards) ===
-// Portraits live in /cards/<slug>.png. A player's name is slugified the same way
+// Portraits live in /cards/<slug>.webp (1024px, 2x for crisp retina/hero). A player's name is slugified the same way
 // the files were named, so "Louis MASSON" → "louis-masson". Names not in the set
 // fall back to their initials avatar — so any number of photos can be added over
 // time without touching code. Updated as new batches are dropped into /cards/.
@@ -2367,10 +2370,10 @@ function nameSlug(name) {
 // Returns the photo URL for a player if we have one, else ''.
 // The ?v= tag is bumped whenever the card art changes, so browsers fetch the
 // new image even though the filename is stable (defeats any stale HTTP cache).
-const CARD_VER = '4';
+const CARD_VER = '5';
 function photoFor(name) {
   const slug = nameSlug(name);
-  return CARD_PHOTOS.has(slug) ? `cards/${slug}.png?v=${CARD_VER}` : '';
+  return CARD_PHOTOS.has(slug) ? `cards/${slug}.webp?v=${CARD_VER}` : '';
 }
 function avatarInitials(name) {
   return String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
