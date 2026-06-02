@@ -147,7 +147,7 @@ input { font-family: inherit; }
 /* Wrapper holds the tab row + edge fades. (Non-sticky: the tabs scroll away
    with the page rather than floating — a floating bar felt heavy.) */
 .tabs-wrap {
-  position: relative; z-index: 90;
+  position: sticky; top: 0; z-index: 90;
   background: var(--paper);
   border-bottom: 2px solid var(--line);
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
@@ -5513,7 +5513,8 @@ function render() {
         // the bottom of the previous list) and play a quick enter transition.
         const sec = document.querySelector('#app .section');
         if (sec) {
-          const y = sec.getBoundingClientRect().top + window.scrollY - 8;
+          const tb = document.querySelector('.tabs-wrap');
+          const y = sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8);
           if (window.scrollY > y) window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
           if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
             sec.classList.remove('tab-enter'); void sec.offsetWidth; sec.classList.add('tab-enter');
@@ -6148,7 +6149,8 @@ function scrollToMainContent(behavior) {
   requestAnimationFrame(() => {
     const section = document.querySelector('#app .section');
     if (!section) { window.scrollTo(0, 0); return; }
-    const y = section.getBoundingClientRect().top + window.scrollY - 8;
+    const tb = document.querySelector('.tabs-wrap');
+    const y = section.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8);
     window.scrollTo({ top: Math.max(0, y), behavior: behavior || 'smooth' });
   });
 }
