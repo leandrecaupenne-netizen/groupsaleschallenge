@@ -4312,7 +4312,7 @@ function renderMyPosition() {
         <h2 class="section-title">${t('pos.title')}</h2>
         <p class="section-subtitle">${t('pos.sub')}</p>
         ${resolved ? `<button id="download-card" class="copy-btn">${t('btn.card')}</button>` : ''}
-        ${resolved ? `<button class="copy-btn pc-share" data-share="${escapeHtml(resolved.name)}" title="Copy a link to this card">🔗 Share</button>` : ''}
+        ${resolved ? `<button class="copy-btn pc-share" data-share="${escapeHtml(resolved.name)}" title="Share your card image">📤 Share card</button>` : ''}
         <button class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
@@ -4362,13 +4362,13 @@ function renderPositionDetails(person) {
 }
 
 // === Shareable player card (PNG via canvas) ===
-function generatePlayerCard(person) {
+function generatePlayerCard(person, mode) {
   if (!person) return;
   // Load the logo AND the player's portrait (same-origin /cards/*.png → no canvas
   // taint), then draw once both have settled (loaded or failed).
   const photoSrc = photoFor(person.name);
   let logo = null, photo = null, pending = 0, done = false;
-  const tryDraw = () => { if (pending <= 0 && !done) { done = true; drawPlayerCard(person, logo, photo); } };
+  const tryDraw = () => { if (pending <= 0 && !done) { done = true; drawPlayerCard(person, logo, photo, mode); } };
   if (LOGO_DATA_URI) {
     pending++; const li = new Image();
     li.onload = () => { logo = li; pending--; tryDraw(); };
@@ -4384,7 +4384,7 @@ function generatePlayerCard(person) {
   if (pending === 0) tryDraw();
 }
 
-function drawPlayerCard(person, logo, photo) {
+function drawPlayerCard(person, logo, photo, mode) {
   const W = 760, H = 1080, s = 2; // 2x for crisp output
   const cv = document.createElement('canvas');
   cv.width = W * s; cv.height = H * s;
@@ -4489,7 +4489,9 @@ function drawPlayerCard(person, logo, photo) {
   ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '500 14px Inter, sans-serif';
   ctx.fillText('Final in Paris · 9 July 2026 · Victoria Paris (l’Arc)', W / 2, H - 40);
 
-  downloadCanvas(cv, person.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-world-cup-card.png');
+  const filename = person.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-world-cup-card.png';
+  if (mode === 'share') shareCanvas(cv, filename, person);
+  else downloadCanvas(cv, filename);
 }
 
 function downloadCanvas(cv, filename) {
@@ -4500,6 +4502,27 @@ function downloadCanvas(cv, filename) {
     a.download = filename;
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }, 'image/png');
+}
+
+// Share the generated card as an IMAGE via the Web Share API (mobile "share
+// sheet" — post to WhatsApp/Slack/etc. in one tap). Falls back to sharing/
+// copying a deep-link, then to a plain download, so every device gets something.
+function shareCanvas(cv, filename, person) {
+  const url = location.origin + location.pathname + '?player=' + encodeURIComponent(person.name);
+  cv.toBlob(async (blob) => {
+    if (!blob) { downloadCanvas(cv, filename); return; }
+    const file = new File([blob], filename, { type: 'image/png' });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Devoteam World Cup', text: person.name + ' — Sales Challenge card' });
+        return;
+      }
+    } catch (e) { if (e && e.name === 'AbortError') return; } // user dismissed the sheet
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Devoteam World Cup', text: person.name + ' — Sales Challenge card', url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    downloadCanvas(cv, filename); // last resort
   }, 'image/png');
 }
 
@@ -4715,7 +4738,7 @@ function renderPlayerModal() {
         ${paniniCardInner(p)}
         <div class="pc-actions">
           <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
-          <button class="pc-share copy-btn" data-share="${escapeHtml(p.name)}" title="Copy a link to this card">🔗 Share</button>
+          <button class="pc-share copy-btn" data-share="${escapeHtml(p.name)}" title="Share your card image">📤 Share card</button>
         </div>
       </div>
     </div>`;
@@ -5224,12 +5247,16 @@ function render() {
   if (pTeamLink) pTeamLink.addEventListener('click', () => {
     openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
   });
-  document.querySelectorAll('.pc-share[data-share]').forEach(pShare => pShare.addEventListener('click', async () => {
-    const url = location.origin + location.pathname + '?player=' + encodeURIComponent(pShare.dataset.share);
-    try {
-      if (navigator.share) { await navigator.share({ title: 'Devoteam World Cup', text: pShare.dataset.share + ' — Sales Challenge card', url }); }
-      else { await navigator.clipboard.writeText(url); const o = pShare.textContent; pShare.textContent = '✓ Link copied'; setTimeout(() => { pShare.textContent = o; }, 1600); }
-    } catch (e) { /* user cancelled share or clipboard blocked */ }
+  document.querySelectorAll('.pc-share[data-share]').forEach(pShare => pShare.addEventListener('click', () => {
+    const person = people.find(p => p.name === pShare.dataset.share);
+    if (!person) return;
+    const orig = pShare.dataset.label || pShare.textContent;
+    pShare.dataset.label = orig;
+    pShare.textContent = '⏳ Preparing…';
+    // Builds the card PNG and opens the native share sheet (image), falling back
+    // to a link share / download inside shareCanvas.
+    generatePlayerCard(person, 'share');
+    setTimeout(() => { pShare.textContent = orig; }, 2200);
   }));
   // Stat boxes deep-link to that ranking tab (Golden Boot, Playmaker, Awards).
   document.querySelectorAll('.pc-stat-link[data-goto]').forEach(box => box.addEventListener('click', () => {
