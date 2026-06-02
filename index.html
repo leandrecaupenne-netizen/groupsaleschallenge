@@ -2334,6 +2334,7 @@ const CONFIG = {
                              // so this is plenty live while keeping the Apps Script
                              // quota comfortable for ~400 concurrent users.
   IDLE_TIMEOUT_MS: 15 * 60 * 1000, // pause polling after 15 min with no interaction
+  FETCH_TIMEOUT_MS: 20000,   // abort a hung request (generous for an Apps Script cold start)
   SESSION_KEY: 'devoteam_wc_session_v1',
   PWD_KEY: 'devoteam_wc_pwd_v1',   // stored access code, sent with each data request
   // Manual refresh is admin-only. Activate on YOUR device by opening the site with
@@ -2508,7 +2509,7 @@ async function fetchData(fresh) {
   // Abort a hung request so a cold/asleep Apps Script doesn't leave us waiting
   // forever (the loader would never clear). 20s is generous for a cold start.
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-  const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), CONFIG.FETCH_TIMEOUT_MS) : null;
   try {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
@@ -2525,6 +2526,9 @@ async function fetchData(fresh) {
       return false;
     }
     if (data.error) throw new Error(data.error);
+    // Backend flags any sheet column it couldn't map (e.g. a renamed OneBI header).
+    // Surface it loudly in the console rather than silently showing zeroed rankings.
+    if (data.warnings && data.warnings.length) console.warn('⚠ Data warnings from backend:', data.warnings);
 
     DATA = data;
     teams = data.teams || [];
@@ -3297,7 +3301,6 @@ function renderMatchSheet(list, opts) {
   const rows = rest.map((p, i) => {
     const v = opts.valueOf(p);
     const w = Math.max(6, Math.round((v / max) * 100));
-    const initials = String(p.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase();
     const rc = colorForTeam(p.team);
     const fl = flagForTeam(p.team);
     return `
@@ -5191,12 +5194,14 @@ function render() {
     const vTeam = document.getElementById('var-team');
     if (vTeam) vTeam.addEventListener('change', e => { varTeam = e.target.value; reRender(); });
     const vSearch = document.getElementById('var-search');
-    if (vSearch) vSearch.addEventListener('input', e => {
-      varSearch = e.target.value;
-      const y = window.scrollY; render(); window.scrollTo(0, y);
-      const ni = document.getElementById('var-search');
-      if (ni) { ni.focus(); ni.setSelectionRange(varSearch.length, varSearch.length); }
-    });
+    if (vSearch) {
+      const apply = debounce(() => {
+        const y = window.scrollY; render(); window.scrollTo(0, y);
+        const ni = document.getElementById('var-search');
+        if (ni) { ni.focus(); ni.setSelectionRange(varSearch.length, varSearch.length); }
+      }, 120);
+      vSearch.addEventListener('input', e => { varSearch = e.target.value; apply(); });
+    }
     const vClear = document.getElementById('var-clear');
     if (vClear) vClear.addEventListener('click', () => { varRegion = 'all'; varTeam = 'all'; varSearch = ''; reRender(); });
     // VAR rows carry data-player → the generic [data-player] handler opens the card.
@@ -5219,12 +5224,14 @@ function render() {
     const vtTeam = document.getElementById('vt-team');
     if (vtTeam) vtTeam.addEventListener('change', e => { vartimeTeam = e.target.value; reRender(); });
     const vtSearch = document.getElementById('vt-search');
-    if (vtSearch) vtSearch.addEventListener('input', e => {
-      vartimeSearch = e.target.value;
-      const y = window.scrollY; render(); window.scrollTo(0, y);
-      const ni = document.getElementById('vt-search');
-      if (ni) { ni.focus(); ni.setSelectionRange(vartimeSearch.length, vartimeSearch.length); }
-    });
+    if (vtSearch) {
+      const apply = debounce(() => {
+        const y = window.scrollY; render(); window.scrollTo(0, y);
+        const ni = document.getElementById('vt-search');
+        if (ni) { ni.focus(); ni.setSelectionRange(vartimeSearch.length, vartimeSearch.length); }
+      }, 120);
+      vtSearch.addEventListener('input', e => { vartimeSearch = e.target.value; apply(); });
+    }
     const reset = document.getElementById('vt-reset');
     if (reset) reset.addEventListener('click', () => {
       if (confirm('Clear all VAR verdicts on this device?')) { safeRemove(VAR_KEY); reRender(); }
@@ -5399,30 +5406,28 @@ function render() {
 
   const teamSearch = document.getElementById('team-search');
   if (teamSearch) {
-    teamSearch.addEventListener('input', e => {
-      currentSearch = e.target.value;
-      const focused = document.activeElement;
+    const apply = debounce(() => {
       render();
-      // Keep focus
       const newInput = document.getElementById('team-search');
       if (newInput) {
         newInput.focus();
         newInput.setSelectionRange(currentSearch.length, currentSearch.length);
       }
-    });
+    }, 120);
+    teamSearch.addEventListener('input', e => { currentSearch = e.target.value; apply(); });
   }
 
   const posSearch = document.getElementById('position-search');
   if (posSearch) {
-    posSearch.addEventListener('input', e => {
-      positionQuery = e.target.value;
+    const apply = debounce(() => {
       render();
       const newInput = document.getElementById('position-search');
       if (newInput) {
         newInput.focus();
         newInput.setSelectionRange(positionQuery.length, positionQuery.length);
       }
-    });
+    }, 120);
+    posSearch.addEventListener('input', e => { positionQuery = e.target.value; apply(); });
   }
   // Holographic tilt on the My Position card.
   if (currentTab === 'position') attachHolo(document.querySelector('.position-card-wrap .pc-card'));
@@ -5742,7 +5747,7 @@ async function attemptLogin(password) {
     // call. (Previously this verified the password, then init() fetched the data
     // separately: two sequential Apps Script cold starts = a slow first login.)
     const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), CONFIG.FETCH_TIMEOUT_MS) : null;
     let data;
     try {
       const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
@@ -6286,8 +6291,10 @@ function renderLoginScreen(errorMsg) {
         ${LOGO_DATA_URI ? `<img src="${LOGO_DATA_URI}" class="login-logo" alt="Sales Challenge" />` : ''}
         <div class="login-title">DEVOTEAM WORLD CUP</div>
         <div class="login-subtitle">${t('login.sub')}</div>
-        <input type="password" id="login-pwd" class="login-input" placeholder="${t('login.ph')}" autofocus />
-        <button id="login-btn" class="login-btn">${t('login.btn')}</button>
+        <form id="login-form" autocomplete="on">
+          <input type="password" id="login-pwd" name="password" class="login-input" placeholder="${t('login.ph')}" autocomplete="current-password" autofocus />
+          <button id="login-btn" type="submit" class="login-btn">${t('login.btn')}</button>
+        </form>
         <div class="login-error">${errorMsg || ''}</div>
       </div>
     </div>
@@ -6558,6 +6565,36 @@ function openTVTeamCard(country) {
 // === LIVE: polling ===
 let pollIntervalId = null;
 
+// Preserve the caret when a re-render rebuilds #app under a focused text input
+// (e.g. a background poll lands while someone is typing in a search box).
+// Without this, render() destroys the focused <input> and the caret is lost.
+function captureFocus() {
+  const el = document.activeElement;
+  if (el && el.id && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+    return { id: el.id, start: el.selectionStart, end: el.selectionEnd };
+  }
+  return null;
+}
+function restoreFocus(f) {
+  if (!f) return;
+  const el = document.getElementById(f.id);
+  if (!el) return;
+  el.focus();
+  try { el.setSelectionRange(f.start, f.end); } catch (e) {}
+}
+
+// Small debounce so search inputs don't trigger a full re-render on every
+// keystroke (377 people + four findIndex scans per modal = perceptible jank
+// on low-end phones).
+function debounce(fn, ms) {
+  let id = null;
+  return function () {
+    const ctx = this, args = arguments;
+    if (id) clearTimeout(id);
+    id = setTimeout(() => { id = null; fn.apply(ctx, args); }, ms);
+  };
+}
+
 // Background refresh used by polling and on tab re-focus: uses the server cache
 // (fresh=false) to stay fast and protect the Apps Script quota, and never
 // replays entrance animations.
@@ -6565,9 +6602,11 @@ async function backgroundRefresh() {
   const success = await fetchData(false);
   if (success) {
     const scrollY = window.scrollY;
+    const focus = captureFocus(); // don't yank the caret out of a search box mid-type
     suppressAnim = true;
     try { render(); } finally { suppressAnim = false; }
     window.scrollTo(0, scrollY);
+    restoreFocus(focus);
     applyDigestVisibility(); // a new week may have landed → show the recap dot
     if (tvMode) renderTV(); // keep the projection panel live
   }
@@ -6667,6 +6706,7 @@ async function init() {
     prewarmBackend(); // wake Apps Script while the user reads/types — hides the cold start
     const showLogin = (err) => {
       app.innerHTML = renderLoginScreen(err);
+      const form = document.getElementById('login-form');
       const btn = document.getElementById('login-btn');
       const input = document.getElementById('login-pwd');
       const submit = async () => {
@@ -6683,8 +6723,9 @@ async function init() {
           showLogin(t('login.err'));
         }
       };
-      btn.addEventListener('click', submit);
-      input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+      // A real <form> submit handles both the button click and the Enter key,
+      // and lets password managers offer to save the access code.
+      form.addEventListener('submit', e => { e.preventDefault(); submit(); });
       input.focus();
     };
     showLogin();
@@ -6701,7 +6742,10 @@ async function init() {
     render();
     app.style.animation = 'appEnter 0.3s ease both';
     setTimeout(() => { app.style.animation = ''; }, 320);
-    backgroundRefresh(); // fetch fresh data in the background, re-render silently
+    // Stagger the background refresh by a random 0–2.5s so 400 people opening the
+    // link at launch don't hit the Apps Script all in the same instant. The data
+    // is already painted from the snapshot, so this delay is invisible.
+    setTimeout(backgroundRefresh, Math.random() * 2500);
   } else {
     // Cold path — nothing cached: show the football loader while we fetch.
     const loadStart = performance.now();

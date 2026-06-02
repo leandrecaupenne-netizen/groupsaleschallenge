@@ -57,6 +57,17 @@ function jsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// When no Config.last_update is set, fall back to the spreadsheet's real last-edit
+// time so the "Last updated" label reflects data freshness. Best-effort: if the
+// Drive scope isn't granted, degrade to current time rather than failing.
+function lastDataUpdate() {
+  try {
+    return DriveApp.getFileById(SS.getId()).getLastUpdated().toISOString();
+  } catch (e) {
+    return new Date().toISOString();
+  }
+}
+
 // Normalize a header for tolerant matching: lowercase, collapse whitespace/newlines.
 function normHeader(h) {
   return String(h == null ? '' : h).toLowerCase().replace(/\s+/g, ' ').trim();
@@ -73,7 +84,10 @@ function toNumber(v) {
 }
 
 // Read a tab into array of objects using the given field map.
-function readMapped(tab, map) {
+// `warnings` (optional) collects any mapped column whose header wasn't found, so
+// a renamed/typo'd OneBI header surfaces as a visible warning instead of silently
+// becoming 0 everywhere (which would flatline the leaderboard with no error).
+function readMapped(tab, map, warnings) {
   const sheet = SS.getSheetByName(tab.name);
   if (!sheet) throw new Error('Tab not found: ' + tab.name);
   const values = sheet.getDataRange().getValues();
@@ -86,6 +100,15 @@ function readMapped(tab, map) {
     numeric: !!m.numeric,
     idx: headerRow.indexOf(normHeader(m.header))
   }));
+
+  // Flag any column we couldn't locate by header.
+  if (warnings) {
+    map.forEach((m, i) => {
+      if (cols[i].idx < 0) {
+        warnings.push(tab.name + ': column not found for "' + m.header + '" (field ' + m.field + ')');
+      }
+    });
+  }
 
   const keyField = map[0].field; // first field (country / name) used to skip empty rows
   const out = [];
@@ -198,11 +221,12 @@ function dataResponse(fresh) {
   }
 
   const config = readConfig();
+  const warnings = [];
 
-  const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP)
+  const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP, warnings)
     .filter(t => !isExcluded(t.country));
 
-  const people = readMapped(SETTINGS.PEOPLE_TAB, PEOPLE_MAP)
+  const people = readMapped(SETTINGS.PEOPLE_TAB, PEOPLE_MAP, warnings)
     .filter(p => !isExcluded(p.team))
     .map(p => {
       const tenure = String(p.tenure || '');
@@ -216,13 +240,16 @@ function dataResponse(fresh) {
   const payload = JSON.stringify({
     teams: teams,
     people: people,
-    updated_at: config.last_update || new Date().toISOString(),
+    // Prefer an explicit Config.last_update; otherwise reflect when the sheet was
+    // actually last edited (not "now", which would falsely look fresh every build).
+    updated_at: config.last_update || lastDataUpdate(),
     period: config.period || SETTINGS.PERIOD,
     challenge_dates: {
       start: config.challenge_start || SETTINGS.CHALLENGE_START,
       end: config.challenge_end || SETTINGS.CHALLENGE_END
     },
-    special_awards: readSpecialAwards()
+    special_awards: readSpecialAwards(),
+    warnings: warnings   // [] in the happy path; populated if a header didn't match
   });
 
   cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
@@ -249,17 +276,14 @@ function doGet(e) {
 
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
-    return jsonResponse({ error: err.message, stack: err.stack });
+    // Don't leak internals (function names / line numbers) to anonymous callers.
+    return jsonResponse({ error: 'server_error' });
   }
 }
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-
-    if (data.action === 'verify_password') {
-      return jsonResponse({ ok: passwordOk(data.password) });
-    }
 
     if (data.action === 'data') {
       if (!passwordOk(data.password)) {
@@ -270,6 +294,6 @@ function doPost(e) {
 
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
-    return jsonResponse({ error: err.message });
+    return jsonResponse({ error: 'server_error' });
   }
 }
