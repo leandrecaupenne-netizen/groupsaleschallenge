@@ -581,7 +581,7 @@ input { font-family: inherit; }
 .fr-row { display: grid; grid-template-columns: 44px 30px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 9px; cursor: pointer; transition: background 0.12s, transform 0.12s, border-color 0.12s; }
 .fr-row:hover { background: var(--cream); transform: translateX(2px); border-color: var(--ink-2); }
 .fr-rank { font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--muted); text-align: center; }
-.fr-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 11px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.fr-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
 .fr-name { min-width: 0; font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10.5px; color: var(--muted); text-transform: uppercase; margin-left: 8px; }
 .fr-val { font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -595,9 +595,9 @@ input { font-family: inherit; }
 }
 /* Mini player "card" avatar in the chasing pack — team-coloured disc + flag. */
 .ms-avatar {
-  position: relative; width: 40px; height: 40px; border-radius: 50%;
+  position: relative; width: 54px; height: 54px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: #fff;
+  font-family: 'Anton', Impact, sans-serif; font-size: 19px; color: #fff;
   background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 78%, #fff 0%), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 25%));
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
 }
@@ -633,7 +633,7 @@ input { font-family: inherit; }
 @media (max-width: 520px) {
   .ms-row { grid-template-columns: 26px 36px 1fr; grid-template-rows: auto auto; gap: 4px 9px; padding: 11px 12px; }
   .ms-rank { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
-  .ms-avatar { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 36px; height: 36px; font-size: 14px; }
+  .ms-avatar { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 46px; height: 46px; font-size: 16px; }
   .ms-who { grid-column: 3; grid-row: 1; }
   .ms-who-name { white-space: normal; }
   .ms-figure { grid-column: 3; grid-row: 2; text-align: left; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -1734,6 +1734,16 @@ img, table { max-width: 100%; }
 .tv-row.tv-row-clean { background: linear-gradient(90deg, rgba(22,163,74,0.22), rgba(22,163,74,0.04)); border-color: rgba(22,163,74,0.5); }
 .tv-row.tv-row-clean .tv-val { color: #34D399; }
 .tv-pos { font-size: clamp(24px, 4.5vmin, 52px); min-width: 1.4em; flex: 0 0 auto; text-align: center; }
+/* TV row portrait — a large round photo so faces read across the room. */
+.tv-avatar {
+  position: relative; flex: 0 0 auto;
+  width: clamp(46px, 7vmin, 96px); height: clamp(46px, 7vmin, 96px);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: clamp(16px, 2.4vmin, 34px); color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.3);
+}
+.tv-avatar-card { position: absolute; bottom: -3px; right: -4px; font-size: clamp(14px, 2vmin, 26px); line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
 /* break-word only breaks a word when it genuinely can't fit (it does NOT shrink
    the column to one character like overflow-wrap:anywhere did), so names stay on
    one line whenever there's room and never slide under the € value. */
@@ -2046,7 +2056,7 @@ img, table { max-width: 100%; }
 }
 .coach-row:hover { background: var(--cream); transform: translateX(2px); border-color: var(--ink-2); }
 .coach-row-rank { font-family: 'Anton', Impact, sans-serif; font-size: 16px; color: var(--muted); text-align: center; }
-.coach-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 12px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.coach-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 16px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
 .coach-row-name { min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .coach-row-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10.5px; color: var(--muted); text-transform: uppercase; margin-left: 8px; }
 .coach-row-bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
@@ -2069,7 +2079,7 @@ img, table { max-width: 100%; }
 .cd-row-click { cursor: pointer; transition: background 0.12s, transform 0.12s, border-color 0.12s; }
 .cd-row-click:hover { background: var(--paper); transform: translateX(2px); border-color: var(--ink-2); }
 .cd-rank { font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--muted); text-align: center; }
-.cd-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 11px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.cd-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
 .cd-flag { width: 26px; height: 17px; border-radius: 3px; overflow: hidden; display: inline-flex; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
 .cd-flag i { flex: 1; }
 .cd-name { min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2126,13 +2136,13 @@ img, table { max-width: 100%; }
 .vt-card-head { display: flex; align-items: center; gap: 11px; }
 /* Team-coloured avatar disc with mini flag — same language as the rest of the app. */
 .vt-avatar {
-  position: relative; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+  position: relative; flex: 0 0 auto; width: 60px; height: 60px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Anton', Impact, sans-serif; font-size: 16px; color: #fff;
+  font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: #fff;
   background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%));
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
 }
-.vt-avatar-flag { position: absolute; bottom: -2px; right: -3px; display: inline-flex; width: 16px; height: 11px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
+.vt-avatar-flag { position: absolute; bottom: -1px; right: -2px; display: inline-flex; width: 20px; height: 14px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
 .vt-avatar-flag i { flex: 1; }
 .vt-who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .vt-name { font-weight: 800; font-size: 15px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -6388,7 +6398,8 @@ function tvPanelHTML(kind) {
       const bits = [];
       if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk <em>(needs 5)</em>`);
       if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)} <em>(needs 25%)</em>`);
-      return `<div class="tv-row"><span class="tv-pos">🟨</span><span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
+      const av = `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}<span class="tv-avatar-card">🟨</span></span>`;
+      return `<div class="tv-row">${av}<span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
     }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;
     const sub = n ? `Top ${shown} by PS Total · ${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red` : 'two yellows make a red';
     return tvSection('🟨 VAR ROOM — ON A YELLOW CARD', sub, rows);
