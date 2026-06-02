@@ -6372,6 +6372,7 @@ function tvMatchSheet(items, opts) {
   const rows = items.slice(1).map((p, i) => `
     <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? clkAttr(p) : ''}>
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
+      ${kind === 'player' ? `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>` : ''}
       <span class="tv-ms-name">${escapeHtml(p.name)}${p.team && p.team !== p.name ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
       <span class="tv-ms-figure">
         <span class="tv-ms-val">${p.val}</span>
@@ -6390,6 +6391,7 @@ function tvPersonRow(i, p, val) {
   const medal = ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1));
   return `<div class="tv-row${i === 0 ? ' lead' : ''}">
     <span class="tv-pos">${medal}</span>
+    <span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
     <span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span>
     <span class="tv-val">${val}</span>
   </div>`;
