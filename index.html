@@ -2364,9 +2364,12 @@ function nameSlug(name) {
   return s.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 // Returns the photo URL for a player if we have one, else ''.
+// The ?v= tag is bumped whenever the card art changes, so browsers fetch the
+// new image even though the filename is stable (defeats any stale HTTP cache).
+const CARD_VER = '3';
 function photoFor(name) {
   const slug = nameSlug(name);
-  return CARD_PHOTOS.has(slug) ? `cards/${slug}.png` : '';
+  return CARD_PHOTOS.has(slug) ? `cards/${slug}.png?v=${CARD_VER}` : '';
 }
 function avatarInitials(name) {
   return String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
