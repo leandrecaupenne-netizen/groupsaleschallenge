@@ -964,34 +964,35 @@ input { font-family: inherit; }
   box-shadow: 0 24px 70px rgba(0,0,0,0.45); animation: slideUp 0.25s ease;
   display: flex; flex-direction: column; gap: 14px;
 }
+.pc-topbar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .pc-close {
-  position: absolute; top: 6px; right: 10px; z-index: 6;
+  margin-left: auto; flex: none;
   display: flex; align-items: center; justify-content: center;
   background: #fff; color: #0d0f24;
   border: 2px solid rgba(13,15,36,0.12);
   border-radius: 50%; width: 40px; height: 40px;
   font-size: 24px; line-height: 1; font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
   cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
 }
 .pc-close:hover { background: var(--usa-red); color: #fff; transform: scale(1.08); }
 .pc-close:active { transform: scale(0.94); }
 @media (hover: none) { .pc-close { width: 44px; height: 44px; } }
 .pc-back {
-  position: absolute; top: 6px; left: 10px; z-index: 6;
+  flex: none;
   display: flex; align-items: center; gap: 4px;
   background: #fff; color: #0d0f24;
   border: 2px solid rgba(13,15,36,0.12);
   border-radius: 999px; height: 40px; padding: 0 14px 0 12px;
   font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
   cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
 }
 .pc-back:hover { background: var(--navy); color: #fff; transform: translateX(-2px); }
 .pc-back:active { transform: scale(0.95); }
 @media (hover: none) { .pc-back { height: 44px; } }
 .pc-card {
-  position: relative; overflow: hidden; border-radius: 16px; padding: 40px 18px 22px;
+  position: relative; overflow: hidden; border-radius: 16px; padding: 20px 18px 22px;
   color: #fff; text-align: center;
   background:
     radial-gradient(120% 90% at 50% -10%, rgba(255,255,255,0.18), rgba(255,255,255,0) 55%),
@@ -4707,8 +4708,10 @@ function renderPlayerModal() {
   return `
     <div class="modal-overlay" id="player-overlay">
       <div class="pc-modal" onclick="event.stopPropagation()">
-        <button class="pc-back" id="player-back-btn" aria-label="Back">${(playerReturnToTeam || playerReturnToNation) ? '← Back' : '← Close'}</button>
-        <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
+        <div class="pc-topbar">
+          <button class="pc-back" id="player-back-btn" aria-label="Back">${(playerReturnToTeam || playerReturnToNation) ? '← Back' : '← Close'}</button>
+          <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
+        </div>
         ${paniniCardInner(p)}
         <div class="pc-actions">
           <button class="pc-team-link copy-btn" data-team="${escapeHtml(p.team)}">View ${escapeHtml(p.team)} squad →</button>
@@ -4734,7 +4737,9 @@ function renderVarReviewModal() {
   return `
     <div class="modal-overlay" id="vr-overlay">
       <div class="pc-modal vr-modal" onclick="event.stopPropagation()">
-        <button class="modal-close pc-close" id="vr-close-btn" aria-label="Close">×</button>
+        <div class="pc-topbar">
+          <button class="modal-close pc-close" id="vr-close-btn" aria-label="Close">×</button>
+        </div>
         <span class="vr-flash" id="vr-flash"></span>
         ${paniniCardInner(p)}
         <div class="vr-review">
@@ -6570,7 +6575,7 @@ function openTVPlayerCard(name) {
   el.className = 'modal-overlay tv-player-overlay';
   el.id = 'tv-player-overlay';
   el.innerHTML = `<div class="pc-modal" onclick="event.stopPropagation()">
-      <button class="pc-close" id="tv-pc-close" aria-label="Close">×</button>
+      <div class="pc-topbar"><button class="pc-close" id="tv-pc-close" aria-label="Close">×</button></div>
       ${paniniCardInner(p)}
     </div>`;
   document.body.appendChild(el);
