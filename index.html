@@ -959,7 +959,32 @@ input { font-family: inherit; }
   box-shadow: 0 24px 70px rgba(0,0,0,0.45); animation: slideUp 0.25s ease;
   display: flex; flex-direction: column; gap: 14px;
 }
-.pc-close { position: absolute; top: 10px; right: 12px; z-index: 5; background: rgba(0,0,0,0.25); color:#fff; border-radius: 50%; width: 32px; height: 32px; font-size: 20px; line-height: 1; }
+.pc-close {
+  position: absolute; top: 12px; right: 12px; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; color: #0d0f24;
+  border: 2px solid rgba(13,15,36,0.12);
+  border-radius: 50%; width: 40px; height: 40px;
+  font-size: 24px; line-height: 1; font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+  cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
+}
+.pc-close:hover { background: var(--usa-red); color: #fff; transform: scale(1.08); }
+.pc-close:active { transform: scale(0.94); }
+@media (hover: none) { .pc-close { width: 44px; height: 44px; } }
+.pc-back {
+  position: absolute; top: 12px; left: 12px; z-index: 6;
+  display: flex; align-items: center; gap: 4px;
+  background: #fff; color: #0d0f24;
+  border: 2px solid rgba(13,15,36,0.12);
+  border-radius: 999px; height: 40px; padding: 0 14px 0 12px;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+  cursor: pointer; transition: transform 0.15s ease, background 0.15s ease;
+}
+.pc-back:hover { background: var(--navy); color: #fff; transform: translateX(-2px); }
+.pc-back:active { transform: scale(0.95); }
+@media (hover: none) { .pc-back { height: 44px; } }
 .pc-card {
   position: relative; overflow: hidden; border-radius: 16px; padding: 20px 18px 22px;
   color: #fff; text-align: center;
@@ -3500,6 +3525,7 @@ function renderSpotlight() {
         <span class="ms-hero-badge">${featured.icon} ${featured.cat}</span>
         <span class="ms-hero-flag">${fFlag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
       </div>
+      ${photoFor(featured.person.name) ? `<div class="ms-hero-avatar"><img class="ms-hero-avatar-img" src="${photoFor(featured.person.name)}" alt="" loading="lazy" onerror="this.parentElement.remove()" /></div>` : ''}
       <div class="ms-hero-name" style="margin-top:8px">${escapeHtml(featured.person.name)}</div>
       <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🌱 Rookie' : ''}</div>
       <div class="ms-hero-stat" data-countup="${featured.value}" data-fmt="${featured.fmt}">${spotStatText(featured)}</div>
@@ -4591,6 +4617,7 @@ function renderPlayerModal() {
   return `
     <div class="modal-overlay" id="player-overlay">
       <div class="pc-modal" onclick="event.stopPropagation()">
+        <button class="pc-back" id="player-back-btn" aria-label="Back">${(playerReturnToTeam || playerReturnToNation) ? '← Back' : '← Close'}</button>
         <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
         ${paniniCardInner(p)}
         <div class="pc-actions">
@@ -5014,6 +5041,10 @@ function render() {
     ${renderVarReviewModal()}
   `;
 
+  // Keep the hardware/browser Back button in sync with open overlays so it
+  // closes the current modal instead of leaving the app (mobile-friendly).
+  syncOverlayHistory();
+
   // Update last update
   document.getElementById('last-update').textContent = `Last updated: ${formatDate(updated_at)} · ${period}`;
   updateCountdown();
@@ -5056,6 +5087,8 @@ function render() {
   };
   const pClose = document.getElementById('player-close-btn');
   if (pClose) pClose.addEventListener('click', closePlayer);
+  const pBack = document.getElementById('player-back-btn');
+  if (pBack) pBack.addEventListener('click', closePlayer);
   if (pOverlay) pOverlay.addEventListener('click', e => { if (e.target === pOverlay) closePlayer(); });
 
   // VAR review modal: close, and verdict buttons (decide → animate → close).
@@ -5492,6 +5525,61 @@ function bindCardOutsideClose(root) {
     });
   });
 }
+
+// === Back-button / overlay history ===
+// On a phone, the browser/hardware Back button should dismiss whatever modal is
+// open (player card, team squad, nation drilldown, VAR review, coach dive)
+// instead of leaving the platform. We keep a single history "guard" entry while
+// any overlay is open; it re-arms itself so each Back press peels one layer.
+let overlayGuardArmed = false;
+
+function anyOverlayOpen() {
+  return !!(varReviewName || openPlayerModal || coachDive || openTeamModal || openNationModal);
+}
+
+// Close exactly the top-most overlay layer (mirrors the Escape handler order).
+function closeTopLayer() {
+  if (varReviewName) { varReviewName = null; document.body.style.overflow = ''; render(); return; }
+  if (openPlayerModal) {
+    openPlayerModal = null;
+    if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; }
+    else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; }
+    else if (coachDive) { /* card was opened over the coach dive → keep the dive */ }
+    else { document.body.style.overflow = ''; }
+    render(); return;
+  }
+  if (coachDive) {
+    if (coachDiveRegion) { coachDiveRegion = null; render(); return; } // step back one level first
+    coachDive = null; document.body.style.overflow = ''; render(); return;
+  }
+  if (openTeamModal || openNationModal) {
+    if (openTeamModal && nationReturnTo) { openTeamModal = null; openNationModal = nationReturnTo; nationReturnTo = null; }
+    else { openTeamModal = null; openNationModal = null; nationReturnTo = null; document.body.style.overflow = ''; }
+    render(); return;
+  }
+}
+
+// Push one guard entry while any overlay is open. It re-arms itself on each Back
+// so successive presses peel one layer at a time without leaving the app.
+function syncOverlayHistory() {
+  if (tvMode) return; // TV projection manages its own navigation
+  if (anyOverlayOpen() && !overlayGuardArmed) {
+    try { history.pushState({ wcOverlay: 1 }, ''); } catch (e) {}
+    overlayGuardArmed = true;
+  }
+}
+
+window.addEventListener('popstate', () => {
+  if (tvMode) return;
+  if (anyOverlayOpen()) {
+    overlayGuardArmed = false; // the guard we pushed was just consumed by Back
+    closeTopLayer();           // render() re-arms a guard if a layer remains
+  } else if (overlayGuardArmed) {
+    // A modal was dismissed via its on-screen button, leaving a spent guard.
+    // Absorb this Back silently (stay on the page) rather than exiting.
+    overlayGuardArmed = false;
+  }
+});
 
 // Keyboard: in TV mode, ← / → switch panels and Esc exits; otherwise Esc closes
 // the team modal.
