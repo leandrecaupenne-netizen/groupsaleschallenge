@@ -1,7 +1,7 @@
 // Devoteam World Cup 2026 — minimal service worker.
 // Network-first for navigations (always fresh HTML after a deploy), cache-first
 // for static assets. The Apps Script API (POST / script.google.com) is never touched.
-const CACHE = 'dwc-shell-v6';
+const CACHE = 'dwc-shell-v7';
 
 // Precache the app shell so an offline relaunch still paints. Done per-URL with a
 // catch so a single 404 can't make the whole install reject (addAll is atomic).
