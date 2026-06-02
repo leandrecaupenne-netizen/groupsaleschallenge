@@ -1254,6 +1254,16 @@ input { font-family: inherit; }
 }
 .member-rank.top { color: var(--gold); font-size: 22px; }
 .member-name { font-weight: 700; font-size: 13px; }
+/* Player photo in the squad / player tables — a round disc next to the name. */
+.member-who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.member-avatar {
+  position: relative; flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 16px; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 80%, #fff), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 20%));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.member-who > div { min-width: 0; }
 .member-tenure {
   font-family: ui-monospace, monospace;
   font-size: 10px;
@@ -1275,6 +1285,8 @@ input { font-family: inherit; }
     font-size: 11px;
   }
   .col-meet, .col-opps, .col-gm { display: none; }
+  .member-avatar { width: 38px; height: 38px; font-size: 14px; }
+  .member-who { gap: 8px; }
 }
 
 /* === RESPONSIVE === */
@@ -3156,9 +3168,12 @@ function renderTeamRanking() {
             return `
               <div class="members-table-row player-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
                 <div class="member-rank ${rank === 1 ? 'top' : ''}">#${rank}</div>
-                <div>
-                  <div class="member-name">${escapeHtml(p.name)}</div>
-                  <div class="member-tenure">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+                <div class="member-who">
+                  <span class="member-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
+                  <div>
+                    <div class="member-name">${escapeHtml(p.name)}</div>
+                    <div class="member-tenure">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+                  </div>
                 </div>
                 <div class="member-stat">${fmtMoney(p.ps_total)}</div>
                 <div class="member-stat">${fmtMoney(p.ps_nb)}</div>
@@ -4839,9 +4854,12 @@ function renderTeamModal() {
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${idx === 0 ? 'top' : ''}">#${idx+1}</div>
-                  <div>
-                    <div class="member-name">${escapeHtml(m.name)}</div>
-                    <div class="member-tenure">${escapeHtml(tenureLabel)}</div>
+                  <div class="member-who">
+                    <span class="member-avatar${photoFor(m.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(m.team)}">${avatarInner(m.name)}</span>
+                    <div>
+                      <div class="member-name">${escapeHtml(m.name)}</div>
+                      <div class="member-tenure">${escapeHtml(tenureLabel)}</div>
+                    </div>
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
                   <div class="member-stat">${fmtMoney(m.ps_nb)}</div>
@@ -4949,9 +4967,12 @@ function renderNationModal() {
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-nation="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>
-                  <div>
-                    <div class="member-name">${escapeHtml(m.name)}</div>
-                    <div class="member-tenure">${escapeHtml(m.team)}</div>
+                  <div class="member-who">
+                    <span class="member-avatar${photoFor(m.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(m.team)}">${avatarInner(m.name)}</span>
+                    <div>
+                      <div class="member-name">${escapeHtml(m.name)}</div>
+                      <div class="member-tenure">${escapeHtml(m.team)}</div>
+                    </div>
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
                   <div class="member-stat">${fmtMoney(m.ps_nb)}</div>
