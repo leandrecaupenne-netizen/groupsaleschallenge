@@ -764,7 +764,8 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - **Devoteam IT** (pour DNS domaine custom) : à compléter
 - **URL Apps Script** : `https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec`
 - **URL Vercel (preview branche)** : https://groupsaleschallenge-git-clau-a93676-leandre-caupenne-s-projects.vercel.app/
-- **URL Vercel (production)** : à définir dans Vercel → Settings → Domains (recommandé pour le lancement)
+- **URL Vercel (production / lien public)** : https://groupsaleschallenge.vercel.app/ ← lien à diffuser aux participants
+- **Lien admin** : https://groupsaleschallenge.vercel.app/?admin=leandre-refresh-2026 (NE PAS diffuser — active VAR TIME / Coach Room / refresh manuel sur l'appareil)
 - **Mot de passe d'accès** : `devoteam2026` (constante `SETTINGS.PASSWORD` dans `apps_script_backend.gs`)
 - **Clé admin (refresh manuel)** : `?admin=leandre-refresh-2026`
 - **Repo GitHub** : leandrecaupenne-netizen/groupsaleschallenge
