@@ -671,13 +671,17 @@ input { font-family: inherit; }
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 .award-header {
-  display: flex; align-items: center; gap: 12px;
-  margin-bottom: 16px;
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 14px;
+  /* Fixed header height so a 2-line title (e.g. ROOKIE OF THE YEAR) or a 2-line
+     subtitle never pushes the leader card down — every column's LEADER ribbon and
+     avatar stay aligned across the grid. */
+  min-height: 80px;
 }
-.award-icon { font-size: 32px; }
+.award-icon { font-size: 32px; line-height: 1; }
 .award-title {
   font-family: 'Anton', Impact, sans-serif;
-  font-size: 22px; letter-spacing: 0.04em;
+  font-size: 22px; letter-spacing: 0.04em; line-height: 1.05;
   color: var(--ink);
 }
 .award-subtitle {
