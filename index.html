@@ -2515,6 +2515,7 @@ let DATA = null;
 let teams = [], people = [], updated_at = null, period = '', challenge_dates = {}, specialAwards = {};
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
 let dataWarnings = []; // backend column-mapping warnings (shown to admins only)
+let lastRenderedUpdate = null; // updated_at last painted — lets the poll skip a no-op re-render
 
 // === STATE ===
 // === Strings (English only — neutral common language for an international challenge) ===
@@ -5378,6 +5379,7 @@ function updateTicker() {
 
 // === RENDER ===
 function render() {
+  lastRenderedUpdate = updated_at; // mark this payload as painted (poll skips no-op renders)
   let content = '';
   switch(currentTab) {
     case 'teams': content = renderTeamRanking(); break;
@@ -6950,6 +6952,13 @@ function debounce(fn, ms) {
 async function backgroundRefresh() {
   const success = await fetchData(false);
   if (success) {
+    // Nothing changed since the last paint → skip the full DOM rebuild entirely
+    // (the countdown/timestamp tick on their own). Saves a full DOM rebuild every poll.
+    if (updated_at && updated_at === lastRenderedUpdate) {
+      applyDigestVisibility();
+      if (tvMode) renderTV();
+      return success;
+    }
     const scrollY = window.scrollY;
     const focus = captureFocus(); // don't yank the caret out of a search box mid-type
     suppressAnim = true;
