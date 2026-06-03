@@ -115,3 +115,31 @@ The login and data load require a reachable `APPS_SCRIPT_URL`.
 
 See [`CLAUDE.md`](./CLAUDE.md) §9 for the full pre-launch checklist (login, polling,
 timestamp, modal, mobile responsiveness, HTTPS, etc.).
+
+---
+
+## Tests (headless UX)
+
+Real browser-driven interaction tests (Playwright + Chromium). They mock the
+Apps Script login/data, so no network to Google is needed.
+
+```bash
+node test/ux-smoke.cjs   # fast: login, tabs, "Find your position" CTA, modals,
+                         #       search + fuzzy search, responsive overflow @320/375/768
+node test/ux-e2e.cjs     # deep: admin (VAR TIME / Coach Room / VAR review), TV mode,
+                         #       card share, clickable ticker, compare, sub-views, dark mode
+```
+Exit code `0` = all green, `1` = a check failed or a JS error was thrown.
+
+Prereqs: Playwright + Chromium (pre-installed in Claude Code cloud sessions).
+Locally: `npm i -D playwright && npx playwright install chromium`.
+
+### Pre-push hook
+A committed hook (`.githooks/pre-push`) runs the smoke test before every push and
+aborts on regression (it skips gracefully if Playwright isn't installed). Enable it
+once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+Bypass a single push with `git push --no-verify`.
