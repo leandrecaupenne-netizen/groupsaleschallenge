@@ -1437,6 +1437,9 @@ input { font-family: inherit; }
    target (Apple/Google guidance ≈44px) — they stay compact (32px) with a mouse. */
 @media (hover: none) {
   .refresh-btn { width: 42px; height: 42px; font-size: 20px; }
+  /* Closing a modal is the most frequent mobile gesture — give the × a full
+     44px tap target (Apple/Google guidance) instead of 36px. */
+  .modal-close { width: 44px; height: 44px; font-size: 24px; }
 }
 
 /* Back-to-top button — appears after scrolling down a long list (Players, VAR…) */
