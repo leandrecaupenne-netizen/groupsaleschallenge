@@ -7595,9 +7595,12 @@ async function maybeShowPwaBanner() {
   }
 
   if (await isProbablyInstalled()) {
-    // Installed, but they're in the browser. No browser lets a page launch an
-    // installed app (security), so we invite them to open it themselves.
-    if (safeGet(CONFIG.OPEN_DISMISS_KEY) === '1') return;
+    // Installed, but they're in the browser → invite them to open the app.
+    // Snoozed only for THIS browser session (sessionStorage), so it reminds again
+    // on a later visit rather than vanishing for good.
+    let snoozed = false;
+    try { snoozed = sessionStorage.getItem(CONFIG.OPEN_DISMISS_KEY) === '1'; } catch (e) {}
+    if (snoozed) return;
     showOpenBanner();
     return;
   }
@@ -7675,7 +7678,8 @@ function showOpenBanner() {
     '<button class="pwa-later" id="pwa-open-later">' + t('pwa.later') + '</button></div>');
   banner.querySelector('#pwa-open-btn').addEventListener('click', openInstalledApp);
   banner.querySelector('#pwa-open-later').addEventListener('click', () => {
-    safeSet(CONFIG.OPEN_DISMISS_KEY, '1'); removeBanner();
+    try { sessionStorage.setItem(CONFIG.OPEN_DISMISS_KEY, '1'); } catch (e) {} // snooze this session only
+    removeBanner();
   });
 }
 
