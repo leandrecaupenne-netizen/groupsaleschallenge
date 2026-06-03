@@ -1341,6 +1341,18 @@ input { font-family: inherit; }
   .member-who { gap: 8px; }
 }
 
+/* Phone portrait: also drop the secondary PS NB column so player names get
+   real room and stop breaking mid-word. Primary sort (PS TOTAL / contribution)
+   stays; tapping a row opens the full card with every stat. The nation teams
+   list keeps its own grid (higher specificity) and has no .col-nb cells. */
+@media (max-width: 600px) {
+  .members-table-header,
+  .members-table-row {
+    grid-template-columns: 32px minmax(0, 1fr) 82px;
+  }
+  .col-nb { display: none; }
+}
+
 /* === RESPONSIVE === */
 @media (max-width: 900px) {
   .hero-title { font-size: 42px; }
@@ -3451,7 +3463,7 @@ function renderTeamRanking() {
             <div>RANK</div>
             <div class="th-psort" data-psort="name">PLAYER${pArrow('name')}</div>
             <div class="th-psort" data-psort="ps_total">PS TOTAL${pArrow('ps_total')}</div>
-            <div class="th-psort" data-psort="ps_nb">PS NB${pArrow('ps_nb')}</div>
+            <div class="th-psort col-nb" data-psort="ps_nb">PS NB${pArrow('ps_nb')}</div>
             <div class="th-psort col-gm" data-psort="ps_total_gm">GM${pArrow('ps_total_gm')}</div>
             <div class="th-psort col-meet" data-psort="meetings">MEET/WK${pArrow('meetings')}</div>
             <div class="th-psort col-opps" data-psort="opps">OPPS · CARDS${pArrow('opps')}</div>
@@ -3472,7 +3484,7 @@ function renderTeamRanking() {
                   </div>
                 </div>
                 <div class="member-stat">${fmtMoney(p.ps_total)}</div>
-                <div class="member-stat">${fmtMoney(p.ps_nb)}</div>
+                <div class="member-stat col-nb">${fmtMoney(p.ps_nb)}</div>
                 <div class="member-stat col-gm">${fmtPct(p.ps_total_gm)}</div>
                 <div class="member-stat col-meet">${fmtNum(p.meetings)}</div>
                 <div class="col-opps">
@@ -5312,7 +5324,7 @@ function renderTeamModal() {
               <div>RANK</div>
               <div>PLAYER</div>
               <div>PS TOTAL</div>
-              <div>PS NB</div>
+              <div class="col-nb">PS NB</div>
               <div class="col-gm">GM</div>
               <div class="col-meet">MEET/WK</div>
               <div class="col-opps">OPPS · CARDS</div>
@@ -5333,7 +5345,7 @@ function renderTeamModal() {
                     </div>
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
-                  <div class="member-stat">${fmtMoney(m.ps_nb)}</div>
+                  <div class="member-stat col-nb">${fmtMoney(m.ps_nb)}</div>
                   <div class="member-stat col-gm">${fmtPct(m.ps_total_gm)}</div>
                   <div class="member-stat col-meet">${fmtNum(m.meetings)}</div>
                   <div class="col-opps">
@@ -5426,7 +5438,7 @@ function renderNationModal() {
               <div>RANK</div>
               <div>PLAYER</div>
               <div>PS TOTAL</div>
-              <div>PS NB</div>
+              <div class="col-nb">PS NB</div>
               <div class="col-gm">GM</div>
               <div class="col-meet">MEET/WK</div>
               <div class="col-opps">OPPS · CARDS</div>
@@ -5446,7 +5458,7 @@ function renderNationModal() {
                     </div>
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
-                  <div class="member-stat">${fmtMoney(m.ps_nb)}</div>
+                  <div class="member-stat col-nb">${fmtMoney(m.ps_nb)}</div>
                   <div class="member-stat col-gm">${fmtPct(m.ps_total_gm)}</div>
                   <div class="member-stat col-meet">${fmtNum(m.meetings)}</div>
                   <div class="col-opps">
