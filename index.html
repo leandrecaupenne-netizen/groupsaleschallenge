@@ -2341,6 +2341,11 @@ img, table { max-width: 100%; }
 .ticker-track { display: inline-block; padding: 8px 0; will-change: transform; animation: tickerScroll 60s linear infinite; }
 .ticker:hover .ticker-track { animation-play-state: paused; }
 .ticker-item { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; padding: 0 4px; }
+.ticker-item.ticker-click { cursor: pointer; }
+.ticker-item.ticker-click:hover { color: var(--gold); text-decoration: underline; }
+/* One-time first-visit nudge so users discover the header search icon. */
+@keyframes searchPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(242,199,92,0); } 50% { box-shadow: 0 0 0 6px rgba(242,199,92,0.45); } }
+.search-pulse { animation: searchPulse 1.1s ease-in-out 3; }
 .ticker-dot { color: var(--gold); padding: 0 16px; }
 @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } .ticker { overflow-x: auto; } }
@@ -2476,6 +2481,13 @@ function nameSlug(name) {
   let s = String(name || '').toLowerCase();
   s = s.replace(/[^\x00-\x7f]/g, ch => ACCENTS[ch] || ch); // transliterate accents
   return s.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+// Loose, accent-insensitive normalisation for fuzzy name search ("García" → "garcia",
+// so a salesperson typing without accents / last-name only still finds themselves).
+function normLoose(s) {
+  return String(s == null ? '' : s).toLowerCase()
+    .replace(/[^\x00-\x7f]/g, ch => ACCENTS[ch] || ch)
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 // Returns the photo URL for a player if we have one, else ''.
 // The ?v= tag is bumped whenever the card art changes, so browsers fetch the
@@ -4521,16 +4533,23 @@ function renderMyPosition() {
         <div class="pos-empty-text">${t('pos.start')}</div>
       </div>`;
   } else {
-    const matches = people.filter(p => p.name.toLowerCase().includes(q));
+    const nq = normLoose(positionQuery);
+    const matches = people.filter(p => normLoose(p.name).includes(nq));
     if (matches.length === 0) {
       lastRevealedName = null;
-      resultHtml = `<div class="position-result"><div class="no-result">${t('pos.none')}</div></div>`;
+      // "Did you mean…": accent-insensitive token overlap so a typo / partial name
+      // still surfaces close candidates instead of a dead end.
+      const toks = nq.split(' ').filter(t => t.length >= 3);
+      const sugg = toks.length ? people.filter(p => { const n = normLoose(p.name); return toks.some(t => n.includes(t)); }).slice(0, 6) : [];
+      resultHtml = sugg.length
+        ? `<div class="position-result"><div class="suggestion-card"><p class="suggestion-head">No exact match — did you mean:</p><ul class="suggestion-list">${sugg.map(p => `<li class="suggestion-item" data-name="${escapeHtml(p.name)}"><span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span><span class="suggestion-name">${escapeHtml(p.name)}</span><span class="suggestion-team">· ${escapeHtml(p.team)}</span></li>`).join('')}</ul></div></div>`
+        : `<div class="position-result"><div class="no-result">${t('pos.none')}</div></div>`;
     } else if (matches.length === 1) {
       resolved = matches[0];
       resultHtml = renderPositionDetails(matches[0]);
     } else {
       // Multiple matches: show suggestions if not exact match
-      const exact = matches.find(p => p.name.toLowerCase() === q);
+      const exact = matches.find(p => normLoose(p.name) === nq);
       if (exact) {
         resolved = exact;
         resultHtml = renderPositionDetails(exact);
@@ -5378,21 +5397,26 @@ let lastTickerHTML = '';
 let recentEvents = []; // leader-change headlines, newest first
 function buildTickerItems() {
   const it = [];
-  recentEvents.slice(0, 4).forEach(e => it.push(e));
-  if (sortedTeams[0]) it.push(`🏆 ${sortedTeams[0].country} lead the World Cup — ${fmtMoney(sortedTeams[0].avg_ps)}/person`);
-  if (sortedGoldenBoot[0]) it.push(`🥇 Golden Boot: ${sortedGoldenBoot[0].name} — ${fmtMoney(sortedGoldenBoot[0].ps_nb)} NB`);
-  if (sortedPlaymaker[0]) it.push(`🎯 Playmaker: ${sortedPlaymaker[0].name} — ${Number(sortedPlaymaker[0].opps || 0).toFixed(0)} opps`);
-  if (sortedRookies[0]) it.push(`🌱 Top rookie: ${sortedRookies[0].name} — ${fmtMoney(sortedRookies[0].ps_nb)}`);
-  if (sortedLicence[0]) it.push(`💼 Licence leader: ${sortedLicence[0].name} — ${fmtMoney(sortedLicence[0].licence_gm)}`);
-  if (period) it.push(`📅 ${period}`);
+  recentEvents.slice(0, 4).forEach(e => it.push({ text: e }));
+  if (sortedTeams[0]) it.push({ text: `🏆 ${sortedTeams[0].country} lead the World Cup — ${fmtMoney(sortedTeams[0].avg_ps)}/person`, team: sortedTeams[0].country });
+  if (sortedGoldenBoot[0]) it.push({ text: `🥇 Golden Boot: ${sortedGoldenBoot[0].name} — ${fmtMoney(sortedGoldenBoot[0].ps_nb)} NB`, player: sortedGoldenBoot[0].name });
+  if (sortedPlaymaker[0]) it.push({ text: `🎯 Playmaker: ${sortedPlaymaker[0].name} — ${Number(sortedPlaymaker[0].opps || 0).toFixed(0)} opps`, player: sortedPlaymaker[0].name });
+  if (sortedRookies[0]) it.push({ text: `🌱 Top rookie: ${sortedRookies[0].name} — ${fmtMoney(sortedRookies[0].ps_nb)}`, player: sortedRookies[0].name });
+  if (sortedLicence[0]) it.push({ text: `💼 Licence leader: ${sortedLicence[0].name} — ${fmtMoney(sortedLicence[0].licence_gm)}`, player: sortedLicence[0].name });
+  if (period) it.push({ text: `📅 ${period}` });
   return it;
+}
+function tickerSpan(o) {
+  const click = o.player || o.team;
+  const attr = o.player ? ` data-tplayer="${escapeHtml(o.player)}"` : o.team ? ` data-tteam="${escapeHtml(o.team)}"` : '';
+  return `<span class="ticker-item${click ? ' ticker-click' : ''}"${attr}>${escapeHtml(o.text)}</span>`;
 }
 function updateTicker() {
   const track = document.getElementById('ticker-track');
   if (!track) return;
   const items = buildTickerItems();
   if (!items.length) return;
-  const seq = items.map(s => `<span class="ticker-item">${escapeHtml(s)}</span>`).join('<span class="ticker-dot">•</span>');
+  const seq = items.map(tickerSpan).join('<span class="ticker-dot">•</span>');
   if (seq === lastTickerHTML) return;      // unchanged -> keep scrolling smoothly
   lastTickerHTML = seq;
   // duplicate for a seamless loop
@@ -6095,6 +6119,28 @@ document.addEventListener('touchend', e => {
   if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) tvGo(dx < 0 ? 1 : -1); // horizontal swipe only
 }, { passive: true });
 
+// Ticker headlines that reference a player/team open their card on tap — turns the
+// passive scrolling band into an engagement entry point.
+document.getElementById('ticker')?.addEventListener('click', e => {
+  const el = e.target.closest('[data-tplayer], [data-tteam]');
+  if (!el) return;
+  if (el.dataset.tplayer) openPlayerModal = el.dataset.tplayer;
+  else if (el.dataset.tteam) openTeamModal = el.dataset.tteam;
+  document.body.style.overflow = 'hidden';
+  render();
+});
+
+// First-visit nudge: briefly pulse the header search icon so users discover that
+// global search exists (fires once, never on reduced-motion).
+try {
+  if (!safeGet('devoteam_wc_searchhint_v1') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setTimeout(() => {
+      const b = document.getElementById('search-btn');
+      if (b && isLoggedIn()) { b.classList.add('search-pulse'); safeSet('devoteam_wc_searchhint_v1', '1'); }
+    }, 1800);
+  }
+} catch (e) {}
+
 
 // === LIVE: authentication ===
 // Safe localStorage wrappers — some in-app webviews block storage and throw.
@@ -6458,10 +6504,10 @@ function openSearch() {
     return true;
   };
   const renderResults = () => {
-    const q = query.trim().toLowerCase();
+    const nq = normLoose(query);
     // Ranked by PS Total desc — same metric as the player ranking, so search
-    // results line up with the leaderboard.
-    let list = people.filter(p => matchFilter(p) && (!q || p.name.toLowerCase().includes(q)))
+    // results line up with the leaderboard. Accent-insensitive matching.
+    let list = people.filter(p => matchFilter(p) && (!nq || normLoose(p.name).includes(nq)))
       .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
     const total = list.length; list = list.slice(0, 40);
     const box = el.querySelector('#search-results');
@@ -6472,7 +6518,7 @@ function openSearch() {
         <span class="sr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
         <span class="sr-stat">${fmtMoney(p.ps_total)}${tRank ? ` · #${tRank}` : ''}</span></button>`;
     }).join('') + (total > 40 ? `<div class="var-more">+ ${total - 40} more — refine your search</div>` : ''))
-      : `<div class="no-result">No player found.</div>`;
+      : `<div class="no-result">No player found — check the spelling or try the last name only.</div>`;
     box.querySelectorAll('.search-result').forEach(btn => btn.addEventListener('click', () => {
       // Open the same Panini player card as everywhere else.
       close();
