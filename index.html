@@ -2344,7 +2344,7 @@ img, table { max-width: 100%; }
 .ticker { background: var(--navy-2); color: #fff; overflow: hidden; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.12); }
 .ticker[hidden] { display: none; }
 .ticker-track { display: inline-block; padding: 8px 0; will-change: transform; animation: tickerScroll 60s linear infinite; }
-.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker:hover .ticker-track, .ticker.tk-paused .ticker-track { animation-play-state: paused; }
 .ticker-item { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; padding: 0 4px; }
 .ticker-item.ticker-click { cursor: pointer; }
 .ticker-item.ticker-click:hover { color: var(--gold); text-decoration: underline; }
@@ -6150,14 +6150,23 @@ document.addEventListener('touchend', e => {
 
 // Ticker headlines that reference a player/team open their card on tap — turns the
 // passive scrolling band into an engagement entry point.
-document.getElementById('ticker')?.addEventListener('click', e => {
-  const el = e.target.closest('[data-tplayer], [data-tteam]');
-  if (!el) return;
-  if (el.dataset.tplayer) openPlayerModal = el.dataset.tplayer;
-  else if (el.dataset.tteam) openTeamModal = el.dataset.tteam;
-  document.body.style.overflow = 'hidden';
-  render();
-});
+(() => {
+  const ticker = document.getElementById('ticker');
+  if (!ticker) return;
+  ticker.addEventListener('click', e => {
+    const el = e.target.closest('[data-tplayer], [data-tteam]');
+    if (!el) return;
+    if (el.dataset.tplayer) openPlayerModal = el.dataset.tplayer;
+    else if (el.dataset.tteam) openTeamModal = el.dataset.tteam;
+    document.body.style.overflow = 'hidden';
+    render();
+  });
+  // The ticker scrolls continuously and there's no hover on touch, so pause it
+  // while the finger is down — otherwise a moving headline is impossible to tap.
+  ticker.addEventListener('pointerdown', () => ticker.classList.add('tk-paused'));
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+    ticker.addEventListener(ev, () => setTimeout(() => ticker.classList.remove('tk-paused'), 2500)));
+})();
 
 // First-visit nudge: briefly pulse the header search icon so users discover that
 // global search exists (fires once, never on reduced-motion).
