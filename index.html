@@ -1959,9 +1959,11 @@ img, table { max-width: 100%; }
 @media (max-width: 640px) {
   .tv-matchsheet { grid-template-columns: 1fr; gap: 2vmin; }
   .tv-ms-row { flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px; }
-  .tv-ms-name { font-size: clamp(14px, 4.4vw, 22px); }
+  .tv-ms-name { font-size: clamp(14px, 4.4vw, 22px); overflow-wrap: anywhere; }
   .tv-ms-val { font-size: clamp(15px, 4.4vw, 24px); }
-  .tv-ms-figure { flex-direction: row; align-items: baseline; gap: 6px; }
+  /* Drop the value onto its own line (right-aligned) under the name, so a long
+     name can't collide with the figure the way it did on phones. */
+  .tv-ms-figure { flex-basis: 100%; flex-direction: row; align-items: baseline; justify-content: flex-end; gap: 6px; }
   .tv-ms-unit { font-size: 9px; margin-top: 0; }
 }
 
