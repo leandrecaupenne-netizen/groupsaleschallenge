@@ -1075,6 +1075,8 @@ input { font-family: inherit; }
 .flag-fi { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23FFFFFF'/%3E%3Crect x='9' width='4' height='20' fill='%23003580'/%3E%3Crect y='8' width='28' height='4' fill='%23003580'/%3E%3C/svg%3E"); }
 .flag-no { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23EF2B2D'/%3E%3Crect x='8' width='6' height='20' fill='%23FFFFFF'/%3E%3Crect y='7' width='28' height='6' fill='%23FFFFFF'/%3E%3Crect x='9.5' width='3' height='20' fill='%23002868'/%3E%3Crect y='8.5' width='28' height='3' fill='%23002868'/%3E%3C/svg%3E"); }
 .flag-is { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%2302529C'/%3E%3Crect x='8' width='6' height='20' fill='%23FFFFFF'/%3E%3Crect y='7' width='28' height='6' fill='%23FFFFFF'/%3E%3Crect x='9.5' width='3' height='20' fill='%23DC1E35'/%3E%3Crect y='8.5' width='28' height='3' fill='%23DC1E35'/%3E%3C/svg%3E"); }
+/* Spain: red/yellow/red + the crowned shield & Pillars of Hercules (simplified but recognisable). */
+.flag-es { flex: 1 0 100%; align-self: stretch; background: #AA151B url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23AA151B'/%3E%3Crect y='10' width='60' height='20' fill='%23F1BF00'/%3E%3Cg transform='translate(20%2C20)'%3E%3Crect x='-8' y='-6.5' width='2' height='13' fill='%23C8902A'/%3E%3Crect x='6' y='-6.5' width='2' height='13' fill='%23C8902A'/%3E%3Crect x='-8.3' y='-7.2' width='2.6' height='1.2' fill='%23C8902A'/%3E%3Crect x='5.7' y='-7.2' width='2.6' height='1.2' fill='%23C8902A'/%3E%3Crect x='-9' y='-1.5' width='3.4' height='1.6' fill='%23AA151B'/%3E%3Crect x='5.6' y='-1.5' width='3.4' height='1.6' fill='%23AA151B'/%3E%3Cpath d='M-4%2C-6 h8 v6 q0%2C4.2 -4%2C5.6 q-4%2C-1.4 -4%2C-5.6 z' fill='%23fff' stroke='%237a1414' stroke-width='0.5'/%3E%3CclipPath id='esh'%3E%3Cpath d='M-4%2C-6 h8 v6 q0%2C4.2 -4%2C5.6 q-4%2C-1.4 -4%2C-5.6 z'/%3E%3C/clipPath%3E%3Cg clip-path='url(%23esh)'%3E%3Crect x='-4' y='-6' width='4' height='5.8' fill='%23AA151B'/%3E%3Crect x='0' y='-0.2' width='4' height='6' fill='%23AA151B'/%3E%3Crect x='-3' y='-4.2' width='2' height='2.2' fill='%23F1BF00'/%3E%3Crect x='1' y='1.4' width='2' height='2.2' fill='%23F1BF00'/%3E%3Ccircle cx='2' cy='-3' r='1.1' fill='%23AA151B'/%3E%3Ccircle cx='-2' cy='2.4' r='1.1' fill='%23AA151B'/%3E%3C/g%3E%3Crect x='-3.2' y='-8' width='6.4' height='1.4' fill='%23F1BF00' stroke='%239a7b10' stroke-width='0.25'/%3E%3Crect x='-2.4' y='-9.4' width='4.8' height='1.6' fill='%23F1BF00' stroke='%239a7b10' stroke-width='0.25'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat; }
 /* Collectible honour chips under the stats grid. */
 .pc-honours { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
 .pc-honour {
@@ -4954,11 +4956,14 @@ COUNTRY_FLAGS.UK.flagImg = 'flag-uk';                 // Union Jack (not a trico
 COUNTRY_FLAGS['UNITED KINGDOM'].flagImg = 'flag-uk';
 COUNTRY_FLAGS.PORTUGAL.flagImg = 'flag-pt';           // green/red + armillary sphere & shield
 // Horizontal-striped flags (drawn top-to-bottom, not as vertical bands).
-['NETHERLANDS', 'HOLLAND', 'LUXEMBOURG', 'GERMANY', 'AUSTRIA', 'HUNGARY', 'SPAIN'].forEach(k => { if (COUNTRY_FLAGS[k]) COUNTRY_FLAGS[k].horizontal = true; });
-['NL', 'DE', 'ES'].forEach(k => { if (typeof FLAG_STRIPES !== 'undefined' && FLAG_STRIPES[k]) FLAG_STRIPES[k].horizontal = true; });
+['NETHERLANDS', 'HOLLAND', 'LUXEMBOURG', 'GERMANY', 'AUSTRIA', 'HUNGARY'].forEach(k => { if (COUNTRY_FLAGS[k]) COUNTRY_FLAGS[k].horizontal = true; });
+['NL', 'DE'].forEach(k => { if (typeof FLAG_STRIPES !== 'undefined' && FLAG_STRIPES[k]) FLAG_STRIPES[k].horizontal = true; });
 // Nordic cross flags → real SVG crosses instead of stripe approximations.
 const NORDIC = { DENMARK: 'flag-dk', SWEDEN: 'flag-se', FINLAND: 'flag-fi', NORWAY: 'flag-no', ICELAND: 'flag-is' };
 Object.keys(NORDIC).forEach(k => { if (COUNTRY_FLAGS[k]) COUNTRY_FLAGS[k].flagImg = 'flag-nordic ' + NORDIC[k]; });
+// Spain → full crowned-shield + Pillars-of-Hercules flag (incl. "ES …" entities).
+if (COUNTRY_FLAGS.SPAIN) COUNTRY_FLAGS.SPAIN.flagImg = 'flag-es';
+if (typeof FLAG_STRIPES !== 'undefined' && FLAG_STRIPES.ES) FLAG_STRIPES.ES.flagImg = 'flag-es';
 // Render a flag's inner markup: a dedicated SVG flag when tagged, otherwise the
 // vertical colour stripes. Used everywhere a flag appears (cards, rows, podium…).
 function flagBars(colors) {
