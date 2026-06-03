@@ -30,7 +30,7 @@ const TEAM_MAP = [
   { field: 'members',       header: 'Team Members',          numeric: true },
   { field: 'total_ps',      header: 'Total PS Booking',      numeric: true },
   { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },
-  { field: 'avg_gm',        header: 'Average GM',            numeric: true },
+  { field: 'avg_gm',        header: 'Average GM',            numeric: true, pct: true },
   { field: 'avg_meetings',  header: 'Average Meetings',      numeric: true },
   { field: 'avg_opps',      header: 'Average Opportunities', numeric: true }
 ];
@@ -40,9 +40,9 @@ const PEOPLE_MAP = [
   { field: 'team',          header: 'TEAM' },
   { field: 'tenure',        header: 'Tenure' },
   { field: 'ps_total',      header: 'PS Booking Total',     numeric: true },
-  { field: 'ps_total_gm',   header: 'PS Booking Total GM',  numeric: true },
+  { field: 'ps_total_gm',   header: 'PS Booking Total GM',  numeric: true, pct: true },
   { field: 'ps_nb',         header: 'PS Booking NB',        numeric: true },
-  { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     numeric: true },
+  { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     numeric: true, pct: true },
   { field: 'licence_gm',    header: 'Licence GM Amount',    numeric: true },
   { field: 'meetings',      header: 'Meetings',             numeric: true },
   { field: 'opps',          header: 'Opportunities Created',numeric: true }
@@ -98,6 +98,7 @@ function readMapped(tab, map, warnings) {
   const cols = map.map(m => ({
     field: m.field,
     numeric: !!m.numeric,
+    pct: !!m.pct,
     idx: headerRow.indexOf(normHeader(m.header))
   }));
 
@@ -117,7 +118,14 @@ function readMapped(tab, map, warnings) {
     const obj = {};
     cols.forEach(c => {
       let v = c.idx >= 0 ? row[c.idx] : '';
-      obj[c.field] = c.numeric ? toNumber(v) : (v == null ? '' : String(v).trim());
+      if (c.numeric) {
+        let num = toNumber(v);
+        // GM ratios entered as a percentage (e.g. 27 or "27%") → back to a decimal.
+        if (c.pct && num > 1.5) num = num / 100;
+        obj[c.field] = num;
+      } else {
+        obj[c.field] = (v == null ? '' : String(v).trim());
+      }
     });
     if (!obj[keyField]) continue;  // skip blank rows
     out.push(obj);
