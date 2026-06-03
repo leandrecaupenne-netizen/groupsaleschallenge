@@ -4041,7 +4041,7 @@ function renderCoachRoom() {
   const kpis = [
     kpi('💰', fmtMoney(totalPS), 'Total PS Bookings', `${teamsCount} team${teamsCount === 1 ? '' : 's'} · ${headcount} people`, 'ps_total'),
     kpi('🥇', fmtMoney(totalNB), 'New Business', `${(nbShare * 100).toFixed(0)}% of total PS`, 'ps_nb'),
-    kpi('📈', fmtPct(avgGM), 'Avg Gross Margin', 'weighted by PS €'),
+    kpi('📈', fmtPct(avgGM), 'Avg Gross Margin', 'weighted by PS €', 'ps_total_gm'),
     kpi('🤝', coachFmt(totalMeet, 'int'), 'Total Meetings / week', `${fmtNum(avgMeet)} avg · target 5+`, 'meetings'),
     kpi('🎯', coachFmt(totalOpps, 'int'), 'Opportunities created', 'Stage 2+ · > €50K', 'opps'),
     kpi('📜', fmtMoney(totalLic), 'Licence GM', 'cumulated', 'licence_gm')
@@ -4203,6 +4203,55 @@ function renderCoachDiveModal() {
         ${entRows}
         <h3 class="cd-h">🟨 On a yellow card${onCard.length ? ` · ${onCard.length}` : ''}</h3>
         ${cardRows}`;
+    }
+  } else if (coachDive.metric === 'ps_total_gm') {
+    // === Gross Margin deep-dive: it's a PS-€-weighted average, not a sum, so we
+    // rank by weighted GM% and use PS € as the weight/context (not a share). ===
+    title = 'Gross Margin — who drives it';
+    const wgm = list => { let gmE = 0, ps = 0; list.forEach(p => { const v = Number(p.ps_total) || 0; gmE += v * (Number(p.ps_total_gm) || 0); ps += v; }); return { gm: ps ? gmE / ps : 0, ps }; };
+    const gmColor = g => g < 0.25 ? 'var(--usa-red)' : '#16a34a';
+    if (!coachDiveRegion) {
+      const groups = {};
+      people.forEach(p => { const r = regionOf(p.team); (groups[r] || (groups[r] = [])).push(p); });
+      const nations = Object.entries(groups).map(([region, list]) => ({ region, n: list.length, ...wgm(list) })).filter(g => g.ps > 0).sort((a, b) => b.gm - a.gm);
+      const maxGm = Math.max(0.001, ...nations.map(g => g.gm));
+      const overall = wgm(people);
+      subtitle = `By nation · ${fmtPct(overall.gm)} weighted avg · target ≥ 25%`;
+      body = nations.map((g, i) => row({
+        rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+        barPct: (g.gm / maxGm) * 100, color: gmColor(g.gm), flag: FLAG_STRIPES[g.region],
+        valText: fmtPct(g.gm), shareText: fmtMoney(g.ps) + ' PS',
+        cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+      })).join('') || `<div class="no-result">No PS booked yet.</div>`;
+    } else {
+      const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+      const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
+      const rg = wgm(inReg);
+      backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
+      subtitle = `${regLabel} · ${fmtPct(rg.gm)} weighted avg · ${inReg.length} people`;
+      const teamMap = {};
+      inReg.forEach(p => { (teamMap[p.team] || (teamMap[p.team] = [])).push(p); });
+      const ents = Object.entries(teamMap).map(([team, list]) => ({ team, n: list.length, ...wgm(list) })).filter(t => t.ps > 0).sort((a, b) => b.gm - a.gm);
+      const maxEnt = Math.max(0.001, ...ents.map(t => t.gm));
+      const entRows = ents.map((t, i) => row({
+        rank: '#' + (i + 1), name: t.team, sub: `${t.n} people`, barPct: (t.gm / maxEnt) * 100,
+        color: gmColor(t.gm), avatar: '🏢', valText: fmtPct(t.gm), shareText: fmtMoney(t.ps) + ' PS',
+        cls: 'cd-row-click', attr: `data-cd-team="${escapeHtml(t.team)}"`
+      })).join('') || `<div class="no-result">No entity data.</div>`;
+      // Players ranked by their own GM% (weight = their PS €); under-25% flagged 🟨.
+      const players = inReg.filter(p => (Number(p.ps_total) || 0) > 0).sort((a, b) => (b.ps_total_gm || 0) - (a.ps_total_gm || 0)).slice(0, 15);
+      const maxP = Math.max(0.001, ...players.map(p => p.ps_total_gm || 0));
+      const playerRows = players.map((p, i) => row({
+        rank: p.yellow_gm ? '🟨' : '#' + (i + 1), name: p.name, sub: p.team, barPct: ((p.ps_total_gm || 0) / maxP) * 100,
+        color: p.yellow_gm ? 'var(--usa-red)' : colorForTeam(p.team), avatar: initials(p.name), photoName: p.name,
+        valText: fmtPct(p.ps_total_gm), shareText: fmtMoney(p.ps_total) + ' PS',
+        cls: 'cd-row-click', attr: `data-player="${escapeHtml(p.name)}"`
+      })).join('') || `<div class="no-result">No players with PS.</div>`;
+      body = `
+        <h3 class="cd-h">🏢 Entities · weighted GM%</h3>
+        ${entRows}
+        <h3 class="cd-h">⚽ Players · GM% · weight = PS €${players.length >= 15 ? ' · top 15' : ''}</h3>
+        ${playerRows}`;
     }
   } else {
     // === Value-metric deep-dive (PS Total, NB, meetings, opps, licence) ===

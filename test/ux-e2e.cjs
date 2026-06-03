@@ -86,6 +86,10 @@ function mockData() {
     log('Coach Room renders', await page.has('.coach-kpi, .coach-row, .no-result'));
     if (await page.has('[data-kpi]')) { await page.tap('[data-kpi]'); await page.waitForTimeout(300);
       log('Coach KPI deep-dive opens', await page.has('#cd-overlay')); await esc(page); await page.waitForTimeout(150); }
+    // Avg Gross Margin must be deep-divable too (weighted-GM breakdown).
+    log('GM KPI is clickable (deep-dive enabled)', await page.has('[data-kpi="ps_total_gm"]'));
+    if (await page.has('[data-kpi="ps_total_gm"]')) { await page.tap('[data-kpi="ps_total_gm"]'); await page.waitForTimeout(300);
+      log('GM deep-dive opens', await page.has('#cd-overlay')); await esc(page); await page.waitForTimeout(150); }
     await page.screenshot({ path: '/tmp/shots/admin-coach.png' }).catch(() => {});
     await ctx.close();
   }
