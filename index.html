@@ -7551,6 +7551,12 @@ window.addEventListener('appinstalled', () => {
   setTimeout(maybeShowPwaBanner, 900);
 });
 
+// If we're CURRENTLY running as the installed app, record that fact. On Android
+// the installed PWA and the browser share per-origin storage, so a later visit in
+// a browser tab will read this flag and show the "open the app" nudge — even for
+// people who installed before this feature shipped (they just open the app once).
+if (isRunningStandalone()) { safeSet(CONFIG.INSTALLED_KEY, '1'); }
+
 function removeBanner() {
   const el = document.getElementById('pwa-banner');
   if (!el) return;
