@@ -654,38 +654,6 @@ input { font-family: inherit; }
   .ms-val { font-size: 18px; }
   .ms-sub { text-align: left; margin-top: 0; }
 }
-/* Big screens: every avatar disc is small relative to the layout, so they read as
-   soft. Enlarge them all consistently — each kept ≤96px so the 256px thumbnail
-   still oversamples (stays crisp) even at 2× device-pixel-ratio. Grid rows whose
-   avatar has its own column get that column widened to match. */
-@media (min-width: 1024px) {
-  /* Golden Boot / Playmaker match-sheet rows */
-  .ms-row { grid-template-columns: 30px 88px minmax(0, 1fr) clamp(110px, 28%, 210px); }
-  .ms-avatar { width: 88px; height: 88px; font-size: 30px; }
-  .ms-avatar-flag { width: 18px; height: 12px; }
-  /* Full ranking list */
-  .fr-row { grid-template-columns: 34px 64px minmax(0,1fr) auto; }
-  .fr-avatar { width: 64px; height: 64px; font-size: 22px; }
-  /* Special Awards (leader card + runner-up rows) */
-  .aw-hero-avatar { width: 76px; height: 76px; font-size: 28px; }
-  .aw-mini-avatar { width: 44px; height: 44px; font-size: 16px; }
-  /* Player lists inside team / nation modals */
-  .member-avatar { width: 68px; height: 68px; font-size: 22px; }
-  /* VAR Room / My Position search / disambiguation picker discs */
-  .pic-wrap { width: 52px; height: 52px; }
-  .pic-disc { width: 52px; height: 52px; font-size: 18px; }
-  /* Admin: Coach Room + KPI deep-dive (keep the base 5-column structure) */
-  .coach-row { grid-template-columns: 32px 66px minmax(0, 1.5fr) minmax(60px, 2fr) auto; }
-  .coach-avatar { width: 66px; height: 66px; font-size: 22px; }
-  .cd-row { grid-template-columns: 30px 62px minmax(0, 1.4fr) minmax(60px, 2fr) auto; }
-  .cd-avatar { width: 62px; height: 62px; font-size: 22px; }
-  /* Admin: VAR TIME review cards */
-  .vt-avatar { width: 76px; height: 76px; font-size: 26px; }
-  /* Coach Room contribution chart */
-  .contrib-row { grid-template-columns: 30px 128px 1fr 40px; }
-  .contrib-avatar { width: 30px; height: 30px; font-size: 11px; }
-}
-
 /* === SPECIAL AWARDS === */
 .awards-grid {
   display: grid;
@@ -2377,6 +2345,40 @@ img, table { max-width: 100%; }
 @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } .ticker { overflow-x: auto; } }
 @media (max-width: 760px) { .ticker-item { font-size: 12px; } }
+
+/* Big screens: every avatar disc is small relative to the layout, so they read as
+   soft. Enlarge them all consistently — each kept ≤96px so the 256px thumbnail
+   still oversamples (stays crisp) even at 2× device-pixel-ratio. Grid rows whose
+   avatar has its own column get that column widened to match.
+   NOTE: placed at the very end of the CSS on purpose — media queries add no
+   specificity, so this must come AFTER every base avatar rule to win the cascade. */
+@media (min-width: 1024px) {
+  /* Golden Boot / Playmaker match-sheet rows */
+  .ms-row { grid-template-columns: 30px 88px minmax(0, 1fr) clamp(110px, 28%, 210px); }
+  .ms-avatar { width: 88px; height: 88px; font-size: 30px; }
+  .ms-avatar-flag { width: 18px; height: 12px; }
+  /* Full ranking list */
+  .fr-row { grid-template-columns: 34px 64px minmax(0,1fr) auto; }
+  .fr-avatar { width: 64px; height: 64px; font-size: 22px; }
+  /* Special Awards (leader card + runner-up rows) */
+  .aw-hero-avatar { width: 76px; height: 76px; font-size: 28px; }
+  .aw-mini-avatar { width: 44px; height: 44px; font-size: 16px; }
+  /* Player lists inside team / nation modals */
+  .member-avatar { width: 68px; height: 68px; font-size: 22px; }
+  /* VAR Room / My Position search / disambiguation picker discs */
+  .pic-wrap { width: 52px; height: 52px; }
+  .pic-disc { width: 52px; height: 52px; font-size: 18px; }
+  /* Admin: Coach Room + KPI deep-dive (keep the base 5-column structure) */
+  .coach-row { grid-template-columns: 32px 66px minmax(0, 1.5fr) minmax(60px, 2fr) auto; }
+  .coach-avatar { width: 66px; height: 66px; font-size: 22px; }
+  .cd-row { grid-template-columns: 30px 62px minmax(0, 1.4fr) minmax(60px, 2fr) auto; }
+  .cd-avatar { width: 62px; height: 62px; font-size: 22px; }
+  /* Admin: VAR TIME review cards */
+  .vt-avatar { width: 76px; height: 76px; font-size: 26px; }
+  /* Coach Room contribution chart */
+  .contrib-row { grid-template-columns: 30px 128px 1fr 40px; }
+  .contrib-avatar { width: 30px; height: 30px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
