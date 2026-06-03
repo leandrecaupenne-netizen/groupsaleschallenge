@@ -2481,19 +2481,22 @@ function nameSlug(name) {
 // The ?v= tag is bumped whenever the card art changes, so browsers fetch the
 // new image even though the filename is stable (defeats any stale HTTP cache).
 const CARD_VER = '8';
+// Duplicate names get a " · TEAM" suffix (see fetchData) to stay unique as an
+// identity key; strip it before resolving the photo slug / initials.
+const baseName = name => String(name == null ? '' : name).split(' · ')[0];
 function photoFor(name) {
-  const slug = nameSlug(name);
+  const slug = nameSlug(baseName(name));
   return CARD_PHOTOS.has(slug) ? `cards/${slug}.webp?v=${CARD_VER}` : '';
 }
 // Small round avatars (lists, rails, VAR, awards) use a pre-scaled 256px thumb.
 // Browsers downscale a 1024px source to ~50px in one ugly aliased step; a thumb
 // near the display size renders crisp. The hero/modal/card keep the full 1024px.
 function photoThumb(name) {
-  const slug = nameSlug(name);
+  const slug = nameSlug(baseName(name));
   return CARD_PHOTOS.has(slug) ? `cards/thumb/${slug}.webp?v=${CARD_VER}` : '';
 }
 function avatarInitials(name) {
-  return String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
+  return String(baseName(name)).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
 }
 // Universal avatar content for a small round disc: the player's photo when we
 // have it (falling back to initials if it 404s), else the initials. Drop this
@@ -2679,6 +2682,15 @@ async function fetchData(fresh) {
     DATA = data;
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name); // ignore empty rows
+    // Disambiguate duplicate names by appending the team, so `name` stays a UNIQUE
+    // identity key everywhere (clicks, rank lookups, week-digest maps, VAR verdicts
+    // all key on name). With 377 reps a "First LASTNAME" collision is plausible and
+    // would otherwise make both rows open the same card / share a rank.
+    (() => {
+      const counts = {};
+      people.forEach(p => { counts[p.name] = (counts[p.name] || 0) + 1; });
+      people.forEach(p => { if (counts[p.name] > 1 && p.team) p.name = `${p.name} · ${p.team}`; });
+    })();
     updated_at = data.updated_at;
     period = data.period || '';
     challenge_dates = data.challenge_dates || {};
