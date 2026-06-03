@@ -1047,6 +1047,9 @@ input { font-family: inherit; }
 .pc-rarity-classic { background: rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); }
 .pc-flag { display: inline-flex; width: 26px; height: 17px; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.3); }
 .pc-flag i { flex: 1; }
+/* UK = real Union Jack (an SVG fills the flag box) instead of a France-like
+   tricolour. Works in every flag wrapper since it just stretches to fill. */
+.flag-uk { flex: 1 0 100%; align-self: stretch; background: #012169 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'%3E%3CclipPath id='t'%3E%3Cpath d='M30%2C15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z'/%3E%3C/clipPath%3E%3Crect width='60' height='30' fill='%23012169'/%3E%3Cpath d='M0%2C0 L60%2C30 M60%2C0 L0%2C30' stroke='%23fff' stroke-width='6'/%3E%3Cpath d='M0%2C0 L60%2C30 M60%2C0 L0%2C30' clip-path='url(%23t)' stroke='%23C8102E' stroke-width='4'/%3E%3Cpath d='M30%2C0 v30 M0%2C15 h60' stroke='%23fff' stroke-width='10'/%3E%3Cpath d='M30%2C0 v30 M0%2C15 h60' stroke='%23C8102E' stroke-width='6'/%3E%3C/svg%3E") center/cover no-repeat; }
 /* Collectible honour chips under the stats grid. */
 .pc-honours { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
 .pc-honour {
@@ -1958,7 +1961,18 @@ img, table { max-width: 100%; }
   background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 78%, #fff 0%), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 25%));
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
 }
-.pic-disc-card { position: absolute; bottom: -3px; right: -4px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }
+/* Wrapper so the corner discipline badge is NOT clipped by the photo disc's
+   overflow:hidden (which was cutting it off for players with a photo). */
+.pic-wrap { position: relative; flex: 0 0 auto; width: 40px; height: 40px; }
+.pic-wrap .pic-disc { width: 100%; height: 100%; }
+/* Clean discipline badge: a referee's yellow card (rounded rectangle) or a green
+   "clean sheet" tick. A 2px ring in the surface colour separates it from the photo. */
+.disc-badge { position: absolute; bottom: -4px; right: -5px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--paper), 0 1px 2px rgba(0,0,0,0.35); }
+.disc-badge-yellow, .disc-badge-red { width: 12px; height: 16px; border-radius: 3px; }
+.disc-badge-yellow { background: linear-gradient(160deg, #FCD34D, #E0930B); }
+.disc-badge-red { background: linear-gradient(160deg, #F26D6D, #C8102E); }
+.disc-badge-clean { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(160deg, #34D399, #15A34A); }
+.disc-badge-clean::after { content: ''; width: 6px; height: 3px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translate(0, -1px) rotate(-45deg); }
 .var-name { flex: 1; font-weight: 700; font-size: 14px; }
 .var-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
 .var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
@@ -3030,7 +3044,7 @@ function renderPodiumCard(team, rank, medal, position) {
     <div class="podium-card ${position}${flashCls}" data-team="${escapeHtml(team.country)}" style="${colorVar}" title="View ${escapeHtml(team.country)} squad">
       <div class="podium-card-top">
         <span>${period ? escapeHtml(period) : 'SALES CHALLENGE'}</span>
-        <span class="podium-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+        <span class="podium-flag">${flagBars(flag)}</span>
       </div>
       <div class="podium-medal">${medal}</div>
       <div class="podium-rank">#${rank}</div>
@@ -3410,7 +3424,7 @@ function renderMatchSheet(list, opts) {
       <div class="ms-hero-main">
         <div class="ms-hero-toprow">
           <span class="ms-hero-badge">${opts.badge}</span>
-          <span class="ms-hero-flag">${heroFlag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+          <span class="ms-hero-flag">${flagBars(heroFlag)}</span>
         </div>
         <div class="ms-hero-rank">#1</div>
         <div class="ms-hero-name">${escapeHtml(top.name)}</div>
@@ -3429,7 +3443,7 @@ function renderMatchSheet(list, opts) {
     return `
       <div class="ms-row" data-player="${escapeHtml(p.name)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.name)}'s card">
         <div class="ms-rank">#${i + 2}</div>
-        <div class="ms-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
+        <div class="ms-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}<span class="ms-avatar-flag">${flagBars(fl)}</span></div>
         <div class="ms-who">
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
           <div class="ms-who-team">${escapeHtml(p.team)}</div>
@@ -3682,7 +3696,7 @@ function renderSpotlight() {
       <div class="ms-hero-main">
         <div class="ms-hero-toprow">
           <span class="ms-hero-badge">${featured.icon} ${featured.cat}</span>
-          <span class="ms-hero-flag">${fFlag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+          <span class="ms-hero-flag">${flagBars(fFlag)}</span>
         </div>
         <div class="ms-hero-name" style="margin-top:8px">${escapeHtml(featured.person.name)}</div>
         <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🌱 Rookie' : ''}</div>
@@ -3699,7 +3713,7 @@ function renderSpotlight() {
     return `
     <div class="ms-row${anim}" data-player="${escapeHtml(s.person.name)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.name)}'s card">
       <div class="ms-rank" style="font-size:18px">${s.icon}</div>
-      <div class="ms-avatar${photoFor(s.person.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(s.person.team)}">${avatarInner(s.person.name)}<span class="ms-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
+      <div class="ms-avatar${photoFor(s.person.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(s.person.team)}">${avatarInner(s.person.name)}<span class="ms-avatar-flag">${flagBars(fl)}</span></div>
       <div class="ms-who">
         <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
         <div class="ms-who-team">${s.cat} · ${escapeHtml(s.person.team)}</div>
@@ -3763,7 +3777,10 @@ function renderVAR() {
 
   const row = (p, val, icon, cls) => `
     <div class="var-row var-click ${cls || ''}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
-      <span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}<span class="pic-disc-card">${icon}</span></span>
+      <span class="pic-wrap">
+        <span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
+        <span class="disc-badge ${icon === '✅' ? 'disc-badge-clean' : 'disc-badge-yellow'}"></span>
+      </span>
       <span class="var-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="var-val">${val}</span>
     </div>`;
@@ -3998,7 +4015,7 @@ function renderCoachDiveModal() {
     return `
       <div class="cd-row ${opts.cls || ''}" ${opts.attr || ''}>
         <span class="cd-rank">${opts.rank}</span>
-        ${opts.avatar ? `<span class="cd-avatar${(opts.photoName && photoFor(opts.photoName)) ? ' has-photo' : ''}" style="--ac:${opts.color}">${(opts.photoName && photoFor(opts.photoName)) ? avatarInner(opts.photoName) : opts.avatar}</span>` : `<span class="cd-flag">${(opts.flag || []).map(c => `<i style="background:${c}"></i>`).join('')}</span>`}
+        ${opts.avatar ? `<span class="cd-avatar${(opts.photoName && photoFor(opts.photoName)) ? ' has-photo' : ''}" style="--ac:${opts.color}">${(opts.photoName && photoFor(opts.photoName)) ? avatarInner(opts.photoName) : opts.avatar}</span>` : `<span class="cd-flag">${flagBars(opts.flag || [])}</span>`}
         <span class="cd-name">${escapeHtml(opts.name)}${opts.sub ? `<em>${escapeHtml(opts.sub)}</em>` : ''}</span>
         <span class="cd-bar"><span style="width:${Math.max(2, opts.barPct != null ? opts.barPct : share).toFixed(1)}%;--bc:${opts.color || 'var(--usa-red)'}"></span></span>
         <span class="cd-val">${opts.valText != null ? opts.valText : coachFmt(opts.value, opts.fmt)}<small>${opts.shareText != null ? opts.shareText : share.toFixed(1) + '%'}</small></span>
@@ -4166,7 +4183,7 @@ function renderVarTime() {
     <div class="vt-card vt-card-click v-${b.verdict}" data-vtreview="${escapeHtml(b.p.name)}" title="Review ${escapeHtml(b.p.name)}">
       <span class="vt-flash"></span>
       <div class="vt-card-head">
-        <div class="vt-avatar${photoFor(b.p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(b.p.name)}<span class="vt-avatar-flag">${fl.map(c => `<i style="background:${c}"></i>`).join('')}</span></div>
+        <div class="vt-avatar${photoFor(b.p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(b.p.name)}<span class="vt-avatar-flag">${flagBars(fl)}</span></div>
         <div class="vt-who"><span class="vt-name">${escapeHtml(b.p.name)}</span><span class="vt-team">${escapeHtml(b.p.team)}</span></div>
         <div class="vt-refcard-slot">${refcard(b)}${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes</span>' : ''}</div>
       </div>
@@ -4252,7 +4269,7 @@ function awardHero(p, stat, statLabel) {
     <div class="aw-hero" style="--tc:${c}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       <div class="aw-hero-ribbon">🏆 LEADER</div>
       <div class="aw-hero-card">
-        <div class="aw-hero-avatar${photoFor(p.name) ? ' has-photo' : ''}">${avatarInner(p.name)}<span class="aw-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span></div>
+        <div class="aw-hero-avatar${photoFor(p.name) ? ' has-photo' : ''}">${avatarInner(p.name)}<span class="aw-hero-flag">${flagBars(flag)}</span></div>
         <div class="aw-hero-info">
           <div class="aw-hero-name">${escapeHtml(p.name)}</div>
           <div class="aw-hero-team">${escapeHtml(p.team)}</div>
@@ -4727,6 +4744,16 @@ function flagForTeam(team) {
   }
   return FLAG_STRIPES[regionOf(team)] || FLAG_STRIPES.OTHER;
 }
+// The UK is the Union Jack, not a tricolour — flagged so flagBars() renders the
+// real flag instead of blue/white/red stripes (which read as France).
+COUNTRY_FLAGS.UK.unionJack = true;
+COUNTRY_FLAGS['UNITED KINGDOM'].unionJack = true;
+// Render a flag's inner markup: the Union Jack image for the UK, otherwise the
+// vertical colour stripes. Used everywhere a flag appears (cards, rows, podium…).
+function flagBars(colors) {
+  if (colors && colors.unionJack) return '<i class="flag-uk"></i>';
+  return (colors || []).map(c => `<i style="background:${c}"></i>`).join('');
+}
 
 // === Export the full standings as a PNG ===
 function generateStandingsImage() {
@@ -4945,7 +4972,7 @@ function paniniCardInner(p) {
     <div class="pc-card" style="--c:${color}">
       <div class="pc-card-top">
         <span class="pc-rarity pc-rarity-${rarity.cls}">${rarity.label}</span>
-        <span class="pc-flag">${flag.map(c => `<i style="background:${c}"></i>`).join('')}</span>
+        <span class="pc-flag">${flagBars(flag)}</span>
       </div>
       <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
       <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
@@ -6438,7 +6465,7 @@ function openCompare() {
     const card = (name, wins, side, isLeader) => `
       <div class="cmp-card${isLeader ? ' cmp-card-win' : ''}" style="--c:${colorOf(name)}">
         ${isLeader ? '<span class="cmp-crown">👑</span>' : ''}
-        <span class="cmp-card-flag">${flagOf(name).map(c => `<i style="background:${c}"></i>`).join('')}</span>
+        <span class="cmp-card-flag">${flagBars(flagOf(name))}</span>
         <span class="cmp-card-badge${(mode === 'players' && photoFor(name)) ? ' cmp-card-badge-photo' : ''}">${(mode === 'players' && photoFor(name)) ? `<img class="cmp-card-photo" src="${photoThumb(name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('cmp-card-badge-photo');this.outerHTML='${initialsOf(name) || '—'}'" />` : (initialsOf(name) || '—')}</span>
         <div class="cmp-card-name">${escapeHtml(name)}</div>
         <div class="cmp-card-sub">${subOf(name)}</div>
@@ -6597,7 +6624,7 @@ function tvMatchSheet(items, opts) {
     <div class="tv-hero${clk ? ' tv-clickable' : ''}" style="--c:${c}"${clk ? clkAttr(top) : ''}>
       <div class="tv-hero-top">
         <span class="tv-hero-badge">${opts.badge || '🏆 LEADER'}</span>
-        <span class="tv-hero-flag">${flag.map(col => `<i style="background:${col}"></i>`).join('')}</span>
+        <span class="tv-hero-flag">${flagBars(flag)}</span>
       </div>
       <div class="tv-hero-avatar${photoFor(top.name) ? ' tv-hero-avatar-photo' : ''}">${photoFor(top.name) ? `<img class="tv-hero-photo" src="${photoFor(top.name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('tv-hero-avatar-photo');this.remove()" />` : (initials || '—')}</div>
       <div class="tv-hero-name">${escapeHtml(top.name)}</div>
