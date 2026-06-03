@@ -1,5 +1,7 @@
 # Devoteam World Cup Sales Challenge 2026 — Platform
 
+[![UX tests](https://github.com/leandrecaupenne-netizen/groupsaleschallenge/actions/workflows/ux-tests.yml/badge.svg)](https://github.com/leandrecaupenne-netizen/groupsaleschallenge/actions/workflows/ux-tests.yml)
+
 Live leaderboard for the Devoteam World Cup Sales Challenge 2026 (1 June – 3 July 2026).
 Single self-contained HTML file (vanilla JS, no build step), deployed on Vercel, that reads live data from a
 Google Sheet via a Google Apps Script web app.
