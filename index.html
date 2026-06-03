@@ -4221,7 +4221,7 @@ function renderCoachDiveModal() {
   }
 
   return `
-    <div class="modal-overlay" id="cd-overlay">
+    <div class="modal-overlay" id="cd-overlay" role="dialog" aria-modal="true" aria-label="Contribution breakdown">
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-title-block">
@@ -4979,7 +4979,7 @@ function renderPlayerModal() {
   const p = people.find(x => x.name === openPlayerModal);
   if (!p) return '';
   return `
-    <div class="modal-overlay" id="player-overlay">
+    <div class="modal-overlay" id="player-overlay" role="dialog" aria-modal="true" aria-label="Player card">
       <div class="pc-modal" onclick="event.stopPropagation()">
         <div class="pc-topbar">
           <button class="pc-back" id="player-back-btn" aria-label="Back">${(playerReturnToTeam || playerReturnToNation) ? '← Back' : '← Close'}</button>
@@ -5008,7 +5008,7 @@ function renderVarReviewModal() {
     `<button class="vt-verdict ${cur === k ? 'on ' + k : ''}" data-vrverdict="${k}">${VERDICT_META[k].icon} ${VERDICT_META[k].label}</button>`
   ).join('');
   return `
-    <div class="modal-overlay" id="vr-overlay">
+    <div class="modal-overlay" id="vr-overlay" role="dialog" aria-modal="true" aria-label="VAR review">
       <div class="pc-modal vr-modal" onclick="event.stopPropagation()">
         <div class="pc-topbar">
           <button class="modal-close pc-close" id="vr-close-btn" aria-label="Close">×</button>
@@ -5127,7 +5127,7 @@ function renderTeamModal() {
     .sort((a, b) => (b.ps_total||0) - (a.ps_total||0));
 
   return `
-    <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Team details">
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-rank-badge">#${teamRank}</div>
@@ -5238,7 +5238,7 @@ function renderNationModal() {
   const topPeople = natPeople.slice(0, TOPN);
 
   return `
-    <div class="modal-overlay" id="nation-overlay">
+    <div class="modal-overlay" id="nation-overlay" role="dialog" aria-modal="true" aria-label="Nation details">
       <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-rank-badge">#${idx + 1}</div>
@@ -5867,6 +5867,25 @@ function render() {
   if (nOverlay) nOverlay.addEventListener('click', e => {
     if (e.target === nOverlay) closeNation();
   });
+
+  enhanceModals();
+}
+
+// A11y: when a modal opens, move focus into it (its close button) so keyboard /
+// screen-reader users land inside the dialog. Only fires when the open-modal set
+// changes, so background polls don't yank focus out of the dialog.
+let _modalFocusKey = null;
+function enhanceModals() {
+  const ids = ['cd-overlay', 'player-overlay', 'vr-overlay', 'modal-overlay', 'nation-overlay'];
+  const open = ids.map(id => document.getElementById(id)).filter(Boolean);
+  if (!open.length) { _modalFocusKey = null; return; }
+  const top = open[open.length - 1];
+  const key = open.map(o => o.id).join('|');
+  if (key !== _modalFocusKey) {
+    _modalFocusKey = key;
+    const btn = top.querySelector('.pc-back, .pc-close, .modal-close, .cd-close, .vr-close, button');
+    try { (btn || top).focus({ preventScroll: true }); } catch (e) {}
+  }
 }
 
 // Discipline badge: tap to reveal the explanation popover. Bound directly (not
@@ -6018,6 +6037,22 @@ document.addEventListener('keydown', e => {
     else { openTeamModal = null; openNationModal = null; nationReturnTo = null; document.body.style.overflow = ''; }
     render();
   }
+});
+
+// A11y: trap Tab within the top-most open modal so keyboard/screen-reader users
+// can't tab out into the page behind the overlay. Attached once; only acts when an
+// overlay is present and Tab is pressed (Esc/click-outside close handling is separate).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const overlays = document.querySelectorAll('.modal-overlay');
+  if (!overlays.length) return;
+  const top = overlays[overlays.length - 1];
+  const focusable = [...top.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => el.offsetParent !== null && !el.disabled);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 
 // Touch swipe to switch TV panels.
