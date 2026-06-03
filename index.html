@@ -2415,6 +2415,13 @@ function photoFor(name) {
   const slug = nameSlug(name);
   return CARD_PHOTOS.has(slug) ? `cards/${slug}.webp?v=${CARD_VER}` : '';
 }
+// Small round avatars (lists, rails, VAR, awards) use a pre-scaled 256px thumb.
+// Browsers downscale a 1024px source to ~50px in one ugly aliased step; a thumb
+// near the display size renders crisp. The hero/modal/card keep the full 1024px.
+function photoThumb(name) {
+  const slug = nameSlug(name);
+  return CARD_PHOTOS.has(slug) ? `cards/thumb/${slug}.webp?v=${CARD_VER}` : '';
+}
 function avatarInitials(name) {
   return String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
 }
@@ -2423,7 +2430,7 @@ function avatarInitials(name) {
 // inside any element that already styles a circular avatar. Adds the
 // `has-photo` class on the parent so CSS can switch to image styling.
 function avatarInner(name) {
-  const ph = photoFor(name);
+  const ph = photoThumb(name); // small disc → crisp pre-scaled thumb (not the 1024px source)
   if (!ph) return avatarInitials(name);
   const ini = avatarInitials(name);
   return `<img class="av-photo" src="${ph}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
@@ -6404,7 +6411,7 @@ function openCompare() {
       <div class="cmp-card${isLeader ? ' cmp-card-win' : ''}" style="--c:${colorOf(name)}">
         ${isLeader ? '<span class="cmp-crown">👑</span>' : ''}
         <span class="cmp-card-flag">${flagOf(name).map(c => `<i style="background:${c}"></i>`).join('')}</span>
-        <span class="cmp-card-badge${(mode === 'players' && photoFor(name)) ? ' cmp-card-badge-photo' : ''}">${(mode === 'players' && photoFor(name)) ? `<img class="cmp-card-photo" src="${photoFor(name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('cmp-card-badge-photo');this.outerHTML='${initialsOf(name) || '—'}'" />` : (initialsOf(name) || '—')}</span>
+        <span class="cmp-card-badge${(mode === 'players' && photoFor(name)) ? ' cmp-card-badge-photo' : ''}">${(mode === 'players' && photoFor(name)) ? `<img class="cmp-card-photo" src="${photoThumb(name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('cmp-card-badge-photo');this.outerHTML='${initialsOf(name) || '—'}'" />` : (initialsOf(name) || '—')}</span>
         <div class="cmp-card-name">${escapeHtml(name)}</div>
         <div class="cmp-card-sub">${subOf(name)}</div>
         <div class="cmp-card-wins">${wins}<small>${wins === 1 ? 'win' : 'wins'}</small></div>
