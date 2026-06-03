@@ -1988,14 +1988,15 @@ img, table { max-width: 100%; }
 
 /* === Team modal contribution chart === */
 .contrib-chart { margin: 0 0 22px; display: flex; flex-direction: column; gap: 7px; }
-.contrib-row { display: grid; grid-template-columns: 150px 1fr 40px; align-items: center; gap: 10px; padding: 2px 4px; border-radius: 6px; }
+.contrib-row { display: grid; grid-template-columns: 24px 128px 1fr 40px; align-items: center; gap: 10px; padding: 2px 4px; border-radius: 6px; }
+.contrib-avatar { position: relative; width: 24px; height: 24px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 9px; color: #fff; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 78%, #fff 0%), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 25%)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
 .contrib-row.member-row-click:hover { background: var(--cream); }
 .contrib-row.member-row-click:hover .contrib-name { color: var(--ink); }
 .contrib-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
 .contrib-bar { height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; }
 .contrib-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--c), var(--gold)); min-width: 2px; }
 .contrib-val { font-family: ui-monospace, monospace; font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: right; }
-@media (max-width: 600px) { .contrib-row { grid-template-columns: 110px 1fr 34px; } .contrib-name { font-size: 11px; } }
+@media (max-width: 600px) { .contrib-row { grid-template-columns: 22px 92px 1fr 34px; } .contrib-name { font-size: 11px; } }
 
 /* === Animated numbers (value changed since last refresh) === */
 .animnum { font-variant-numeric: tabular-nums; transition: color 0.2s; }
@@ -2445,7 +2446,7 @@ function avatarInner(name) {
   const ph = photoThumb(name); // small disc → crisp pre-scaled thumb (not the 1024px source)
   if (!ph) return avatarInitials(name);
   const ini = avatarInitials(name);
-  return `<img class="av-photo" src="${ph}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
+  return `<img class="av-photo" src="${ph}" alt="" loading="lazy" decoding="async" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
 }
 
 // === DATA (populated live from the Apps Script API) ===
@@ -5040,6 +5041,7 @@ function renderTeamModal() {
               ${members.map(m => {
                 const share = Math.max(0, m.ps_total || 0) / totalPs * 100;
                 return `<div class="contrib-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
+                  <span class="contrib-avatar${photoFor(m.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(m.team)}">${avatarInner(m.name)}</span>
                   <span class="contrib-name">${escapeHtml(m.name)}</span>
                   <div class="contrib-bar"><span style="width:${share.toFixed(1)}%"></span></div>
                   <span class="contrib-val">${share.toFixed(0)}%</span>
@@ -5320,6 +5322,18 @@ function render() {
     render();
     document.body.style.overflow = 'hidden';
   }));
+  // Keyboard accessibility: the clickable rows/cards are <div>/<span>, so make them
+  // focusable and let Enter/Space trigger the same click (one central pass, not 16
+  // templates). Buttons/links are already accessible and skipped.
+  document.querySelectorAll('[data-player],[data-team],[data-nteam],[data-nation]').forEach(el => {
+    if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.dataset.kbd) return;
+    el.dataset.kbd = '1';
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
   // Player modal: close + "view squad" link
   const pOverlay = document.getElementById('player-overlay');
   const closePlayer = () => {
