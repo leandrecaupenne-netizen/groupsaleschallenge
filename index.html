@@ -988,6 +988,11 @@ input { font-family: inherit; }
   display: flex; flex-direction: column; gap: 14px;
 }
 .pc-topbar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+/* This button carries both .modal-close (white ×, for dark modal headers) and
+   .pc-close (dark × on a white disc, for the light player card). .modal-close is
+   defined later, so without this higher-specificity rule its white colour wins and
+   the × vanishes on the white disc in light mode. */
+.modal-close.pc-close { color: #0d0f24; }
 .pc-close {
   margin-left: auto; flex: none;
   display: flex; align-items: center; justify-content: center;
@@ -1062,6 +1067,14 @@ input { font-family: inherit; }
 /* Portugal = green/red field + the armillary sphere and shield (a plain green/red
    tricolour would be missing its crest). */
 .flag-pt { flex: 1 0 100%; align-self: stretch; background: #FF0000 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3Crect width='60' height='40' fill='%23FF0000'/%3E%3Crect width='24' height='40' fill='%23006600'/%3E%3Cg transform='translate(24%2C20)'%3E%3Ccircle r='9.2' fill='%23FFE000' stroke='%23C8870A' stroke-width='0.8'/%3E%3Cg fill='none' stroke='%230A5C36' stroke-width='0.9'%3E%3Ccircle r='9.2'/%3E%3Cellipse rx='9.2' ry='3.4'/%3E%3Cellipse rx='3.4' ry='9.2'/%3E%3Cline x1='-9.2' y1='0' x2='9.2' y2='0'/%3E%3Cline x1='0' y1='-9.2' x2='0' y2='9.2'/%3E%3C/g%3E%3Cpath d='M-4%2C-5.5 h8 v4 q0%2C4.5 -4%2C6 q-4%2C-1.5 -4%2C-6 z' fill='%23fff' stroke='%23D52B1E' stroke-width='1.4'/%3E%3Cg fill='%231B3A8B'%3E%3Ccircle cx='0' cy='-1.5' r='0.8'/%3E%3Ccircle cx='-1.6' cy='0.8' r='0.8'/%3E%3Ccircle cx='1.6' cy='0.8' r='0.8'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat; }
+/* Nordic cross flags (Devoteam is strong in the Nordics) — real crosses, not the
+   stripe approximation that made Norway/Iceland read like France. */
+.flag-nordic { flex: 1 0 100%; align-self: stretch; background-position: center; background-size: cover; background-repeat: no-repeat; }
+.flag-dk { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23C8102E'/%3E%3Crect x='9' width='4' height='20' fill='%23FFFFFF'/%3E%3Crect y='8' width='28' height='4' fill='%23FFFFFF'/%3E%3C/svg%3E"); }
+.flag-se { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23006AA7'/%3E%3Crect x='9' width='4' height='20' fill='%23FECC02'/%3E%3Crect y='8' width='28' height='4' fill='%23FECC02'/%3E%3C/svg%3E"); }
+.flag-fi { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23FFFFFF'/%3E%3Crect x='9' width='4' height='20' fill='%23003580'/%3E%3Crect y='8' width='28' height='4' fill='%23003580'/%3E%3C/svg%3E"); }
+.flag-no { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%23EF2B2D'/%3E%3Crect x='8' width='6' height='20' fill='%23FFFFFF'/%3E%3Crect y='7' width='28' height='6' fill='%23FFFFFF'/%3E%3Crect x='9.5' width='3' height='20' fill='%23002868'/%3E%3Crect y='8.5' width='28' height='3' fill='%23002868'/%3E%3C/svg%3E"); }
+.flag-is { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 20'%3E%3Crect width='28' height='20' fill='%2302529C'/%3E%3Crect x='8' width='6' height='20' fill='%23FFFFFF'/%3E%3Crect y='7' width='28' height='6' fill='%23FFFFFF'/%3E%3Crect x='9.5' width='3' height='20' fill='%23DC1E35'/%3E%3Crect y='8.5' width='28' height='3' fill='%23DC1E35'/%3E%3C/svg%3E"); }
 /* Collectible honour chips under the stats grid. */
 .pc-honours { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
 .pc-honour {
@@ -4940,11 +4953,26 @@ function flagForTeam(team) {
 COUNTRY_FLAGS.UK.flagImg = 'flag-uk';                 // Union Jack (not a tricolour → reads as France)
 COUNTRY_FLAGS['UNITED KINGDOM'].flagImg = 'flag-uk';
 COUNTRY_FLAGS.PORTUGAL.flagImg = 'flag-pt';           // green/red + armillary sphere & shield
+// Horizontal-striped flags (drawn top-to-bottom, not as vertical bands).
+['NETHERLANDS', 'HOLLAND', 'LUXEMBOURG', 'GERMANY', 'AUSTRIA', 'HUNGARY', 'SPAIN'].forEach(k => { if (COUNTRY_FLAGS[k]) COUNTRY_FLAGS[k].horizontal = true; });
+['NL', 'DE', 'ES'].forEach(k => { if (typeof FLAG_STRIPES !== 'undefined' && FLAG_STRIPES[k]) FLAG_STRIPES[k].horizontal = true; });
+// Nordic cross flags → real SVG crosses instead of stripe approximations.
+const NORDIC = { DENMARK: 'flag-dk', SWEDEN: 'flag-se', FINLAND: 'flag-fi', NORWAY: 'flag-no', ICELAND: 'flag-is' };
+Object.keys(NORDIC).forEach(k => { if (COUNTRY_FLAGS[k]) COUNTRY_FLAGS[k].flagImg = 'flag-nordic ' + NORDIC[k]; });
 // Render a flag's inner markup: a dedicated SVG flag when tagged, otherwise the
 // vertical colour stripes. Used everywhere a flag appears (cards, rows, podium…).
 function flagBars(colors) {
   if (colors && colors.flagImg) return `<i class="${colors.flagImg}"></i>`;
-  return (colors || []).map(c => `<i style="background:${c}"></i>`).join('');
+  const arr = colors || [];
+  if (!arr.length) return '';
+  // Render as a single gradient so the flag shows in the CORRECT orientation:
+  // vertical tricolours (France, Italy, Belgium…) stay vertical, while horizontal
+  // flags (Netherlands, Germany, Spain, Luxembourg…) are drawn horizontally. A
+  // vertical red/white/blue would otherwise not read as the Dutch flag.
+  const dir = arr.horizontal ? 'to bottom' : 'to right';
+  const n = arr.length;
+  const stops = arr.map((c, i) => `${c} ${(i * 100 / n).toFixed(3)}% ${((i + 1) * 100 / n).toFixed(3)}%`).join(', ');
+  return `<i style="flex:1 1 100%;align-self:stretch;background:linear-gradient(${dir}, ${stops})"></i>`;
 }
 
 // === Export the full standings as a PNG ===
