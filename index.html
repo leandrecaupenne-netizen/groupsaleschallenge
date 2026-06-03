@@ -1625,7 +1625,10 @@ input { font-family: inherit; }
   border: 1px solid rgba(242,199,92,0.45);
   border-radius: 16px;
   box-shadow: 0 14px 44px rgba(0,0,0,0.40);
-  animation: pwaUp 0.34s cubic-bezier(0.16,1,0.3,1) both;
+  /* `backwards` (not `both`): pre-applies the off-screen start frame, then releases
+     to the base position. `both` was holding a residual transform that pushed the
+     fixed banner ~50px below the viewport bottom (clipped on tall phones). */
+  animation: pwaUp 0.34s cubic-bezier(0.16,1,0.3,1) backwards;
 }
 .pwa-banner.pwa-out { animation: pwaUp 0.25s ease reverse forwards; }
 .pwa-icon { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px;
@@ -1649,7 +1652,9 @@ input { font-family: inherit; }
 .pwa-close { background: rgba(255,255,255,0.12); color: #fff; border: none; width: 30px; height: 30px;
   border-radius: 50%; font-size: 17px; line-height: 1; cursor: pointer; flex: 0 0 auto; }
 .pwa-close:hover { background: rgba(255,255,255,0.25); }
-@keyframes pwaUp { from { opacity: 0; transform: translateY(120%); } to { opacity: 1; transform: translateY(0); } }
+/* Fade only — no transform. A translateY here left a residual offset that pushed
+   the fixed banner partly below the viewport bottom (clipped on tall phones). */
+@keyframes pwaUp { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .pwa-banner, .pwa-banner.pwa-out { animation: none; } }
 
 /* First-visit guided tour — a short, dismissible 3-step welcome overlay. */
