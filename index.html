@@ -2696,6 +2696,13 @@ async function fetchData(fresh) {
     challenge_dates = data.challenge_dates || {};
     specialAwards = data.special_awards || {};
 
+    // Defensive: a GM cell entered as `27` (or "27%") instead of the expected
+    // decimal `0.27` would otherwise render "2700.0%" and never trip yellow_gm.
+    // Anything > 1.5 is treated as a percentage and divided by 100.
+    const normGm = v => (typeof v === 'number' && v > 1.5) ? v / 100 : v;
+    people.forEach(p => { p.ps_total_gm = normGm(p.ps_total_gm); p.ps_nb_gm = normGm(p.ps_nb_gm); });
+    teams.forEach(t => { t.avg_gm = normGm(t.avg_gm); });
+
     // Defensive: recompute discipline flags client-side so a blank/zero `meetings`
     // column at challenge start doesn't flag all 377 players with a yellow card.
     // (The backend guards yellow_gm but not yellow_meetings; this keeps both correct
@@ -2727,6 +2734,9 @@ async function fetchData(fresh) {
 // returning visitors get the previous data painted immediately while a fresh
 // copy is fetched quietly in the background (stale-while-revalidate).
 function cacheSnapshot(data) {
+  // Don't persist a bad payload (column-mapping warnings or empty data) — it would
+  // be painted instantly on the next visit and could pin the user to wrong/zero data.
+  if (!data || (data.warnings && data.warnings.length) || !(data.teams || []).length || !(data.people || []).length) return;
   try { safeSet(CONFIG.SNAPSHOT_KEY, JSON.stringify({ ts: Date.now(), data })); } catch (e) {}
 }
 function hydrateFromSnapshot() {
@@ -3001,7 +3011,7 @@ let introCountup = false; // armed once on the cold-start path → podium figure
 function fmtByType(v, fmt) {
   if (fmt === 'money') return fmtMoney(v);
   if (fmt === 'pct') return fmtPct(v);
-  if (fmt === 'int') return Math.round(v).toFixed(0);
+  if (fmt === 'int') return Math.round(v || 0).toFixed(0);
   return fmtNum(v);
 }
 function fmtByTypeAnim(v, fmt) {
@@ -4707,7 +4717,7 @@ function drawPlayerCard(person, logo, photo, mode) {
   const rows = [
     ['⚽ GOLDEN BOOT', gRank ? '#' + gRank : '—', fmtMoney(person.ps_nb) + ' NB'],
     ['🎯 PLAYMAKER', pRank ? '#' + pRank : '—', Number(person.opps || 0).toFixed(0) + ' opps'],
-    ['💰 PS TOTAL', fmtMoney(person.ps_total), '#' + tRank + ' overall'],
+    ['💰 PS TOTAL', fmtMoney(person.ps_total), tRank ? '#' + tRank + ' overall' : '—'],
     ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : '✅ on target'],
     ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : '✅ on target']
   ];
@@ -5091,7 +5101,7 @@ function paniniCardInner(p) {
     <div class="pc-stats">
       ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB', 'golden')}
       ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
-      ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
+      ${stat('💰 PS Total', fmtMoney(p.ps_total), totalRank ? '#' + totalRank + ' overall' : '—')}
       ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'awards') : ''}
     </div>
     ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div>` : ''}`;
