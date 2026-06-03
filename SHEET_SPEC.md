@@ -76,13 +76,15 @@ into `apps_script_backend.gs` (`SETTINGS`: password, period, dates). Create a `C
 | key | value | description |
 |-----|-------|-------------|
 | `password` | `devoteam2026` | Access code (overrides the script default) |
-| `last_update` | `2026-06-15T14:30:00Z` | ISO timestamp shown as "Last updated"; if absent the API uses the current time |
+| `last_update` | `2026-06-15T14:30:00Z` | ISO timestamp shown as "Last updated". **Best left blank** — the API then uses the spreadsheet's real last-edit time, which reflects actual data freshness. |
 | `period` | `Week 3 of 5` | Header label |
 | `challenge_start` | `2026-06-01` | |
 | `challenge_end` | `2026-07-03` | |
 
-Auto-updating `last_update` (optional): put `=TEXT(NOW(),"YYYY-MM-DD""T""HH:MM:SS""Z""")`
-in its value cell.
+> ⚠️ Do **not** use `=TEXT(NOW(),…)` for `last_update`: `NOW()` recalculates on every
+> open/edit, so the timestamp would always look "fresh" even when no figures changed.
+> Leave the cell blank (recommended) so the API reports the sheet's true last-edit time,
+> or set a fixed ISO timestamp manually when you publish an update.
 
 ---
 
