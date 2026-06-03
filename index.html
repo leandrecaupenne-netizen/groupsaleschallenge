@@ -2549,7 +2549,9 @@ const CONFIG = {
   SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000, // ignore cached data older than 6h
   WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v1', // ranks snapshot keyed by period (weekly digest)
   WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v1', // computed "what changed" digest for a period
-  INSTALL_DISMISS_KEY: 'devoteam_wc_install_dismissed_v1' // user dismissed/accepted the "install" banner
+  INSTALL_DISMISS_KEY: 'devoteam_wc_install_dismissed_v1', // user dismissed the "install" banner
+  INSTALLED_KEY: 'devoteam_wc_installed_v1',          // we believe the app is installed on this device
+  OPEN_DISMISS_KEY: 'devoteam_wc_open_dismissed_v1'   // user dismissed the "open in the app" nudge
 };
 
 // Reuse the base64 logo already embedded in the header (no duplication).
@@ -2646,7 +2648,8 @@ const I18N = {
     'var.low': '🟨 Low activity — under 5 meetings/week', 'var.gm': '🟨 Low margin — GM below 25%',
     'pwa.title': 'Add to your phone', 'pwa.txt': 'Install the leaderboard for a full-screen, one-tap experience.',
     'pwa.install': '📲 Install', 'pwa.later': 'Not now',
-    'pwa.ios': 'Tap <b>Share</b> <span class="pwa-ios-ic">⎙</span> then <b>“Add to Home Screen”</b> to install.'
+    'pwa.ios': 'Tap <b>Share</b> <span class="pwa-ios-ic">⎙</span> then <b>“Add to Home Screen”</b> to install.',
+    'pwa.open.title': 'App installed ✅', 'pwa.open.txt': 'Open it from your <b>home-screen icon</b> for the full-screen experience.'
   },
 };
 function t(k, vars) {
@@ -7440,8 +7443,8 @@ async function init() {
   // Brand-new visitor? Run the short guided tour (once).
   maybeShowTour();
 
-  // Offer to install the app to the home screen (defers itself if the tour is up).
-  setTimeout(maybeShowInstallBanner, 1500);
+  // Offer to install the app — or, if it's already installed, nudge to open it.
+  setTimeout(maybeShowPwaBanner, 1500);
 
   // Bind the header refresh button once (it lives outside #app, so it survives re-renders).
   const refreshBtn = document.getElementById('refresh-btn');
@@ -7515,11 +7518,13 @@ init().catch(err => {
 // Tick the live countdown every second (no-ops until the footer exists).
 setInterval(updateCountdown, 1000);
 
-// === PWA install banner =====================================================
-// Capture the install opportunity and surface our own discreet prompt. On
-// Android/Chromium the browser fires `beforeinstallprompt`, which we stash so a
-// one-tap Install button can replay it. iOS Safari has no install API, so we
-// detect it and show the manual Share → Add to Home Screen instruction instead.
+// === PWA install / open-in-app banners ======================================
+// One discreet bottom banner that adapts to the situation:
+//  • Not installed → an install offer (Android one-tap via beforeinstallprompt,
+//    or the manual Share → Add to Home Screen hint on iOS Safari).
+//  • Already installed but opened in the browser → a nudge to open the app from
+//    the home-screen icon (no browser lets a page launch an installed app).
+// Hidden entirely when already running standalone, or once dismissed/accepted.
 let deferredInstallPrompt = null;
 
 function isRunningStandalone() {
@@ -7535,76 +7540,124 @@ function isIOSDevice() {
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();        // suppress Chrome's default mini-infobar…
   deferredInstallPrompt = e; // …and keep the event so OUR button can trigger it
-  maybeShowInstallBanner();
+  maybeShowPwaBanner();
 });
 window.addEventListener('appinstalled', () => {
-  safeSet(CONFIG.INSTALL_DISMISS_KEY, '1');
+  safeSet(CONFIG.INSTALLED_KEY, '1'); // remember across browser sessions on this device
   deferredInstallPrompt = null;
-  removeInstallBanner();
+  removeBanner();
+  // They just installed but may still be sitting in the browser tab — once the
+  // install banner is gone, nudge them to open the actual app.
+  setTimeout(maybeShowPwaBanner, 900);
 });
 
-function removeInstallBanner() {
+function removeBanner() {
   const el = document.getElementById('pwa-banner');
   if (!el) return;
   el.classList.add('pwa-out');
   setTimeout(() => el.remove(), 260);
 }
-// Explicit "Not now" / ✕ → don't nag again (the browser menu still offers install).
-function dismissInstall() {
-  safeSet(CONFIG.INSTALL_DISMISS_KEY, '1');
-  removeInstallBanner();
+
+// Best-effort "is this PWA already installed on this device?" — browsers expose no
+// single reliable API, so we combine a flag we persist (set on `appinstalled` or
+// when confirmed below) with getInstalledRelatedApps() (Android/Chromium only),
+// which matches the `webapp` entry declared in the manifest.
+async function isProbablyInstalled() {
+  if (safeGet(CONFIG.INSTALLED_KEY) === '1') return true;
+  if (navigator.getInstalledRelatedApps) {
+    try {
+      const apps = await navigator.getInstalledRelatedApps();
+      if (apps && apps.some(a => a.platform === 'webapp')) {
+        safeSet(CONFIG.INSTALLED_KEY, '1');
+        return true;
+      }
+    } catch (e) { /* unsupported / blocked → fall through */ }
+  }
+  return false;
 }
 
-function maybeShowInstallBanner() {
-  if (!isLoggedIn()) return;                               // never over the login screen
-  if (isRunningStandalone()) return;                       // already installed → nothing to do
-  if (safeGet(CONFIG.INSTALL_DISMISS_KEY) === '1') return; // user accepted or said no
-  if (document.getElementById('pwa-banner')) return;       // already showing
-  if (document.getElementById('tour-ov')) {                // let the welcome tour finish first
-    setTimeout(maybeShowInstallBanner, 2500);
+// Single entry point: pick the install offer OR the "open in the app" nudge,
+// depending on whether the app is already installed.
+async function maybeShowPwaBanner() {
+  if (!isLoggedIn()) return;                          // never over the login screen
+  if (isRunningStandalone()) return;                  // already running in the app → nothing
+  if (document.getElementById('pwa-banner')) return;  // already showing one
+  if (document.getElementById('tour-ov')) {           // let the welcome tour finish first
+    setTimeout(maybeShowPwaBanner, 2500);
     return;
   }
+
+  if (await isProbablyInstalled()) {
+    // Installed, but they're in the browser. No browser lets a page launch an
+    // installed app (security), so we invite them to open it themselves.
+    if (safeGet(CONFIG.OPEN_DISMISS_KEY) === '1') return;
+    showOpenBanner();
+    return;
+  }
+
+  // Not installed → offer to install (Android one-tap, or iOS manual hint).
+  if (safeGet(CONFIG.INSTALL_DISMISS_KEY) === '1') return;
   const ios = isIOSDevice();
-  if (!deferredInstallPrompt && !ios) return;              // not installable here (desktop / unsupported)
+  if (!deferredInstallPrompt && !ios) return;         // not installable here (desktop / unsupported)
+  showInstallBanner(ios);
+}
 
-  const banner = document.createElement('div');
-  banner.id = 'pwa-banner';
-  banner.className = 'pwa-banner' + (deferredInstallPrompt ? '' : ' pwa-ios');
-  banner.setAttribute('role', 'dialog');
-  banner.setAttribute('aria-label', 'Install app');
+function makeBanner(extraClass, inner) {
+  const b = document.createElement('div');
+  b.id = 'pwa-banner';
+  b.className = 'pwa-banner' + (extraClass ? ' ' + extraClass : '');
+  b.setAttribute('role', 'dialog');
+  b.setAttribute('aria-label', 'App');
+  b.innerHTML = inner;
+  document.body.appendChild(b);
+  return b;
+}
 
+function showInstallBanner(ios) {
+  let banner;
   if (deferredInstallPrompt) {
-    banner.innerHTML =
+    banner = makeBanner('',
       '<div class="pwa-icon">📲</div>' +
       '<div class="pwa-body"><div class="pwa-title">' + t('pwa.title') + '</div>' +
       '<div class="pwa-txt">' + t('pwa.txt') + '</div></div>' +
       '<div class="pwa-actions">' +
       '<button class="pwa-install" id="pwa-install-btn">' + t('pwa.install') + '</button>' +
-      '<button class="pwa-later" id="pwa-later-btn">' + t('pwa.later') + '</button></div>';
-  } else {
-    banner.innerHTML =
+      '<button class="pwa-later" id="pwa-later-btn">' + t('pwa.later') + '</button></div>');
+    banner.querySelector('#pwa-install-btn').addEventListener('click', async () => {
+      if (!deferredInstallPrompt) { removeBanner(); return; }
+      deferredInstallPrompt.prompt();
+      let outcome = 'dismissed';
+      try { ({ outcome } = await deferredInstallPrompt.userChoice); } catch (e) {}
+      deferredInstallPrompt = null;
+      if (outcome === 'accepted') safeSet(CONFIG.INSTALLED_KEY, '1');
+      removeBanner(); // if they cancelled the native dialog, we re-offer next visit
+    });
+    banner.querySelector('#pwa-later-btn').addEventListener('click', () => {
+      safeSet(CONFIG.INSTALL_DISMISS_KEY, '1'); removeBanner();
+    });
+  } else { // iOS Safari — no install API, show the manual Share → Add to Home Screen hint
+    banner = makeBanner('pwa-ios',
       '<div class="pwa-icon">📲</div>' +
       '<div class="pwa-body"><div class="pwa-title">' + t('pwa.title') + '</div>' +
       '<div class="pwa-txt">' + t('pwa.ios') + '</div></div>' +
       '<div class="pwa-actions">' +
-      '<button class="pwa-close" id="pwa-close-btn" aria-label="Dismiss">×</button></div>';
+      '<button class="pwa-close" id="pwa-close-btn" aria-label="Dismiss">×</button></div>');
+    banner.querySelector('#pwa-close-btn').addEventListener('click', () => {
+      safeSet(CONFIG.INSTALL_DISMISS_KEY, '1'); removeBanner();
+    });
   }
-  document.body.appendChild(banner);
+}
 
-  const installBtn = banner.querySelector('#pwa-install-btn');
-  if (installBtn) installBtn.addEventListener('click', async () => {
-    if (!deferredInstallPrompt) { removeInstallBanner(); return; }
-    deferredInstallPrompt.prompt();
-    let outcome = 'dismissed';
-    try { ({ outcome } = await deferredInstallPrompt.userChoice); } catch (e) {}
-    deferredInstallPrompt = null;
-    if (outcome === 'accepted') safeSet(CONFIG.INSTALL_DISMISS_KEY, '1');
-    removeInstallBanner(); // if they cancelled the native dialog, we re-offer next visit
+function showOpenBanner() {
+  const banner = makeBanner('pwa-open',
+    '<div class="pwa-icon">✅</div>' +
+    '<div class="pwa-body"><div class="pwa-title">' + t('pwa.open.title') + '</div>' +
+    '<div class="pwa-txt">' + t('pwa.open.txt') + '</div></div>' +
+    '<div class="pwa-actions">' +
+    '<button class="pwa-close" id="pwa-open-close" aria-label="Dismiss">×</button></div>');
+  banner.querySelector('#pwa-open-close').addEventListener('click', () => {
+    safeSet(CONFIG.OPEN_DISMISS_KEY, '1'); removeBanner();
   });
-  const laterBtn = banner.querySelector('#pwa-later-btn');
-  if (laterBtn) laterBtn.addEventListener('click', dismissInstall);
-  const closeBtn = banner.querySelector('#pwa-close-btn');
-  if (closeBtn) closeBtn.addEventListener('click', dismissInstall);
 }
 
 // PWA: register the service worker (https only; silently ignored on file://).
