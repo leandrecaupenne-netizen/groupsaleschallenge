@@ -2355,28 +2355,28 @@ img, table { max-width: 100%; }
 @media (min-width: 1024px) {
   /* UX rule: SHOWCASE contexts (award leaders) go big & crisp; SCAN contexts
      (rankings/lists) stay moderate (~78px) to keep ~9-10 rows visible. */
-  /* Golden Boot / Playmaker chasing-pack rows — scan list → moderate */
-  .ms-row { grid-template-columns: 30px 80px minmax(0, 1fr) clamp(110px, 28%, 210px); }
-  .ms-avatar { width: 80px; height: 80px; font-size: 28px; }
+  /* Golden Boot / Playmaker chasing-pack rows — scan list, nudged up a touch */
+  .ms-row { grid-template-columns: 30px 84px minmax(0, 1fr) clamp(110px, 28%, 210px); }
+  .ms-avatar { width: 84px; height: 84px; font-size: 30px; }
   .ms-avatar-flag { width: 18px; height: 12px; }
-  /* Full ranking list — scan → moderate */
-  .fr-row { grid-template-columns: 34px 78px minmax(0,1fr) auto; }
-  .fr-avatar { width: 78px; height: 78px; font-size: 26px; }
+  /* Full ranking list — scan, nudged up a touch */
+  .fr-row { grid-template-columns: 34px 84px minmax(0,1fr) auto; }
+  .fr-avatar { width: 84px; height: 84px; font-size: 28px; }
   /* Special Awards — showcase. 2-col wide cards give room for big portraits. */
-  .aw-hero-avatar { width: 104px; height: 104px; font-size: 36px; }
-  .aw-mini-avatar { width: 76px; height: 76px; font-size: 24px; }
-  /* Player lists inside team / nation modals — scan → moderate */
-  .member-avatar { width: 78px; height: 78px; font-size: 26px; }
-  /* VAR Room / My Position search / disambiguation picker — scan → moderate */
-  .pic-wrap { width: 78px; height: 78px; }
-  .pic-disc { width: 78px; height: 78px; font-size: 26px; }
+  .aw-hero-avatar { width: 120px; height: 120px; font-size: 40px; }
+  .aw-mini-avatar { width: 84px; height: 84px; font-size: 26px; }
+  /* Player lists inside team / nation modals — scan, nudged up a touch */
+  .member-avatar { width: 84px; height: 84px; font-size: 28px; }
+  /* VAR Room / My Position search / disambiguation picker — scan, nudged up a touch */
+  .pic-wrap { width: 84px; height: 84px; }
+  .pic-disc { width: 84px; height: 84px; font-size: 28px; }
   /* Admin: Coach Room + KPI deep-dive (keep the base 5-column structure) */
-  .coach-row { grid-template-columns: 30px 76px minmax(0, 1.5fr) minmax(60px, 2fr) auto; }
-  .coach-avatar { width: 76px; height: 76px; font-size: 26px; }
-  .cd-row { grid-template-columns: 30px 72px minmax(0, 1.4fr) minmax(60px, 2fr) auto; }
-  .cd-avatar { width: 72px; height: 72px; font-size: 24px; }
+  .coach-row { grid-template-columns: 30px 80px minmax(0, 1.5fr) minmax(60px, 2fr) auto; }
+  .coach-avatar { width: 80px; height: 80px; font-size: 28px; }
+  .cd-row { grid-template-columns: 30px 78px minmax(0, 1.4fr) minmax(60px, 2fr) auto; }
+  .cd-avatar { width: 78px; height: 78px; font-size: 26px; }
   /* Admin: VAR TIME review cards (showcase-ish cards) */
-  .vt-avatar { width: 84px; height: 84px; font-size: 28px; }
+  .vt-avatar { width: 88px; height: 88px; font-size: 30px; }
   /* Coach Room contribution chart */
   .contrib-row { grid-template-columns: 38px 124px 1fr 40px; }
   .contrib-avatar { width: 38px; height: 38px; font-size: 13px; }
