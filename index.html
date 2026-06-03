@@ -663,6 +663,9 @@ input { font-family: inherit; }
   grid-template-columns: repeat(2, 1fr);
   gap: 18px;
 }
+/* Collapse to 1 column below 768px: at 601–767px the 2-col award cards get cramped
+   (squeezed leader card + early name truncation). */
+@media (max-width: 768px) { .awards-grid { grid-template-columns: 1fr; } }
 .award-card {
   background: var(--paper);
   border-radius: 14px;
@@ -2372,9 +2375,10 @@ img, table { max-width: 100%; }
   .aw-mini-avatar { width: 84px; height: 84px; font-size: 26px; }
   /* Player lists inside team / nation modals — scan, nudged up a touch */
   .member-avatar { width: 84px; height: 84px; font-size: 28px; }
-  /* VAR Room / My Position search / disambiguation picker — scan, nudged up a touch */
+  /* VAR Room discs grow via their wrapper (.pic-wrap .pic-disc = 100%). We do NOT
+     scale bare .pic-disc here: the My Position "did you mean" picker & global search
+     rows use an unwrapped .pic-disc and must stay compact (40px) next to one-line text. */
   .pic-wrap { width: 84px; height: 84px; }
-  .pic-disc { width: 84px; height: 84px; font-size: 28px; }
   /* Admin: Coach Room + KPI deep-dive (keep the base 5-column structure) */
   .coach-row { grid-template-columns: 30px 80px minmax(0, 1.5fr) minmax(60px, 2fr) auto; }
   .coach-avatar { width: 80px; height: 80px; font-size: 28px; }
@@ -5429,12 +5433,22 @@ function updateTicker() {
   track.style.animation = '';
 }
 
+// Jump to the My Position tab. MUST be a function declaration: an inline
+// onclick="currentTab='position'" would write a stray window.currentTab (the real
+// one is a lexically-scoped `let`), so the tab wouldn't switch — only the scroll ran.
+function goToPosition() {
+  currentTab = 'position';
+  currentSearch = '';
+  if (typeof setTabUrl === 'function') setTabUrl('position');
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 // One-tap shortcut to the primary user goal ("find myself"), shown on every tab
 // except My Position itself. Survives past the dismissable onboarding hint.
 function renderFindMeCTA() {
   if (currentTab === 'position' || (!teams.length && !people.length)) return '';
   return `<div style="text-align:center;margin:12px 14px 0">
-    <button type="button" onclick="currentTab='position';render();window.scrollTo({top:0,behavior:'smooth'});" style="background:linear-gradient(180deg,#FFE08A,var(--gold));color:#1a1205;font-family:'Anton',Impact,sans-serif;letter-spacing:0.04em;font-size:14px;border:none;border-radius:999px;padding:11px 24px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.25)">🔍 Find your position</button>
+    <button type="button" onclick="goToPosition()" style="background:linear-gradient(180deg,#FFE08A,var(--gold));color:#1a1205;font-family:'Anton',Impact,sans-serif;letter-spacing:0.04em;font-size:14px;border:none;border-radius:999px;padding:13px 24px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.25)">🔍 Find your position</button>
   </div>`;
 }
 
