@@ -1331,12 +1331,14 @@ input { font-family: inherit; }
 @media (max-width: 800px) {
   .members-table-header,
   .members-table-row {
-    grid-template-columns: 40px 1fr 90px 70px;
+    grid-template-columns: 34px 1fr 78px 64px;
     font-size: 11px;
+    padding: 10px 10px;
+    gap: 7px;
   }
   .col-meet, .col-opps, .col-gm { display: none; }
-  .member-avatar { width: 48px; height: 48px; font-size: 16px; }
-  .member-who { gap: 9px; }
+  .member-avatar { width: 40px; height: 40px; font-size: 14px; }
+  .member-who { gap: 8px; }
 }
 
 /* === RESPONSIVE === */
@@ -1704,7 +1706,10 @@ img, table { max-width: 100%; }
   /* Long team / people names wrap instead of pushing layout wider
      (podium handled separately — it must NOT break mid-word). */
   .indiv-name, .indiv-team, .position-name,
-  .modal-title, .member-name, .award-row .name .full-name { overflow-wrap: anywhere; }
+  .modal-title, .award-row .name .full-name { overflow-wrap: anywhere; }
+  /* Player names wrap between first/last name (at spaces), never mid-word,
+     so "Nasser HAMA" stays readable instead of becoming "Nass er HAM A". */
+  .member-name { overflow-wrap: break-word; word-break: normal; }
 
   /* Individual cards a touch more compact */
   .indiv-rank { font-size: 34px; min-width: 38px; }
