@@ -654,6 +654,16 @@ input { font-family: inherit; }
   .ms-val { font-size: 18px; }
   .ms-sub { text-align: left; margin-top: 0; }
 }
+/* Big screens: the leaderboard discs are small (64px) relative to the dominant
+   hero, so they read as soft. Enlarge them — kept ≤96px so the 256px thumbnail
+   still oversamples (crisp) even at 2× device-pixel-ratio. */
+@media (min-width: 1024px) {
+  .ms-row { grid-template-columns: 30px 88px minmax(0, 1fr) clamp(110px, 28%, 210px); }
+  .ms-avatar { width: 88px; height: 88px; font-size: 30px; }
+  .ms-avatar-flag { width: 18px; height: 12px; }
+  .fr-row { grid-template-columns: 34px 64px minmax(0,1fr) auto; }
+  .fr-avatar { width: 64px; height: 64px; font-size: 22px; }
+}
 
 /* === SPECIAL AWARDS === */
 .awards-grid {
