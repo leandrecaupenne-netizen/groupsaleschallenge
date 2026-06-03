@@ -131,9 +131,14 @@ function mockData() {
       await page.screenshot({ path: '/tmp/shots/tv-mode.png' }).catch(() => {});
       await page.tap('#tv-close'); await page.waitForTimeout(200); log('TV mode exits', !(await page.has('#tv-overlay'))); }
 
-    if (await page.has('#theme-btn')) { await page.tap('#theme-btn'); await page.waitForTimeout(200);
-      const theme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-      log('Dark mode toggles', theme === 'dark', `data-theme=${theme}`); }
+    if (await page.has('#theme-btn')) {
+      // Assert the toggle CHANGES the theme — not that it lands on a specific one.
+      // The app auto-starts dark in the evening (after 19h), so a one-tap "must be
+      // dark" check is time-of-day flaky; comparing before/after is deterministic.
+      const before = await page.evaluate(() => document.documentElement.getAttribute('data-theme') || 'light');
+      await page.tap('#theme-btn'); await page.waitForTimeout(200);
+      const after = await page.evaluate(() => document.documentElement.getAttribute('data-theme') || 'light');
+      log('Dark mode toggles', before !== after, `${before} → ${after}`); }
     await ctx.close();
   }
 
