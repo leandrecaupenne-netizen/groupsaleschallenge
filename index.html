@@ -2501,7 +2501,11 @@ function avatarInner(name) {
   const ph = photoThumb(name); // small disc → crisp pre-scaled thumb (not the 1024px source)
   if (!ph) return avatarInitials(name);
   const ini = avatarInitials(name);
-  return `<img class="av-photo" src="${ph}" alt="" loading="lazy" decoding="async" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
+  // Responsive resolution: standard-density screens load the light 256px thumb;
+  // high-DPI screens (4K / retina) load the full 1024px portrait so small discs
+  // are as crisp as the big card. The browser picks per device-pixel-ratio.
+  const full = photoFor(name);
+  return `<img class="av-photo" src="${ph}" srcset="${ph} 1x, ${full} 2x" alt="" loading="lazy" decoding="async" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
 }
 
 // === DATA (populated live from the Apps Script API) ===
