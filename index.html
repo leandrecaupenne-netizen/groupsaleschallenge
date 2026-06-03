@@ -2408,7 +2408,7 @@ img, table { max-width: 100%; }
       <span class="hdr-countdown" id="countdown-live"></span>
       <span class="last-update" id="last-update">Loading...</span>
     </div>
-    <span class="sync-warn" id="sync-warn" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <span class="sync-warn" id="sync-warn" role="status" aria-live="polite" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
     <button id="digest-btn" class="refresh-btn tv-btn" title="This week's recap" aria-label="This week's recap" style="display:none">📰<span class="digest-dot" id="digest-dot"></span></button>
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
     <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
@@ -2433,7 +2433,7 @@ img, table { max-width: 100%; }
   </noscript>
 </div>
 <div id="tv-root"></div>
-<div id="toast-root"></div>
+<div id="toast-root" role="status" aria-live="polite"></div>
 <button id="scroll-top" class="scroll-top" aria-label="Back to top" title="Back to top" hidden>↑</button>
 
 
@@ -2503,17 +2503,18 @@ function avatarInner(name) {
   const ph = photoThumb(name); // small disc → crisp pre-scaled thumb (not the 1024px source)
   if (!ph) return avatarInitials(name);
   const ini = avatarInitials(name);
-  // Responsive resolution: standard-density screens load the light 256px thumb;
-  // high-DPI screens (4K / retina) load the full 1024px portrait so small discs
-  // are as crisp as the big card. The browser picks per device-pixel-ratio.
-  const full = photoFor(name);
-  return `<img class="av-photo" src="${ph}" srcset="${ph} 1x, ${full} 2x" alt="" loading="lazy" decoding="async" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
+  // Small discs always use the 256px sharpened thumb. It covers every list size up
+  // to ~96px even at 2× density, so we deliberately do NOT pull the 1024px card here
+  // (that would load ~5MB of portraits on a busy HiDPI VAR Room). The hero/player
+  // card uses the full 1024px directly via photoFor().
+  return `<img class="av-photo" src="${ph}" alt="" loading="lazy" decoding="async" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
 }
 
 // === DATA (populated live from the Apps Script API) ===
 let DATA = null;
 let teams = [], people = [], updated_at = null, period = '', challenge_dates = {}, specialAwards = {};
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
+let dataWarnings = []; // backend column-mapping warnings (shown to admins only)
 
 // === STATE ===
 // === Strings (English only — neutral common language for an international challenge) ===
@@ -2606,6 +2607,16 @@ const formatDate = iso => {
     return d.toLocaleString('en-GB', {day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
   } catch { return String(iso); }
 };
+// Date-only formatter for the challenge start/end (no time), e.g. "01 Jun 2026".
+const formatDateShort = iso => {
+  if (!iso) return '';
+  try {
+    let d = new Date(iso);
+    if (isNaN(d.getTime())) d = new Date(String(iso).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'});
+  } catch { return String(iso); }
+};
 
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -2661,7 +2672,8 @@ async function fetchData(fresh) {
     if (data.error) throw new Error(data.error);
     // Backend flags any sheet column it couldn't map (e.g. a renamed OneBI header).
     // Surface it loudly in the console rather than silently showing zeroed rankings.
-    if (data.warnings && data.warnings.length) console.warn('⚠ Data warnings from backend:', data.warnings);
+    dataWarnings = data.warnings || [];
+    if (dataWarnings.length) console.warn('⚠ Data warnings from backend:', dataWarnings);
 
     DATA = data;
     teams = data.teams || [];
@@ -2763,6 +2775,10 @@ function buildWeekSnapshot() {
 // Compute the digest from a previous snapshot vs the current standings.
 function computeWeekDigest(prev) {
   if (!prev) return null;
+  // Defensive: a snapshot saved by an older deploy may lack some maps — default
+  // them so reading prev.total[name]/prev.cards[name] can't throw mid-poll.
+  prev.total = prev.total || {}; prev.cards = prev.cards || {};
+  prev.golden = prev.golden || {}; prev.playmaker = prev.playmaker || {}; prev.teams = prev.teams || {};
   const d = { period: period || '', prevPeriod: prev.period || '', climbers: [], newLeaders: [], newCards: [], newTop10: [] };
   // New #1s across the three main boards.
   const leaderChecks = [
@@ -3078,7 +3094,18 @@ function animateCountUps() {
 
 function renderHero() {
   const top3 = sortedTeams.slice(0,3);
-  if (top3.length < 3) return '';
+  // Early in the challenge (fewer than 3 ranked teams) show a "warming up"
+  // placeholder instead of an empty top-of-page that looks broken.
+  if (top3.length < 3) {
+    return `
+    <div class="hero">
+      <div class="hero-inner" style="text-align:center">
+        <div class="hero-eyebrow">${t('hero.eyebrow')}</div>
+        <h1 class="hero-title">🏆 Standings warming up</h1>
+        <p class="hero-desc">First results are landing — the podium appears as soon as the first teams are ranked.</p>
+      </div>
+    </div>`;
+  }
 
   return `
     <div class="hero">
@@ -5311,7 +5338,7 @@ function renderFooter() {
   return `
     <footer class="app-footer">
       <div class="countdown">${t('foot.final')}</div>
-      <div>${t('foot.runs', { a: challenge_dates.start, b: challenge_dates.end })}</div>
+      <div>${t('foot.runs', { a: formatDateShort(challenge_dates.start), b: formatDateShort(challenge_dates.end) })}</div>
       <div style="margin-top:8px;opacity:0.6">${t('foot.data')}</div>
     </footer>
   `;
@@ -5364,7 +5391,18 @@ function render() {
     case 'coach': content = isAdmin() ? renderCoachRoom() : renderTeamRanking(); break;
   }
 
+  // Banners: admin-only data-warning (a Sheet column didn't map → rankings may be
+  // wrong) and a friendly empty-data notice (Sheet returned nothing yet).
+  let banners = '';
+  if (isAdmin() && dataWarnings.length) {
+    banners += `<div style="background:#7f1d1d;color:#fff;padding:10px 16px;font-size:13px;text-align:center;line-height:1.4">⚠ <b>Data issue (admin):</b> ${dataWarnings.length} sheet column(s) didn't match — some rankings may be incomplete. <span style="opacity:.8">${escapeHtml(dataWarnings.slice(0,3).join(' · '))}</span></div>`;
+  }
+  if (!teams.length && !people.length) {
+    banners += `<div style="background:var(--navy-2);color:var(--gold);padding:12px 16px;font-size:13px;text-align:center">⏳ No results yet — the leaderboard will fill in as soon as the data lands.</div>`;
+  }
+
   document.getElementById('app').innerHTML = `
+    ${banners}
     ${renderHero()}
     ${renderTabs()}
     ${renderIntroHint()}
@@ -6168,17 +6206,17 @@ function openDigest() {
     if (d.climbers.length) sections.push(`
       <div class="digest-section">
         <h3 class="digest-h">📈 Biggest climbers <span class="digest-sub">PS Total rank</span></h3>
-        ${d.climbers.map(c => digestRow('▲', `<b data-jump="${c.name}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em> — up <b>${c.jump}</b> (#${c.from}→#${c.to})`)).join('')}
+        ${d.climbers.map(c => digestRow('▲', `<b data-jump="${escapeHtml(c.name)}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em> — up <b>${c.jump}</b> (#${c.from}→#${c.to})`)).join('')}
       </div>`);
     if (d.newTop10.length) sections.push(`
       <div class="digest-section">
         <h3 class="digest-h">⭐ New in the Top 10 <span class="digest-sub">PS Total</span></h3>
-        ${d.newTop10.map(x => digestRow('🔟', `<b data-jump="${x.name}" class="digest-name">${escapeHtml(x.name)}</b> <em>${escapeHtml(x.team)}</em> — now #${x.rank}`)).join('')}
+        ${d.newTop10.map(x => digestRow('🔟', `<b data-jump="${escapeHtml(x.name)}" class="digest-name">${escapeHtml(x.name)}</b> <em>${escapeHtml(x.team)}</em> — now #${x.rank}`)).join('')}
       </div>`);
     if (d.newCards.length) sections.push(`
       <div class="digest-section">
         <h3 class="digest-h">🟨 New yellow cards</h3>
-        ${d.newCards.map(c => digestRow('🟨', `<b data-jump="${c.name}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em>`)).join('')}
+        ${d.newCards.map(c => digestRow('🟨', `<b data-jump="${escapeHtml(c.name)}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em>`)).join('')}
       </div>`);
     body = sections.join('');
   }
