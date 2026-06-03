@@ -2649,7 +2649,8 @@ const I18N = {
     'pwa.title': 'Add to your phone', 'pwa.txt': 'Install the leaderboard for a full-screen, one-tap experience.',
     'pwa.install': '📲 Install', 'pwa.later': 'Not now',
     'pwa.ios': 'Tap <b>Share</b> <span class="pwa-ios-ic">⎙</span> then <b>“Add to Home Screen”</b> to install.',
-    'pwa.open.title': 'App installed ✅', 'pwa.open.txt': 'Open it from your <b>home-screen icon</b> for the full-screen experience.'
+    'pwa.open.title': 'App installed ✅', 'pwa.open.btn': '↗ Open app',
+    'pwa.open.txt': 'Open it for the full-screen experience. If it doesn’t switch over, tap your <b>home-screen icon</b>.'
   },
 };
 function t(k, vars) {
@@ -7654,14 +7655,26 @@ function showInstallBanner(ios) {
   }
 }
 
+// Best-effort hand-off to the installed app. A fresh top-level navigation to the
+// in-scope start URL is what Android/Chromium link-capturing (handle_links in the
+// manifest) redirects into the installed PWA. Where the OS doesn't support it, this
+// just opens the page — harmless — and the banner text tells them to use the icon.
+function openInstalledApp() {
+  const url = location.origin + '/';
+  try { window.open(url, '_blank', 'noopener'); }
+  catch (e) { location.href = url; }
+}
+
 function showOpenBanner() {
   const banner = makeBanner('pwa-open',
     '<div class="pwa-icon">✅</div>' +
     '<div class="pwa-body"><div class="pwa-title">' + t('pwa.open.title') + '</div>' +
     '<div class="pwa-txt">' + t('pwa.open.txt') + '</div></div>' +
     '<div class="pwa-actions">' +
-    '<button class="pwa-close" id="pwa-open-close" aria-label="Dismiss">×</button></div>');
-  banner.querySelector('#pwa-open-close').addEventListener('click', () => {
+    '<button class="pwa-install" id="pwa-open-btn">' + t('pwa.open.btn') + '</button>' +
+    '<button class="pwa-later" id="pwa-open-later">' + t('pwa.later') + '</button></div>');
+  banner.querySelector('#pwa-open-btn').addEventListener('click', openInstalledApp);
+  banner.querySelector('#pwa-open-later').addEventListener('click', () => {
     safeSet(CONFIG.OPEN_DISMISS_KEY, '1'); removeBanner();
   });
 }

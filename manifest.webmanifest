@@ -16,5 +16,7 @@
   "prefer_related_applications": false,
   "related_applications": [
     { "platform": "webapp", "url": "https://groupsaleschallenge.vercel.app/manifest.webmanifest" }
-  ]
+  ],
+  "handle_links": "preferred",
+  "launch_handler": { "client_mode": "navigate-existing" }
 }
