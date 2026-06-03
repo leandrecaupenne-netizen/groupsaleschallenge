@@ -32,6 +32,14 @@
   --silver: #9CA3AF;
   --bronze: #B45309;
 }
+/* Keyboard-only focus ring: visible when tabbing with a keyboard, never on
+   mouse/touch (so the pointer experience is unchanged). Accessibility. */
+:focus-visible { outline: none; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+[tabindex]:focus-visible, [role="button"]:focus-visible, .tab-btn:focus-visible,
+.podium-card:focus-visible, .teams-table-row:focus-visible, .ms-row:focus-visible {
+  outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 6px;
+}
 /* Dark mode: flip the neutral surfaces; brand accents (navy/gold/red/green) stay.
    Surfaces are kept distinctly lighter than the hero band so content pops. */
 :root[data-theme="dark"] {
