@@ -1609,6 +1609,49 @@ input { font-family: inherit; }
 @media (max-width: 600px) { .intro-hint { margin: 10px 14px 0; flex-wrap: wrap; } .intro-hint-txt { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .intro-hint, .intro-hint.intro-hint-out { animation: none; } }
 
+/* === "Install this app" banner (PWA) ===
+   A discreet, dismissible bottom sheet. On Android/Chromium it carries a real
+   one-tap Install button (driven by the captured beforeinstallprompt event); on
+   iOS Safari — which has no install API — it shows the Share → Add to Home Screen
+   instruction instead. Hidden entirely once installed or dismissed. */
+.pwa-banner {
+  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 9000;
+  max-width: 520px; margin: 0 auto;
+  display: flex; align-items: center; gap: 13px;
+  padding: 14px 16px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #fff;
+  border: 1px solid rgba(242,199,92,0.45);
+  border-radius: 16px;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.40);
+  animation: pwaUp 0.34s cubic-bezier(0.16,1,0.3,1) both;
+}
+.pwa-banner.pwa-out { animation: pwaUp 0.25s ease reverse forwards; }
+.pwa-icon { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+  background: rgba(242,199,92,0.15); }
+.pwa-body { flex: 1 1 auto; min-width: 0; }
+.pwa-title { font-weight: 800; font-size: 14px; letter-spacing: 0.01em; }
+.pwa-txt { font-size: 12px; line-height: 1.4; color: rgba(255,255,255,0.82); margin-top: 2px; }
+.pwa-txt b { color: var(--gold); font-weight: 700; }
+.pwa-ios-ic { display: inline-block; transform: translateY(1px); }
+.pwa-actions { flex: 0 0 auto; display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.pwa-install { background: var(--usa-red); color: #fff; font-weight: 800; font-size: 13px;
+  letter-spacing: 0.02em; border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+  white-space: nowrap; transition: background 0.15s; }
+.pwa-install:hover { background: #A00D26; }
+.pwa-later { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 11px;
+  cursor: pointer; padding: 4px; }
+.pwa-later:hover { color: #fff; }
+/* iOS variant: no install button, the instruction sits inline + a close ✕. */
+.pwa-banner.pwa-ios .pwa-actions { align-self: flex-start; }
+.pwa-close { background: rgba(255,255,255,0.12); color: #fff; border: none; width: 30px; height: 30px;
+  border-radius: 50%; font-size: 17px; line-height: 1; cursor: pointer; flex: 0 0 auto; }
+.pwa-close:hover { background: rgba(255,255,255,0.25); }
+@keyframes pwaUp { from { opacity: 0; transform: translateY(120%); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .pwa-banner, .pwa-banner.pwa-out { animation: none; } }
+
 /* First-visit guided tour — a short, dismissible 3-step welcome overlay. */
 .tour-ov { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
   padding: 20px; background: radial-gradient(120% 120% at 50% 0%, rgba(30,42,120,0.82), rgba(11,16,46,0.92));
@@ -2505,7 +2548,8 @@ const CONFIG = {
   SNAPSHOT_KEY: 'devoteam_wc_data_v1', // last successful payload → instant paint on return
   SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000, // ignore cached data older than 6h
   WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v1', // ranks snapshot keyed by period (weekly digest)
-  WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v1' // computed "what changed" digest for a period
+  WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v1', // computed "what changed" digest for a period
+  INSTALL_DISMISS_KEY: 'devoteam_wc_install_dismissed_v1' // user dismissed/accepted the "install" banner
 };
 
 // Reuse the base64 logo already embedded in the header (no duplication).
@@ -2599,7 +2643,10 @@ const I18N = {
     'teams.clickHint': '→ click to see members', 'teams.noresult': 'No teams match your search.',
     'golden.sub': 'Most Goals · Top 5 Salespeople based on PS Bookings New Business',
     'playmaker.sub': 'Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, > €50K)',
-    'var.low': '🟨 Low activity — under 5 meetings/week', 'var.gm': '🟨 Low margin — GM below 25%'
+    'var.low': '🟨 Low activity — under 5 meetings/week', 'var.gm': '🟨 Low margin — GM below 25%',
+    'pwa.title': 'Add to your phone', 'pwa.txt': 'Install the leaderboard for a full-screen, one-tap experience.',
+    'pwa.install': '📲 Install', 'pwa.later': 'Not now',
+    'pwa.ios': 'Tap <b>Share</b> <span class="pwa-ios-ic">⎙</span> then <b>“Add to Home Screen”</b> to install.'
   },
 };
 function t(k, vars) {
@@ -7393,6 +7440,9 @@ async function init() {
   // Brand-new visitor? Run the short guided tour (once).
   maybeShowTour();
 
+  // Offer to install the app to the home screen (defers itself if the tour is up).
+  setTimeout(maybeShowInstallBanner, 1500);
+
   // Bind the header refresh button once (it lives outside #app, so it survives re-renders).
   const refreshBtn = document.getElementById('refresh-btn');
   if (refreshBtn && !refreshBtn.dataset.bound) {
@@ -7464,6 +7514,98 @@ init().catch(err => {
 
 // Tick the live countdown every second (no-ops until the footer exists).
 setInterval(updateCountdown, 1000);
+
+// === PWA install banner =====================================================
+// Capture the install opportunity and surface our own discreet prompt. On
+// Android/Chromium the browser fires `beforeinstallprompt`, which we stash so a
+// one-tap Install button can replay it. iOS Safari has no install API, so we
+// detect it and show the manual Share → Add to Home Screen instruction instead.
+let deferredInstallPrompt = null;
+
+function isRunningStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true; // iOS home-screen launch
+}
+function isIOSDevice() {
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPad|iPod/.test(ua) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS poses as Mac
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();        // suppress Chrome's default mini-infobar…
+  deferredInstallPrompt = e; // …and keep the event so OUR button can trigger it
+  maybeShowInstallBanner();
+});
+window.addEventListener('appinstalled', () => {
+  safeSet(CONFIG.INSTALL_DISMISS_KEY, '1');
+  deferredInstallPrompt = null;
+  removeInstallBanner();
+});
+
+function removeInstallBanner() {
+  const el = document.getElementById('pwa-banner');
+  if (!el) return;
+  el.classList.add('pwa-out');
+  setTimeout(() => el.remove(), 260);
+}
+// Explicit "Not now" / ✕ → don't nag again (the browser menu still offers install).
+function dismissInstall() {
+  safeSet(CONFIG.INSTALL_DISMISS_KEY, '1');
+  removeInstallBanner();
+}
+
+function maybeShowInstallBanner() {
+  if (!isLoggedIn()) return;                               // never over the login screen
+  if (isRunningStandalone()) return;                       // already installed → nothing to do
+  if (safeGet(CONFIG.INSTALL_DISMISS_KEY) === '1') return; // user accepted or said no
+  if (document.getElementById('pwa-banner')) return;       // already showing
+  if (document.getElementById('tour-ov')) {                // let the welcome tour finish first
+    setTimeout(maybeShowInstallBanner, 2500);
+    return;
+  }
+  const ios = isIOSDevice();
+  if (!deferredInstallPrompt && !ios) return;              // not installable here (desktop / unsupported)
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-banner';
+  banner.className = 'pwa-banner' + (deferredInstallPrompt ? '' : ' pwa-ios');
+  banner.setAttribute('role', 'dialog');
+  banner.setAttribute('aria-label', 'Install app');
+
+  if (deferredInstallPrompt) {
+    banner.innerHTML =
+      '<div class="pwa-icon">📲</div>' +
+      '<div class="pwa-body"><div class="pwa-title">' + t('pwa.title') + '</div>' +
+      '<div class="pwa-txt">' + t('pwa.txt') + '</div></div>' +
+      '<div class="pwa-actions">' +
+      '<button class="pwa-install" id="pwa-install-btn">' + t('pwa.install') + '</button>' +
+      '<button class="pwa-later" id="pwa-later-btn">' + t('pwa.later') + '</button></div>';
+  } else {
+    banner.innerHTML =
+      '<div class="pwa-icon">📲</div>' +
+      '<div class="pwa-body"><div class="pwa-title">' + t('pwa.title') + '</div>' +
+      '<div class="pwa-txt">' + t('pwa.ios') + '</div></div>' +
+      '<div class="pwa-actions">' +
+      '<button class="pwa-close" id="pwa-close-btn" aria-label="Dismiss">×</button></div>';
+  }
+  document.body.appendChild(banner);
+
+  const installBtn = banner.querySelector('#pwa-install-btn');
+  if (installBtn) installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) { removeInstallBanner(); return; }
+    deferredInstallPrompt.prompt();
+    let outcome = 'dismissed';
+    try { ({ outcome } = await deferredInstallPrompt.userChoice); } catch (e) {}
+    deferredInstallPrompt = null;
+    if (outcome === 'accepted') safeSet(CONFIG.INSTALL_DISMISS_KEY, '1');
+    removeInstallBanner(); // if they cancelled the native dialog, we re-offer next visit
+  });
+  const laterBtn = banner.querySelector('#pwa-later-btn');
+  if (laterBtn) laterBtn.addEventListener('click', dismissInstall);
+  const closeBtn = banner.querySelector('#pwa-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', dismissInstall);
+}
 
 // PWA: register the service worker (https only; silently ignored on file://).
 // When a new worker takes control after a deploy, reload once so users always
