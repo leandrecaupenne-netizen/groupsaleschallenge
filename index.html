@@ -4287,7 +4287,7 @@ function awardMiniRow(p, rank, stat) {
   const c = colorForTeam(p.team);
   return `
     <div class="aw-mini" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
-      <span class="aw-mini-rank">${['', '🥈', '🥉'][rank] || ('#' + rank)}</span>
+      <span class="aw-mini-rank">${['', '🥇', '🥈', '🥉'][rank] || ('#' + rank)}</span>
       <span class="aw-mini-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--tc:${c}">${avatarInner(p.name)}</span>
       <span class="aw-mini-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="aw-mini-stat">${stat}</span>
