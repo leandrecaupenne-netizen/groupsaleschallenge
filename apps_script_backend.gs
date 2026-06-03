@@ -232,7 +232,9 @@ function dataResponse(fresh) {
       const tenure = String(p.tenure || '');
       return Object.assign({}, p, {
         is_rookie: tenure.indexOf('months') !== -1 || tenure.indexOf('<') !== -1,
-        yellow_meetings: (p.meetings || 0) < 5,
+        // Only flag a yellow card once the player has live data — otherwise a blank
+        // `meetings` column at challenge start would flag every player.
+        yellow_meetings: (p.meetings || 0) < 5 && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0),
         yellow_gm: (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0
       });
     });

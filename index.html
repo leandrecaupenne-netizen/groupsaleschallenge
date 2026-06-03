@@ -2593,8 +2593,8 @@ const fmtMoney = n => {
   if (n >= 1000) return `€${(n/1000).toFixed(0)}K`;
   return `€${n.toFixed(0)}`;
 };
-const fmtPct = n => n ? `${(n*100).toFixed(1)}%` : '—';
-const fmtNum = (n, d=1) => n ? n.toFixed(d) : '—';
+const fmtPct = n => (n == null || !isFinite(n)) ? '—' : `${(n*100).toFixed(1)}%`;
+const fmtNum = (n, d=1) => (n == null || !isFinite(n)) ? '—' : n.toFixed(d);
 
 const formatDate = iso => {
   if (!iso) return '';
@@ -2616,6 +2616,11 @@ const hashStr = s => {
   return Math.abs(h);
 };
 const colorForTeam = team => team ? TEAM_COLORS[hashStr(team) % TEAM_COLORS.length] : TEAM_COLORS[0];
+// Normalised team comparison: OneBI can drift in case/spacing between the Team
+// Ranking and Challenge Ranking tabs; an exact === match would then show an empty
+// squad in the team drilldown. Compare on a canonical (trim/upper/collapsed) key.
+const teamKey = s => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, ' ');
+const sameTeam = (a, b) => teamKey(a) === teamKey(b);
 
 // True if a leader change of `type` happened recently (drives the gold flash).
 const isFlashing = type => flash[type] && flash[type] > Date.now();
@@ -2627,7 +2632,7 @@ function computeRankings() {
   sortedPlaymaker = [...people].sort((a,b) => (b.opps||0) - (a.opps||0));
   sortedPSTotal = [...people].sort((a,b) => (b.ps_total||0) - (a.ps_total||0));
   sortedLicence = [...people].filter(p => p.licence_gm > 0).sort((a,b) => (b.licence_gm||0) - (a.licence_gm||0));
-  sortedRookies = [...people].filter(p => p.is_rookie).sort((a,b) => (b.ps_nb||0) - (a.ps_nb||0));
+  sortedRookies = [...people].filter(p => p.is_rookie && p.ps_nb > 0).sort((a,b) => (b.ps_nb||0) - (a.ps_nb||0));
 }
 
 // === LIVE: data fetching ===
@@ -2665,6 +2670,16 @@ async function fetchData(fresh) {
     period = data.period || '';
     challenge_dates = data.challenge_dates || {};
     specialAwards = data.special_awards || {};
+
+    // Defensive: recompute discipline flags client-side so a blank/zero `meetings`
+    // column at challenge start doesn't flag all 377 players with a yellow card.
+    // (The backend guards yellow_gm but not yellow_meetings; this keeps both correct
+    // even before the Apps Script is redeployed.)
+    people.forEach(p => {
+      const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
+      p.yellow_meetings = hasData && (p.meetings || 0) < 5;
+      p.yellow_gm = (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0;
+    });
 
     computeRankings();
     initSnapshotOnce();
@@ -5063,13 +5078,13 @@ function computeHonours(p, r) {
 
 function renderTeamModal() {
   if (!openTeamModal) return '';
-  const team = teams.find(t => t.country === openTeamModal);
+  const team = teams.find(t => sameTeam(t.country, openTeamModal));
   if (!team) return '';
 
-  const teamRank = sortedTeams.findIndex(t => t.country === openTeamModal) + 1;
+  const teamRank = sortedTeams.findIndex(t => sameTeam(t.country, openTeamModal)) + 1;
   const members = people
-    .filter(p => p.team === openTeamModal)
-    .sort((a, b) => b.ps_total - a.ps_total);
+    .filter(p => sameTeam(p.team, openTeamModal))
+    .sort((a, b) => (b.ps_total||0) - (a.ps_total||0));
 
   return `
     <div class="modal-overlay" id="modal-overlay">
