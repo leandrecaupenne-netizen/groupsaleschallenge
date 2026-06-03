@@ -7704,10 +7704,19 @@ if ('serviceWorker' in navigator) {
       location.reload();
     });
   }
+  let swReg = null;
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js').then(reg => {
+      swReg = reg;
       reg.update().catch(() => {}); // proactively check for a new build each load
     }).catch(() => {});
+  });
+  // A PWA resumed from the background never re-navigates, so it can sit on stale
+  // code indefinitely (only the data kept polling). Re-check for a new build every
+  // time the app returns to the foreground; if one is found it activates and the
+  // controllerchange handler above reloads us onto the fresh version.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && swReg) swReg.update().catch(() => {});
   });
 }
 </script>
