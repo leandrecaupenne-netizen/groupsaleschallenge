@@ -96,6 +96,8 @@ function mockData() {
       await page.waitForTimeout(250);
       const active = await page.$eval('.tab-btn.active', e => e.dataset.tab).catch(() => null);
       log('CTA "Find your position" switches to My Position', active === 'position' && !!(await page.$('#position-search')), `active=${active}`);
+      const inView = await page.evaluate(() => { const e = document.getElementById('position-search'); if (!e) return false; const r = e.getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; });
+      log('CTA reveals the search field in view (not stuck on the hero)', inView);
     } else log('CTA "Find your position" present', false);
 
     // My Position search + fuzzy + graceful no-match.

@@ -5441,7 +5441,18 @@ function goToPosition() {
   currentSearch = '';
   if (typeof setTabUrl === 'function') setTabUrl('position');
   render();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Scroll to the My Position CONTENT (just under the sticky tabs), NOT top:0 —
+  // top:0 would show the hero/podium and leave the search field off-screen.
+  const sec = document.querySelector('#app .section');
+  if (sec) {
+    const tb = document.querySelector('.tabs-wrap');
+    const y = sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8);
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+  }
+  // Focus the search so the user can type their name straight away (the click is a
+  // user gesture, so this also brings up the mobile keyboard).
+  const inp = document.getElementById('position-search');
+  if (inp) { try { inp.focus({ preventScroll: true }); } catch (e) {} }
 }
 // One-tap shortcut to the primary user goal ("find myself"), shown on every tab
 // except My Position itself. Survives past the dismissable onboarding hint.
