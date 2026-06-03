@@ -2478,7 +2478,7 @@ function nameSlug(name) {
 // Returns the photo URL for a player if we have one, else ''.
 // The ?v= tag is bumped whenever the card art changes, so browsers fetch the
 // new image even though the filename is stable (defeats any stale HTTP cache).
-const CARD_VER = '7';
+const CARD_VER = '8';
 function photoFor(name) {
   const slug = nameSlug(name);
   return CARD_PHOTOS.has(slug) ? `cards/${slug}.webp?v=${CARD_VER}` : '';
