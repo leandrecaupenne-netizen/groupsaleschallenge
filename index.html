@@ -5542,7 +5542,7 @@ function goToPosition() {
 // except My Position itself. Survives past the dismissable onboarding hint.
 function renderFindMeCTA() {
   if (currentTab === 'position' || (!teams.length && !people.length)) return '';
-  return `<div style="text-align:center;margin:12px 14px 0">
+  return `<div style="text-align:center;margin:12px 14px 16px">
     <button type="button" id="find-me-btn" style="background:linear-gradient(180deg,#FFE08A,var(--gold));color:#1a1205;font-family:'Anton',Impact,sans-serif;letter-spacing:0.04em;font-size:14px;border:none;border-radius:999px;padding:13px 24px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.25)">🔍 Find your position</button>
   </div>`;
 }
