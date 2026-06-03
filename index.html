@@ -5951,6 +5951,11 @@ function render() {
       }
     }, 120);
     posSearch.addEventListener('input', e => { positionQuery = e.target.value; apply(); });
+    // Let the mobile "Go/Enter" key dismiss the keyboard once the name is typed,
+    // instead of the field forcing focus back on every keystroke.
+    posSearch.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); posSearch.blur(); }
+    });
   }
   // Holographic tilt on the My Position card.
   if (currentTab === 'position') attachHolo(document.querySelector('.position-card-wrap .pc-card'));
