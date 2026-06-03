@@ -920,7 +920,7 @@ input { font-family: inherit; }
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.1s;
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 10px;
 }
 .suggestion-item + .suggestion-item { border-top: 1px solid var(--line); }
 .suggestion-item:hover { background: var(--cream); }
@@ -1849,6 +1849,7 @@ img, table { max-width: 100%; }
 .tv-clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, background 0.15s; }
 .tv-hero.tv-clickable:hover { transform: translateY(-0.5vmin) scale(1.015); box-shadow: 0 3vmin 6vmin rgba(0,0,0,0.4); }
 .tv-ms-row.tv-clickable:hover { background: rgba(255,255,255,0.16); transform: translateX(0.4vmin); }
+.tv-row.tv-clickable:hover { background: rgba(255,255,255,0.14); transform: translateX(0.4vmin); }
 /* The player card sits above the TV overlay (z-index 1000). */
 .tv-player-overlay { z-index: 1200; }
 /* When the squad (team modal) is hosted in the TV overlay, lift its inner
@@ -1947,6 +1948,17 @@ img, table { max-width: 100%; }
 .var-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-top: 1px solid var(--line); }
 .var-row:first-of-type { border-top: none; }
 .var-card { font-size: 18px; }
+/* Reusable round player thumbnail for list rows (VAR Room, My Position search,
+   disambiguation picker): the 256px thumb when we have a photo, else a
+   team-coloured initials disc. */
+.pic-disc {
+  position: relative; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Anton', Impact, sans-serif; font-size: 14px; color: #fff;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--ac, var(--navy)) 78%, #fff 0%), color-mix(in srgb, var(--ac, var(--navy)) 55%, #000 25%));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.pic-disc-card { position: absolute; bottom: -3px; right: -4px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }
 .var-name { flex: 1; font-weight: 700; font-size: 14px; }
 .var-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
 .var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
@@ -2035,10 +2047,10 @@ img, table { max-width: 100%; }
 .search-modal-body { padding: 8px 22px 24px; }
 .search-modal-body .search-input { width: 100%; }
 .search-results { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
-.search-result { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left;
+.search-result { display: flex; align-items: center; gap: 12px; text-align: left;
   padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; transition: background 0.12s; }
 .search-result:hover { background: var(--cream); }
-.sr-name { font-weight: 700; font-size: 14px; }
+.sr-name { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; }
 .sr-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
 .sr-stat { font-family: ui-monospace, monospace; font-size: 12px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
 
@@ -3750,7 +3762,7 @@ function renderVAR() {
 
   const row = (p, val, icon, cls) => `
     <div class="var-row var-click ${cls || ''}" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
-      <span class="var-card">${icon}</span>
+      <span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}<span class="pic-disc-card">${icon}</span></span>
       <span class="var-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
       <span class="var-val">${val}</span>
     </div>`;
@@ -4400,6 +4412,7 @@ function renderMyPosition() {
               <ul class="suggestion-list">
                 ${matches.slice(0, 8).map(p => `
                   <li class="suggestion-item" data-name="${escapeHtml(p.name)}">
+                    <span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
                     <span class="suggestion-name">${escapeHtml(p.name)}</span>
                     <span class="suggestion-team">· ${escapeHtml(p.team)}</span>
                   </li>
@@ -6237,6 +6250,7 @@ function openSearch() {
     box.innerHTML = list.length ? (list.map(p => {
       const tRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
       return `<button class="search-result" data-name="${escapeHtml(p.name)}">
+        <span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
         <span class="sr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
         <span class="sr-stat">${fmtMoney(p.ps_total)}${tRank ? ` · #${tRank}` : ''}</span></button>`;
     }).join('') + (total > 40 ? `<div class="var-more">+ ${total - 40} more — refine your search</div>` : ''))
@@ -6598,7 +6612,7 @@ function tvMatchSheet(items, opts) {
 }
 function tvPersonRow(i, p, val) {
   const medal = ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1));
-  return `<div class="tv-row${i === 0 ? ' lead' : ''}">
+  return `<div class="tv-row tv-clickable${i === 0 ? ' lead' : ''}" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">
     <span class="tv-pos">${medal}</span>
     <span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
     <span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span>
@@ -6631,7 +6645,7 @@ function tvPanelHTML(kind) {
       if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk <em>(needs 5)</em>`);
       if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)} <em>(needs 25%)</em>`);
       const av = `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}<span class="tv-avatar-card">🟨</span></span>`;
-      return `<div class="tv-row">${av}<span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
+      return `<div class="tv-row tv-clickable" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">${av}<span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
     }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;
     const sub = n ? `Top ${shown} by PS Total · ${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red` : 'two yellows make a red';
     return tvSection('🟨 VAR ROOM — ON A YELLOW CARD', sub, rows);
