@@ -2602,7 +2602,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v23';
+const BUILD = 'v24';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2709,7 +2709,7 @@ const I18N = {
     'pos.title': '🔍 MY POSITION', 'pos.sub': 'Type your name to find your ranking in the Sales Challenge', 'pos.searchPh': 'Type your name (e.g. Vincent CHEVALIER)',
     'pos.start': 'Start typing your name above ↑', 'pos.none': 'No salesperson found with that name. Check spelling or try last name only.',
     'login.sub': 'Sales Challenge 2026 — Internal Access', 'login.ph': 'Enter access code', 'login.btn': 'ACCESS THE LEADERBOARD',
-    'login.bad': 'Incorrect access code. Try again.', 'login.err': 'Could not reach the server. Check your connection and retry.', 'login.checking': 'CHECKING...',
+    'login.bad': 'Incorrect access code. Try again.', 'login.err': 'Could not reach the server. Check your connection and retry.', 'login.checking': 'CHECKING...', 'login.waking': '⏳ WAKING THE LIVE DATA…',
     'load.title': 'WARMING UP', 'load.sub': 'Loading the live leaderboard…',
     'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
     'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
@@ -7506,7 +7506,11 @@ async function init() {
         if (!pwd) return;
         btn.textContent = t('login.checking');
         btn.disabled = true;
+        // If the Apps Script back-end is cold, the first request can take a few
+        // seconds. Reassure after 2.5s so a slow first login doesn't look frozen.
+        const wakeTimer = setTimeout(() => { btn.textContent = t('login.waking'); }, 2500);
         const ok = await attemptLogin(pwd);
+        clearTimeout(wakeTimer);
         if (ok === true) {
           init(); // re-init now that we're authenticated
         } else if (ok === false) {
