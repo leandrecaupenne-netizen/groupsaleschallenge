@@ -2538,7 +2538,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v16';
+const BUILD = 'v17';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -7592,7 +7592,10 @@ async function isProbablyInstalled() {
         safeSet(CONFIG.INSTALLED_KEY, '1');
         return true;
       }
-      // Browser says it's NOT installed → drop any stale flag and believe it.
+      // Browser says it's NOT installed → believe it. If we previously thought it
+      // WAS installed, the user just uninstalled: also clear the "Not now" so the
+      // install offer comes back instead of staying silent.
+      if (safeGet(CONFIG.INSTALLED_KEY) === '1') safeRemove(CONFIG.INSTALL_DISMISS_KEY);
       safeRemove(CONFIG.INSTALLED_KEY);
       return false;
     } catch (e) { /* unsupported / blocked → fall back to the flag below */ }
