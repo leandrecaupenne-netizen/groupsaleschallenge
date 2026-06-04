@@ -139,6 +139,7 @@ input { font-family: inherit; }
   animation: pulse 1.2s infinite;
 }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .live-pill .blink { animation: none; } }
 
 .last-update {
   margin-left: auto;
@@ -192,6 +193,9 @@ input { font-family: inherit; }
   color: var(--usa-red);
   border-bottom-color: var(--usa-red);
 }
+/* Dark mode: brand red on the dark tab bar fails AA contrast at 12-13px. Use the
+   bright ink colour for the active label; the red underline still marks it active. */
+:root[data-theme="dark"] .tab-btn.active { color: var(--ink); }
 
 /* === SECTIONS === */
 .section { padding: 32px; max-width: 1400px; margin: 0 auto; }
@@ -2540,7 +2544,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v19';
+const BUILD = 'v20';
 
 // === LIVE CONFIG ===
 const CONFIG = {
