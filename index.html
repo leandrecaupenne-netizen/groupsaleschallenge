@@ -1360,7 +1360,7 @@ input { font-family: inherit; }
 @media (max-width: 800px) {
   .members-table-header,
   .members-table-row {
-    grid-template-columns: 34px 1fr 78px 64px;
+    grid-template-columns: 40px 1fr 78px 64px;
     font-size: 11px;
     padding: 10px 10px;
     gap: 7px;
@@ -1368,6 +1368,10 @@ input { font-family: inherit; }
   .col-meet, .col-opps, .col-gm { display: none; }
   .member-avatar { width: 40px; height: 40px; font-size: 14px; }
   .member-who { gap: 8px; }
+  /* Smaller rank glyphs so 3-digit ranks (#100–#377 in a 377-player list) fit the
+     column instead of bleeding onto the avatar. */
+  .member-rank { font-size: 16px; }
+  .member-rank.top { font-size: 18px; }
 }
 
 /* Phone portrait: also drop the secondary PS NB column so player names get
@@ -1377,7 +1381,7 @@ input { font-family: inherit; }
 @media (max-width: 600px) {
   .members-table-header,
   .members-table-row {
-    grid-template-columns: 32px minmax(0, 1fr) 82px;
+    grid-template-columns: 40px minmax(0, 1fr) 82px;
   }
   .col-nb { display: none; }
 }
@@ -2598,7 +2602,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v22';
+const BUILD = 'v23';
 
 // === LIVE CONFIG ===
 const CONFIG = {
