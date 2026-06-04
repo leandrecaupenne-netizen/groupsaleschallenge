@@ -4,6 +4,20 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Devoteam World Cup Sales Challenge 2026</title>
+<meta name="description" content="The live leaderboard for the Devoteam World Cup Sales Challenge 2026. Search your name to see your rankings — Grand Final in Paris, 9 July." />
+<!-- Social link preview (Slack / WhatsApp / Teams / Twitter) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Devoteam World Cup" />
+<meta property="og:title" content="Devoteam World Cup — Sales Challenge 2026" />
+<meta property="og:description" content="The live leaderboard. Search your name to see your rankings across the challenge — Grand Final in Paris, 9 July." />
+<meta property="og:image" content="https://groupsaleschallenge.vercel.app/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://groupsaleschallenge.vercel.app/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Devoteam World Cup — Sales Challenge 2026" />
+<meta name="twitter:description" content="The live leaderboard. Search your name to see your rankings — Grand Final in Paris, 9 July." />
+<meta name="twitter:image" content="https://groupsaleschallenge.vercel.app/og-image.png" />
 <!-- PWA / installable -->
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#1E2A78" />
@@ -319,6 +333,16 @@ input { font-family: inherit; }
     linear-gradient(165deg, #C8932E 0%, #7a5418 60%, #4a3210 100%);
 }
 .podium-card.first::after { background: rgba(242,199,92,0.4); box-shadow: inset 0 0 0 1px rgba(242,199,92,0.6); }
+/* One-time "reveal" when the leaderboard first paints: the trio rises into place,
+   the champion lands last with a little overshoot. Only on cold start (the
+   podium-reveal class is added solely on the first paint, never on live polls). */
+.podium-reveal .podium-card { animation: podiumRise 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+.podium-reveal .podium-card.third  { animation-delay: 0.10s; }
+.podium-reveal .podium-card.second { animation-delay: 0.18s; }
+.podium-reveal .podium-card.first  { animation: podiumRiseChamp 0.72s cubic-bezier(0.16,1,0.3,1) 0.26s both; }
+@keyframes podiumRise { from { opacity: 0; transform: translateY(26px) scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes podiumRiseChamp { 0% { opacity: 0; transform: translateY(30px) scale(0.82); } 65% { transform: translateY(-5px) scale(1.05); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .podium-reveal .podium-card { animation: none; } }
 /* #2 — silver card, tilted inward toward the champion */
 .podium-card.second {
   transform: rotate(-6deg) translateY(6px); transform-origin: bottom right;
@@ -1494,6 +1518,13 @@ input { font-family: inherit; }
   overflow-y: auto;              /* scroll if the card is taller than a short/landscape screen */
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
   padding: 20px;
+  position: relative;
+}
+/* Soft breathing glow behind the card — a touch of life on the very first screen. */
+.login-screen::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(58% 46% at 50% 32%, rgba(242,199,92,0.12), transparent 70%);
+  animation: loginGlow 6s ease-in-out infinite;
 }
 .login-card {
   background: var(--paper);
@@ -1503,8 +1534,18 @@ input { font-family: inherit; }
   width: 100%;
   text-align: center;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  position: relative; z-index: 1; overflow: hidden;
+  animation: loginRise 0.5s cubic-bezier(0.16,1,0.3,1) both;
 }
-.login-logo { width: 100px; height: 100px; margin: 0 auto 20px; object-fit: contain; display: block; }
+.login-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--usa-red) 0 33%, var(--gold) 33% 66%, var(--mex-green) 66% 100%);
+}
+.login-logo { width: 100px; height: 100px; margin: 4px auto 20px; object-fit: contain; display: block; animation: loginFloat 3.8s ease-in-out infinite; }
+@keyframes loginRise { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes loginFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes loginGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .login-card, .login-logo, .login-screen::before { animation: none; } }
 .login-title { font-family: 'Anton', Impact, sans-serif; font-size: 28px; letter-spacing: 0.04em; margin-bottom: 8px; }
 .login-subtitle { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
 .login-countdown { display: inline-block; margin-bottom: 26px; padding: 9px 16px; border-radius: 999px;
@@ -2049,6 +2090,15 @@ img, table { max-width: 100%; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: none; } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(20px) scale(0.95); } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+/* Confetti celebration (My Position reveal) */
+.confetti-root { position: fixed; inset: 0; pointer-events: none; z-index: 9500; overflow: hidden; }
+.confetti-root i { position: absolute; border-radius: 2px; opacity: 0; will-change: transform, opacity;
+  animation-name: confettiFly; animation-timing-function: cubic-bezier(0.2,0.6,0.3,1); animation-fill-mode: forwards; }
+@keyframes confettiFly {
+  0%   { opacity: 1; transform: translate(0,0) rotate(0); }
+  15%  { transform: translate(calc(var(--dx) * 0.5), var(--dy)) rotate(calc(var(--rot) * 0.3)); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--fall)) rotate(var(--rot)); }
+}
 
 /* === VAR Room === */
 .var-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px; }
@@ -2548,7 +2598,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v21';
+const BUILD = 'v22';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2688,6 +2738,7 @@ let teamRegion = 'all'; // team table region filter
 let teamView = 'teams'; // Team Ranking tab view: 'teams' | 'nations'
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
 let lastRevealedName = null; // last player revealed in My Position (to play the reveal once)
+let celebrateOnRender = false; // fire a confetti burst after the next render (set when a NEW player resolves)
 let currentSearch = '';
 let positionQuery = '';
 let vartimeFilter = 'all'; // admin VAR TIME view: 'all' | 'pending'
@@ -3124,6 +3175,37 @@ function showToast(msg) {
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 6000);
 }
 
+// Confetti burst — the little "you found yourself!" celebration. Pure DOM, no lib,
+// bursts up from the given anchor then falls. Skipped under reduced-motion.
+function fireConfetti(anchor) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#C8102E', '#F2C75C', '#006847', '#FFFFFF', '#3E59C8'];
+  const root = document.createElement('div');
+  root.className = 'confetti-root';
+  document.body.appendChild(root);
+  const rect = anchor ? anchor.getBoundingClientRect()
+                      : { left: 0, width: window.innerWidth, top: window.innerHeight * 0.3 };
+  const ox = rect.left + rect.width / 2;
+  const oy = Math.max(56, rect.top + 18);
+  const N = 60;
+  for (let i = 0; i < N; i++) {
+    const p = document.createElement('i');
+    const angle = (Math.random() - 0.5) * Math.PI;
+    const dist = 60 + Math.random() * 170;
+    const dx = Math.sin(angle) * dist + (Math.random() - 0.5) * 40;
+    const dy = -(40 + Math.random() * 120);
+    const fall = 240 + Math.random() * 280;
+    p.style.cssText =
+      `left:${ox}px;top:${oy}px;background:${colors[i % colors.length]};` +
+      `--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;--fall:${fall.toFixed(0)}px;` +
+      `--rot:${(Math.random() * 720 - 360).toFixed(0)}deg;` +
+      `width:${(6 + Math.random() * 6) | 0}px;height:${(8 + Math.random() * 8) | 0}px;` +
+      `animation-duration:${(1.1 + Math.random() * 0.8).toFixed(2)}s;animation-delay:${(Math.random() * 0.12).toFixed(2)}s;`;
+    root.appendChild(p);
+  }
+  setTimeout(() => root.remove(), 2500);
+}
+
 // Toggle the discreet "sync failed" badge in the header without wiping the UI.
 function setSyncWarning(show) {
   const warn = document.getElementById('sync-warn');
@@ -3261,7 +3343,7 @@ function renderHero() {
         <div class="hero-eyebrow">${t('hero.eyebrow')}</div>
         <h1 class="hero-title">${t('hero.title')}</h1>
         <p class="hero-desc">${t('hero.desc')}</p>
-        <div class="podium-row">
+        <div class="podium-row${introCountup ? ' podium-reveal' : ''}">
           ${renderPodiumCard(top3[1], 2, '🥈', 'second')}
           ${renderPodiumCard(top3[0], 1, '🏆', 'first')}
           ${renderPodiumCard(top3[2], 3, '🥉', 'third')}
@@ -4772,6 +4854,7 @@ function renderPositionDetails(person) {
   // keystroke that still resolves to the same person).
   const isNewReveal = person.name !== lastRevealedName;
   lastRevealedName = person.name;
+  if (isNewReveal) celebrateOnRender = true; // → confetti when this paints (you just found yourself!)
 
   const overallRank = sortedPSTotal.findIndex(p => p.name === person.name) + 1;
 
@@ -6051,7 +6134,13 @@ function render() {
     });
   }
   // Holographic tilt on the My Position card.
-  if (currentTab === 'position') attachHolo(document.querySelector('.position-card-wrap .pc-card'));
+  if (currentTab === 'position') {
+    attachHolo(document.querySelector('.position-card-wrap .pc-card'));
+    if (celebrateOnRender) {
+      celebrateOnRender = false;
+      fireConfetti(document.querySelector('.position-card-wrap'));
+    }
+  }
 
   document.querySelectorAll('.suggestion-item').forEach(item => {
     item.addEventListener('click', () => {
