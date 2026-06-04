@@ -2509,6 +2509,7 @@ img, table { max-width: 100%; }
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
     <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
+    <button id="install-btn" class="refresh-btn tv-btn" title="Install the app" aria-label="Install the app" style="display:none">📲</button>
     <button id="tv-btn" class="refresh-btn tv-btn" title="TV / projection mode" aria-label="TV mode">📺</button>
     <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
   </div>
@@ -2538,7 +2539,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v17';
+const BUILD = 'v18';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -7472,6 +7473,12 @@ async function init() {
     tvBtn.dataset.bound = '1';
     tvBtn.addEventListener('click', toggleTV);
   }
+  const installBtn = document.getElementById('install-btn');
+  if (installBtn && !installBtn.dataset.bound) {
+    installBtn.dataset.bound = '1';
+    installBtn.addEventListener('click', onInstallClick);
+  }
+  updateInstallButtonVisibility(); // show 📲 only when the app isn't installed yet
   const rulesBtn = document.getElementById('rules-btn');
   if (rulesBtn && !rulesBtn.dataset.bound) {
     rulesBtn.dataset.bound = '1';
@@ -7553,6 +7560,7 @@ window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();        // suppress Chrome's default mini-infobar…
   deferredInstallPrompt = e; // …and keep the event so OUR button can trigger it
   maybeShowPwaBanner();
+  updateInstallButtonVisibility();
 });
 window.addEventListener('appinstalled', () => {
   safeSet(CONFIG.INSTALLED_KEY, '1'); // remember across browser sessions on this device
@@ -7561,6 +7569,7 @@ window.addEventListener('appinstalled', () => {
   // They just installed but may still be sitting in the browser tab — once the
   // install banner is gone, nudge them to open the actual app.
   setTimeout(maybeShowPwaBanner, 900);
+  updateInstallButtonVisibility(); // hide the 📲 button now it's installed
 });
 
 // If we're CURRENTLY running as the installed app, record that fact. On Android
@@ -7702,6 +7711,35 @@ function showOpenBanner() {
     try { sessionStorage.setItem(CONFIG.OPEN_DISMISS_KEY, '1'); } catch (e) {} // snooze this session only
     removeBanner();
   });
+}
+
+// Header "📲 Install" button — an always-available entry point, because Chrome's
+// automatic install prompt is heuristic and often never appears. Shown only when
+// the app isn't already installed and we're not already running standalone.
+async function updateInstallButtonVisibility() {
+  const btn = document.getElementById('install-btn');
+  if (!btn) return;
+  let show = false;
+  if (!isRunningStandalone()) show = !(await isProbablyInstalled());
+  btn.style.display = show ? '' : 'none';
+}
+function onInstallClick() {
+  if (deferredInstallPrompt) {
+    // Android/Chromium: fire the real native install dialog.
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(({ outcome }) => {
+      if (outcome === 'accepted') safeSet(CONFIG.INSTALLED_KEY, '1');
+      deferredInstallPrompt = null;
+      updateInstallButtonVisibility();
+    }).catch(() => {});
+    return;
+  }
+  // No captured prompt: guide the user through the browser's own install entry.
+  if (isIOSDevice()) {
+    showToast("To install: tap Share ↑ then “Add to Home Screen”.");
+  } else {
+    showToast("To install: open the browser menu (⋮) and tap “Install app” / “Add to Home screen”.");
+  }
 }
 
 // PWA: register the service worker (https only; silently ignored on file://).
