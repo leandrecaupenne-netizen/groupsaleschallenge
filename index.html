@@ -2538,7 +2538,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v15';
+const BUILD = 'v16';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -7581,7 +7581,10 @@ function removeBanner() {
 // when confirmed below) with getInstalledRelatedApps() (Android/Chromium only),
 // which matches the `webapp` entry declared in the manifest.
 async function isProbablyInstalled() {
-  if (safeGet(CONFIG.INSTALLED_KEY) === '1') return true;
+  // Authoritative on Android/Chromium: ask the browser directly. It reflects
+  // reality even after an UNINSTALL, so trust it over our persisted flag — which
+  // would otherwise stay stale and keep nudging "open the app" for an app that's
+  // no longer there (and the open button would just spawn a dead tab).
   if (navigator.getInstalledRelatedApps) {
     try {
       const apps = await navigator.getInstalledRelatedApps();
@@ -7589,9 +7592,13 @@ async function isProbablyInstalled() {
         safeSet(CONFIG.INSTALLED_KEY, '1');
         return true;
       }
-    } catch (e) { /* unsupported / blocked → fall through */ }
+      // Browser says it's NOT installed → drop any stale flag and believe it.
+      safeRemove(CONFIG.INSTALLED_KEY);
+      return false;
+    } catch (e) { /* unsupported / blocked → fall back to the flag below */ }
   }
-  return false;
+  // Fallback (iOS / unsupported): the persisted flag is the best signal we have.
+  return safeGet(CONFIG.INSTALLED_KEY) === '1';
 }
 
 // Single entry point: pick the install offer OR the "open in the app" nudge,
