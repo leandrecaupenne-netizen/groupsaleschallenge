@@ -2536,6 +2536,10 @@ img, table { max-width: 100%; }
 <script>
 'use strict';
 
+// Visible build tag — lets us tell at a glance whether a device is on the latest
+// deploy or stuck on a stale cache / old preview URL. Bump it with each release.
+const BUILD = 'v15';
+
 // === LIVE CONFIG ===
 const CONFIG = {
   // Deployed Apps Script /exec endpoint (Web App, access: Anyone).
@@ -5552,7 +5556,7 @@ function renderFooter() {
     <footer class="app-footer">
       <div class="countdown">${t('foot.final')}</div>
       <div>${t('foot.runs', { a: formatDateShort(challenge_dates.start), b: formatDateShort(challenge_dates.end) })}</div>
-      <div style="margin-top:8px;opacity:0.6">${t('foot.data')}</div>
+      <div style="margin-top:8px;opacity:0.6">${t('foot.data')} · ${BUILD}</div>
       <div style="margin-top:12px"><button type="button" onclick="logout()" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:11px;letter-spacing:0.04em;text-decoration:underline;cursor:pointer;padding:11px 18px" aria-label="Log out">Log out</button></div>
     </footer>
   `;
@@ -7152,7 +7156,7 @@ function renderTV() {
   root.innerHTML = `
     <div class="tv-overlay" id="tv-overlay">
       <div class="tv-bar">
-        <div class="tv-brand">DEVOTEAM WORLD CUP${period ? ' · ' + escapeHtml(period) : ''}</div>
+        <div class="tv-brand">DEVOTEAM WORLD CUP${period ? ' · ' + escapeHtml(period) : ''}<span style="opacity:0.45;font-weight:400;font-size:0.7em;margin-left:8px">${BUILD}</span></div>
         <button class="tv-close" id="tv-close" title="Exit (Esc)">✕ Exit</button>
       </div>
       <button class="tv-nav tv-prev" id="tv-prev" aria-label="Previous">‹</button>
