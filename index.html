@@ -1970,10 +1970,12 @@ img, table { max-width: 100%; }
 .tv-awcol .tv-name { font-size: clamp(15px, 2.3vmin, 27px); }
 .tv-awcol .tv-name em { font-size: 0.46em; margin-top: 2px; }
 .tv-awcol .tv-val { font-size: clamp(17px, 2.8vmin, 34px); }
-/* "+ Show more" toggle on TV ranking panels (top 5 by default, expand for the rest). */
-.tv-more-wrap { text-align: center; margin-top: 2.2vh; }
-.tv-more { background: rgba(255,255,255,0.12); color: var(--gold); border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 1vh 3.2vh; font-family: 'Anton', Impact, sans-serif; font-size: clamp(14px, 2vmin, 22px); letter-spacing: 0.04em; cursor: pointer; }
-.tv-more:hover { background: rgba(255,255,255,0.22); }
+/* "+ Show more" toggle on TV ranking panels (top 5 by default, expand for the rest).
+   Sticky to the bottom of the viewport so the "back to top 5" control stays reachable
+   without scrolling to the end of a long expanded list. */
+.tv-more-wrap { text-align: center; margin-top: 2.2vh; position: sticky; bottom: 1.4vh; z-index: 3; }
+.tv-more { background: rgba(20,28,80,0.92); color: var(--gold); border: 1px solid rgba(242,199,92,0.55); border-radius: 999px; padding: 1vh 3.2vh; font-family: 'Anton', Impact, sans-serif; font-size: clamp(14px, 2vmin, 22px); letter-spacing: 0.04em; cursor: pointer; box-shadow: 0 6px 22px rgba(0,0,0,0.5); }
+.tv-more:hover { background: rgba(40,52,110,0.96); }
 .tv-row {
   /* Cap the vw-based spacing so it doesn't explode on large screens and starve
      the name column (which used to force ugly char-by-char wrapping). */
@@ -6493,6 +6495,8 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && document.getElementById('tv-player-overlay')) { closeTVPlayerCard(); return; }
     if (e.key === 'ArrowRight') { tvGo(1); return; }
     if (e.key === 'ArrowLeft') { tvGo(-1); return; }
+    // Esc first collapses an expanded list (back to top 5), then exits TV.
+    if (e.key === 'Escape' && tvExpanded) { tvExpanded = false; renderTV(); return; }
     if (e.key === 'Escape') { exitTV(); return; }
     return;
   }
@@ -7236,7 +7240,7 @@ function tvLimit(list) { return tvExpanded ? list : list.slice(0, TV_TOP); }
 // "+ Show more / − Show top 5" toggle, shown only when there's more than the top 5.
 function tvMoreBtn(total) {
   if (total <= TV_TOP) return '';
-  return `<div class="tv-more-wrap"><button class="tv-more" data-tvmore="${tvExpanded ? '0' : '1'}">${tvExpanded ? '− Show top 5' : '+ Show more (' + total + ')'}</button></div>`;
+  return `<div class="tv-more-wrap"><button class="tv-more" data-tvmore="${tvExpanded ? '0' : '1'}">${tvExpanded ? '← Back to top 5' : '+ Show more (' + total + ')'}</button></div>`;
 }
 
 // No auto-rotation: TV mode is a manually-driven deck so commentators control the

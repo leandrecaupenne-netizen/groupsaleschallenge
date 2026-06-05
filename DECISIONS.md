@@ -38,6 +38,13 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Mode TV : revenir au top 5 facilement
+- Le bouton de repli était en bas de la liste étendue (il fallait scroller), donc on
+  cliquait « Exit » (qui quitte tout le mode TV). Désormais le bouton « + Show more / ← Back
+  to top 5 » est **collé en bas de l'écran** (`position: sticky`), toujours visible. Échap
+  replie d'abord la liste (retour top 5), puis quitte le mode TV au 2e appui.
+
+
 ### 2026-06-05 — Surnoms d'équipe dans les classements joueurs (mode TV)
 - Dans les panneaux joueurs du mode TV (Golden, Playmaker, Special Awards, spotlight),
   la ligne sous le nom affichait l'entité ("FR - Cyber Trust"). Désormais : **surnom de
