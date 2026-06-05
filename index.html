@@ -2646,7 +2646,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v33';
+const BUILD = 'v34';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2878,6 +2878,15 @@ function nicknameOverride(country) {
   return NICKNAME_OVERRIDES[teamKey(country)] || '';
 }
 
+// Display renames for whole entities. "ALPS" is the Devoteam Alps entity — shown
+// as Switzerland everywhere (filter chip, team name, player team labels). Note: it
+// stays ONE team — the Sheet has no per-country breakdown to decompose it further.
+const TEAM_ALIASES = { 'ALPS': 'Switzerland' };
+function applyTeamAliases() {
+  teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });
+  people.forEach(p => { const a = TEAM_ALIASES[teamKey(p.team)]; if (a) p.team = a; });
+}
+
 // Team display: when the Sheet gives a team a nickname, show it big with the
 // official ("known") name small underneath. Teams without a nickname yet just
 // show their official name, exactly as before. `realClass` styles the small line.
@@ -2956,6 +2965,7 @@ async function fetchData(fresh) {
     DATA = data;
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name); // ignore empty rows
+    applyTeamAliases(); // e.g. ALPS → Switzerland, before names/ranks are computed
     // Disambiguate duplicate names by appending the team, so `name` stays a UNIQUE
     // identity key everywhere (clicks, rank lookups, week-digest maps, VAR verdicts
     // all key on name). With 377 reps a "First LASTNAME" collision is plausible and
@@ -3024,6 +3034,7 @@ function hydrateFromSnapshot() {
     DATA = data;
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name);
+    applyTeamAliases(); // e.g. ALPS → Switzerland (same as the live fetch path)
     updated_at = data.updated_at;
     period = data.period || '';
     challenge_dates = data.challenge_dates || {};
