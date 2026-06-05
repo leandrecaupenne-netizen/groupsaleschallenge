@@ -2646,7 +2646,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v34';
+const BUILD = 'v35';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -3650,9 +3650,11 @@ function renderNationsTable() {
   const rankMap = competitionRanks(nationsBase, n => n.region, n => n.avg_ps || 0);
   const dir = nationSort.dir === 'asc' ? 1 : -1;
   const orderKey = nationSort.key === 'rank' ? 'avg_ps' : nationSort.key;
+  // For RANK, invert so ▲ = #1 first, ▼ = last first → a single click flips the list.
+  const ndir = nationSort.key === 'rank' ? -dir : dir;
   const nations = [...nationsBase].sort((a, b) => orderKey === 'label'
-    ? dir * String(a.label).localeCompare(String(b.label))
-    : dir * ((a[orderKey] || 0) - (b[orderKey] || 0)));
+    ? ndir * String(a.label).localeCompare(String(b.label))
+    : ndir * ((a[orderKey] || 0) - (b[orderKey] || 0)));
   const arrow = k => nationSort.key === k ? (nationSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const clickHint = t('teams.clickHint');
   return `
@@ -3732,13 +3734,16 @@ function renderTeamRanking() {
   if (teamView === 'players') {
     const psearch = currentSearch.trim().toLowerCase();
     const pdir = playerSort.dir === 'asc' ? 1 : -1;
-    const cmp = (a, b) => playerSort.key === 'name'
-      ? pdir * String(a.name).localeCompare(String(b.name))
-      : pdir * ((a[playerSort.key] || 0) - (b[playerSort.key] || 0));
+    const pkey = playerSort.key === 'rank' ? 'ps_total' : playerSort.key; // RANK sorts by the standing metric (PS Total)
+    // For RANK, invert so ▲ = #1 first, ▼ = last first → a single click flips the list.
+    const edir = playerSort.key === 'rank' ? -pdir : pdir;
+    const cmp = (a, b) => pkey === 'name'
+      ? edir * String(a.name).localeCompare(String(b.name))
+      : edir * ((a[pkey] || 0) - (b[pkey] || 0));
     const sortedAll = [...people].sort(cmp); // display order (respects the ▲/▼ toggle)
     // Rank = true standing on the sorted metric, best first — so #1 is always the
     // actual leader, even when the list is shown worst-first (ascending order).
-    const rankKey = playerSort.key === 'name' ? 'ps_total' : playerSort.key;
+    const rankKey = pkey === 'name' ? 'ps_total' : pkey;
     const ranked = [...people].sort((a, b) => (b[rankKey] || 0) - (a[rankKey] || 0));
     const rankMap = competitionRanks(ranked, p => p.name, p => p[rankKey] || 0);
     const displayP = sortedAll.filter(p =>
@@ -3763,7 +3768,7 @@ function renderTeamRanking() {
         ${regionChips}
         <div class="members-table players-table">
           <div class="members-table-header">
-            <div>RANK</div>
+            <div class="th-psort" data-psort="rank">RANK${pArrow('rank')}</div>
             <div class="th-psort" data-psort="name">PLAYER${pArrow('name')}</div>
             <div class="th-psort" data-psort="ps_total">PS TOTAL${pArrow('ps_total')}</div>
             <div class="th-psort col-nb" data-psort="ps_nb">PS NB${pArrow('ps_nb')}</div>
@@ -3805,16 +3810,20 @@ function renderTeamRanking() {
   // Reorder rows by the chosen column; the # always stays the official World Cup
   // rank (average PS per person), so you can spot e.g. "#9 overall, #1 in GM".
   const dir = teamSort.dir === 'asc' ? 1 : -1;
+  const tkey = teamSort.key === 'rank' ? 'avg_ps' : teamSort.key; // RANK sorts by the standing metric (avg PS / person)
+  // For RANK, invert: ▲ = #1 first (metric desc), ▼ = last first (metric asc), so a
+  // single click visibly flips the leaderboard top↔bottom.
+  const tdir = teamSort.key === 'rank' ? -dir : dir;
   const display = [...filtered].sort((a, b) => {
-    if (teamSort.key === 'country') return dir * String(a.country).localeCompare(String(b.country));
-    return dir * ((a[teamSort.key] || 0) - (b[teamSort.key] || 0));
+    if (tkey === 'country') return tdir * String(a.country).localeCompare(String(b.country));
+    return tdir * ((a[tkey] || 0) - (b[tkey] || 0));
   });
   // Official standing (avg PS per person) with ties sharing a rank, so re-sorting
   // or reversing the table never shows weird descending numbers for ex-aequo teams.
   const teamRankMap = competitionRanks(sortedTeams, x => x.country, x => x.avg_ps || 0);
   const arrow = k => teamSort.key === k ? (teamSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const sortNote = teamSort.key === 'avg_ps' && teamSort.dir === 'desc' ? '' :
-    ` · sorted by ${({country:'team name',members:'members',avg_ps:'avg PS',avg_gm:'avg GM',avg_meetings:'avg meetings',avg_opps:'avg opps'})[teamSort.key]} ${teamSort.dir}`;
+    ` · sorted by ${({rank:'rank',country:'team name',members:'members',avg_ps:'avg PS',avg_gm:'avg GM',avg_meetings:'avg meetings',avg_opps:'avg opps'})[teamSort.key]} ${teamSort.dir}`;
 
   return `
     <div class="section">
@@ -3833,7 +3842,7 @@ function renderTeamRanking() {
       ${regionChips}
       <div class="teams-table">
         <div class="teams-table-header">
-          <div>${t('th.rank')}</div>
+          <div class="th-sort" data-sort="rank">${t('th.rank')}${arrow('rank')}</div>
           <div class="th-sort" data-sort="country">${t('th.team')}${arrow('country')}</div>
           <div class="tt-col-members th-sort" data-sort="members">${t('th.members')}${arrow('members')}</div>
           <div class="th-sort" data-sort="avg_ps">${t('th.avgps')}${arrow('avg_ps')}</div>
