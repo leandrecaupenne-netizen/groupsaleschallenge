@@ -2646,7 +2646,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v31';
+const BUILD = 'v32';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -3690,7 +3690,11 @@ function renderTeamRanking() {
   const filtered = sortedTeams.filter(t =>
     (!search || t.country.toLowerCase().includes(search)) &&
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
-  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['NORDICS', '❄️ Nordics']];
+  // Build the filter chips dynamically from the regions/countries actually present
+  // in the data (grouped markets first, then every individual nation), so EVERY
+  // country gets its own filter — not just a hardcoded handful.
+  const regions = [['all', 'All']].concat(
+    regionsPresentFrom(sortedTeams, t => t.country).map(r => [r, nationLabel(r)]));
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
