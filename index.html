@@ -451,6 +451,14 @@ input { font-family: inherit; }
 .tt-rank.top-3 { color: var(--bronze); }
 
 .tt-team { font-weight: 700; }
+/* Team nickname shown big; the official ("known") name small underneath. */
+.team-realname, .tt-realname, .podium-team-real, .modal-title-real {
+  display: block; font-family: ui-monospace, monospace; font-weight: 500;
+  letter-spacing: 0.02em; line-height: 1.2; margin-top: 2px; text-transform: none;
+}
+.tt-realname { font-size: 11px; color: var(--muted); }
+.podium-team-real { font-size: clamp(9px, 1.5vw, 11px); color: rgba(255,255,255,0.82); margin-top: 3px; }
+.modal-title-real { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 3px; }
 .tt-members {
   font-family: ui-monospace, monospace;
   font-size: 12px; color: var(--muted);
@@ -2605,7 +2613,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v26';
+const BUILD = 'v28';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2625,7 +2633,7 @@ const CONFIG = {
   // Evolution baselines bumped to _v2 at the official Monday kickoff: any snapshot
   // from pre-launch testing is dropped so the first real (start-of-contest) load
   // becomes the reference. Movement ▲▼ and the weekly digest count from Monday on.
-  RANKS_KEY: 'devoteam_wc_ranks_v2', // snapshot of last-visit ranks for ▲▼ movement
+  RANKS_KEY: 'devoteam_wc_ranks_v3', // snapshot of last-visit ranks for ▲▼ movement
   SNAPSHOT_KEY: 'devoteam_wc_data_v2', // last successful payload → instant paint on return
   SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000, // ignore cached data older than 6h
   WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v2', // ranks snapshot keyed by period (weekly digest)
@@ -2775,7 +2783,7 @@ let suppressAnim = false;  // true during background poll re-renders (no replaye
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
 let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
 let prevRanks = null;      // ranks from the previous visit (for ▲▼ movement)
-let snapshotSaved = false; // capture the baseline only once per session
+let snapshotPeriod = undefined; // the period initSnapshotOnce last processed (re-run when it changes — fresh fetch can carry a newer period than the instant-paint snapshot)
 
 // === UTILS ===
 const fmtMoney = n => {
@@ -2822,6 +2830,16 @@ const colorForTeam = team => team ? TEAM_COLORS[hashStr(team) % TEAM_COLORS.leng
 // squad in the team drilldown. Compare on a canonical (trim/upper/collapsed) key.
 const teamKey = s => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, ' ');
 const sameTeam = (a, b) => teamKey(a) === teamKey(b);
+
+// Team display: when the Sheet gives a team a nickname, show it big with the
+// official ("known") name small underneath. Teams without a nickname yet just
+// show their official name, exactly as before. `realClass` styles the small line.
+function teamNameHTML(team, realClass) {
+  const nick = (team && typeof team.nickname === 'string') ? team.nickname.trim() : '';
+  const name = escapeHtml(team ? team.country : '');
+  if (!nick) return name;
+  return `${escapeHtml(nick)}<span class="${realClass || 'team-realname'}">${name}</span>`;
+}
 
 // True if a leader change of `type` happened recently (drives the gold flash).
 const isFlashing = type => flash[type] && flash[type] > Date.now();
@@ -2959,11 +2977,32 @@ function buildRankMaps() {
 // Load the previous visit's ranks (in-memory baseline for the whole session),
 // then save the current ranks as the baseline for the NEXT visit.
 function initSnapshotOnce() {
-  if (snapshotSaved) return;
-  snapshotSaved = true;
-  try { const raw = safeGet(CONFIG.RANKS_KEY); prevRanks = raw ? JSON.parse(raw) : null; }
-  catch (e) { prevRanks = null; }
-  try { safeSet(CONFIG.RANKS_KEY, JSON.stringify(buildRankMaps())); } catch (e) {}
+  const _p = period || '';
+  // Guard per-period (not once-per-session): the instant-paint snapshot may carry
+  // an older period than the fresh fetch that follows, so we must re-evaluate when
+  // a newer period arrives — otherwise a week change is never detected.
+  if (snapshotPeriod === _p) return;
+  snapshotPeriod = _p;
+  // Movement (▲▼) is anchored to the PERIOD (weekly sync), NOT to the last visit.
+  // This is deliberate: the challenge updates roughly weekly, so showing movement
+  // since the last *update* is meaningful, while "since your last visit" would
+  // invent moves from intra-week data wobble — and worse, show bogus moves at the
+  // very first sync (no real prior state exists). We store this period's anchor
+  // plus the previous period's anchor; movement = current standings vs the previous
+  // period's anchor. First sync → no previous period → no movers.
+  const curPeriod = period || '';
+  let stored = null;
+  try { const raw = safeGet(CONFIG.RANKS_KEY); stored = raw ? JSON.parse(raw) : null; } catch (e) { stored = null; }
+  const curMaps = buildRankMaps();
+  if (!stored || !stored.period) {
+    prevRanks = null; // first ever load → just baseline, nothing to compare to
+    try { safeSet(CONFIG.RANKS_KEY, JSON.stringify({ period: curPeriod, maps: curMaps, prevMaps: null })); } catch (e) {}
+  } else if (stored.period !== curPeriod) {
+    prevRanks = stored.maps || null; // a new weekly update → compare against last period
+    try { safeSet(CONFIG.RANKS_KEY, JSON.stringify({ period: curPeriod, maps: curMaps, prevMaps: stored.maps || null })); } catch (e) {}
+  } else {
+    prevRanks = stored.prevMaps || null; // same week → keep comparing to the previous update (persists all week; null in week 1)
+  }
 }
 // === Weekly digest: "what changed since last update" ============================
 // A snapshot keyed by the period label (e.g. "Week 2 of 5"). When the period
@@ -3073,10 +3112,10 @@ function tightRaceBanner(race, label) {
 function movementBadge(kind, key, curRank) {
   if (!prevRanks || !prevRanks[kind]) return '';
   const prev = prevRanks[kind][key];
-  if (prev === undefined) return `<span class="mv mv-new" title="New entry since your last visit">NEW</span>`;
+  if (prev === undefined) return `<span class="mv mv-new" title="New entry since the last update">NEW</span>`;
   const d = prev - curRank;
-  if (d > 0) return `<span class="mv mv-up" title="Up ${d} since your last visit">▲${d}</span>`;
-  if (d < 0) return `<span class="mv mv-down" title="Down ${-d} since your last visit">▼${-d}</span>`;
+  if (d > 0) return `<span class="mv mv-up" title="Up ${d} since the last update">▲${d}</span>`;
+  if (d < 0) return `<span class="mv mv-down" title="Down ${-d} since the last update">▼${-d}</span>`;
   return ''; // no change -> no badge (keeps the table clean & aligned)
 }
 
@@ -3377,7 +3416,7 @@ function renderPodiumCard(team, rank, medal, position) {
       </div>
       <div class="podium-medal">${medal}</div>
       <div class="podium-rank">#${rank}</div>
-      <div class="podium-team-name">${escapeHtml(team.country)}</div>
+      <div class="podium-team-name">${teamNameHTML(team, 'podium-team-real')}</div>
       <div class="podium-stat-main">${animNum('pod:' + team.country, team.avg_ps, 'money')}</div>
       <div class="podium-stat-label">Avg PS / person</div>
       <div class="podium-stat-meta">
@@ -3557,7 +3596,7 @@ function moversStrip() {
   const fallers = movers.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 2);
   if (!climbers.length && !fallers.length) return '';
   const chip = (m, up) => `<span class="mover ${up ? 'up' : 'down'}">${escapeHtml(m.c)} <b>${up ? '▲' : '▼'}${Math.abs(m.delta)}</b></span>`;
-  return `<div class="movers-strip"><span class="movers-label">📈 Movers since your last visit</span>${climbers.map(m => chip(m, true)).join('')}${fallers.map(m => chip(m, false)).join('')}</div>`;
+  return `<div class="movers-strip"><span class="movers-label">📈 Movers since the last update</span>${climbers.map(m => chip(m, true)).join('')}${fallers.map(m => chip(m, false)).join('')}</div>`;
 }
 
 function renderTeamRanking() {
@@ -3709,7 +3748,7 @@ function renderTeamRanking() {
             <div class="teams-table-row ${topClass}" data-team="${escapeHtml(t.country)}">
               <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
-                ${escapeHtml(t.country)}
+                ${teamNameHTML(t, 'tt-realname')}
                 <div class="click-hint">${clickHint}</div>
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>
@@ -5438,7 +5477,7 @@ function renderTeamModal() {
         <div class="modal-header">
           <div class="modal-rank-badge">#${teamRank}</div>
           <div class="modal-title-block">
-            <h2 class="modal-title">${escapeHtml(team.country)}</h2>
+            <h2 class="modal-title">${teamNameHTML(team, 'modal-title-real')}</h2>
             <div class="modal-subtitle">TEAM DETAILS · ${team.members} members · Ranked ${teamRank} of ${sortedTeams.length}</div>
           </div>
           <button class="modal-close" id="modal-close-btn" aria-label="Close">×</button>

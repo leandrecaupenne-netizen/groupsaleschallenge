@@ -27,6 +27,9 @@ const SETTINGS = {
 // insensitive). Listed fields with numeric:true are coerced to numbers.
 const TEAM_MAP = [
   { field: 'country',       header: 'Country' },
+  // Optional nickname column (Jose is still filling these in). Several header
+  // spellings accepted; missing → empty string, no warning.
+  { field: 'nickname',      headers: ['Team Nickname', 'Team Nicknames', 'Nickname', 'Nicknames', 'Surnom', 'Surnom équipe'], optional: true },
   { field: 'members',       header: 'Team Members',          numeric: true },
   { field: 'total_ps',      header: 'Total PS Booking',      numeric: true },
   { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },
@@ -94,19 +97,21 @@ function readMapped(tab, map, warnings) {
   if (values.length < tab.headerRow) return [];
 
   const headerRow = values[tab.headerRow - 1].map(normHeader);
-  // Resolve each target field to a column index.
-  const cols = map.map(m => ({
-    field: m.field,
-    numeric: !!m.numeric,
-    pct: !!m.pct,
-    idx: headerRow.indexOf(normHeader(m.header))
-  }));
+  // Resolve each target field to a column index. A field may list several candidate
+  // headers (m.headers) — the first one found wins — and may be optional (no warning
+  // if absent, e.g. Team Nickname which Jose is still filling in).
+  const cols = map.map(m => {
+    const cands = (m.headers || [m.header]).map(normHeader);
+    let idx = -1;
+    for (let k = 0; k < cands.length; k++) { idx = headerRow.indexOf(cands[k]); if (idx >= 0) break; }
+    return { field: m.field, numeric: !!m.numeric, pct: !!m.pct, optional: !!m.optional, idx: idx };
+  });
 
-  // Flag any column we couldn't locate by header.
+  // Flag any required column we couldn't locate by header (optional ones stay quiet).
   if (warnings) {
     map.forEach((m, i) => {
-      if (cols[i].idx < 0) {
-        warnings.push(tab.name + ': column not found for "' + m.header + '" (field ' + m.field + ')');
+      if (cols[i].idx < 0 && !m.optional) {
+        warnings.push(tab.name + ': column not found for "' + (m.headers ? m.headers[0] : m.header) + '" (field ' + m.field + ')');
       }
     });
   }
