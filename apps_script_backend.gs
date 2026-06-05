@@ -267,7 +267,7 @@ function dataResponse(fresh) {
     warnings: warnings   // [] in the happy path; populated if a header didn't match
   });
 
-  cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
+  cachePutLarge(cache, CACHE_KEY, payload, 60); // cache 60s (best-effort) — data changes ~weekly, so this halves Sheet reads/concurrency with zero visible impact (admin ↻ bypasses it)
   return ContentService.createTextOutput(payload)
     .setMimeType(ContentService.MimeType.JSON);
 }
