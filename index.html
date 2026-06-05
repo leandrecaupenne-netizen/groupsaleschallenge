@@ -175,15 +175,23 @@ input { font-family: inherit; }
   border-bottom: 2px solid var(--line);
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
-/* Right/left fade hints so users know the tab bar scrolls horizontally. */
+/* Right/left scroll hints: a fade + a chevron so users clearly see the tab bar
+   scrolls horizontally to reach more categories (Special Awards, VAR Room…). */
 .tabs-wrap::before, .tabs-wrap::after {
-  content: ''; position: absolute; top: 0; bottom: 2px; width: 28px; z-index: 2;
+  position: absolute; top: 0; bottom: 2px; width: 42px; z-index: 2;
   pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  display: flex; align-items: center;
+  font-family: ui-monospace, monospace; font-weight: 700; font-size: 24px; color: var(--usa-red);
 }
-.tabs-wrap::before { left: 0; background: linear-gradient(90deg, var(--paper), transparent); }
-.tabs-wrap::after { right: 0; background: linear-gradient(270deg, var(--paper), transparent); }
+.tabs-wrap::before { left: 0; content: '‹'; justify-content: flex-start; padding-left: 8px;
+  background: linear-gradient(90deg, var(--paper) 45%, transparent); }
+.tabs-wrap::after { right: 0; content: '›'; justify-content: flex-end; padding-right: 8px;
+  background: linear-gradient(270deg, var(--paper) 45%, transparent); }
 .tabs-wrap.can-left::before { opacity: 1; }
-.tabs-wrap.can-right::after { opacity: 1; }
+/* The right chevron nudges a few times on load to advertise the hidden tabs. */
+.tabs-wrap.can-right::after { opacity: 1; animation: tabNudge 1.3s ease-in-out 3; }
+@keyframes tabNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-4px); } }
+@media (prefers-reduced-motion: reduce) { .tabs-wrap.can-right::after { animation: none; } }
 .tabs-bar {
   padding: 0 32px;
   display: flex;
@@ -1299,6 +1307,9 @@ input { font-family: inherit; }
   text-transform: uppercase;
   margin-top: 4px;
 }
+/* Dark mode: navy-on-dark is barely legible, so KPI numbers switch to gold to pop. */
+:root[data-theme="dark"] .modal-summary-value { color: var(--gold); }
+:root[data-theme="dark"] .rules-h { color: var(--gold); }
 
 .modal-body { padding: 22px 28px 28px; }
 .modal-section-title {
@@ -3432,6 +3443,8 @@ const TABS = [
   { id: 'spotlight', label: 'Players of the Moment ⭐', tip: "This matchday's standout performers across the challenge" },
   { id: 'golden', label: 'Golden Boot 🥇', tip: 'Top scorers — the 5 salespeople with the most PS Bookings New Business' },
   { id: 'playmaker', label: 'Playmaker 🎯', tip: 'Top assists — the 5 salespeople who created the most New Business opportunities' },
+  { id: 'rookies', label: 'Rookie Cup 🌱', tip: 'Rookie ranking — best PS Bookings New Business among those under a year at Devoteam' },
+  { id: 'licence', label: 'Licence 💼', tip: 'Licence ranking — top Licence GM Amount across the challenge' },
   { id: 'awards', label: 'Special Awards', tip: 'Licence, Rookie of the Year, AI Play and Transformative Deal' },
   { id: 'var', label: 'VAR Room 🟨', tip: 'Discipline watch — yellow cards for low meetings or low margin' },
   { id: 'position', label: 'My Position 🔍', tip: 'Search your name to see all your rankings in the challenge' },
@@ -3889,6 +3902,53 @@ function renderPlaymaker() {
         line: pickHeadlineFor('playmaker')
       })}
       ${fullRankingList('playmaker', sortedPlaymaker, p => p.opps || 0, 'int', 6)}
+    </div>
+  `;
+}
+
+// Rookie Cup — full ranking of the newcomers (under a year at Devoteam),
+// ranked by PS Bookings New Business. Same match-sheet + full-list pattern as the
+// Golden Boot, so the #1 hero and every row open the player's card (deep dive).
+function renderRookies() {
+  const ranked = sortedRookies.filter(p => p.ps_nb > 0);
+  const top6 = ranked.slice(0, 6);
+  const race = tightRace(ranked, p => p.ps_nb || 0, 'money');
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">🌱 ROOKIE CUP</h2>
+        <p class="section-subtitle">The best newcomers — under a year at Devoteam, ranked by PS Bookings New Business</p>
+      </div>
+      ${tightRaceBanner(race, 'Rookie Cup')}
+      ${renderMatchSheet(top6, {
+        badge: '🌱 TOP ROOKIE', color: '#16A34A', keyPrefix: 'rk',
+        valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
+        line: pickHeadlineFor('rookie')
+      })}
+      ${fullRankingList('rookies', sortedRookies, p => p.ps_nb || 0, 'money', 6)}
+    </div>
+  `;
+}
+
+// Licence ranking — full standings by Licence GM Amount. Same clickable pattern,
+// so the licence champion (and every other seller) can be deep-dived.
+function renderLicence() {
+  const ranked = sortedLicence.filter(p => p.licence_gm > 0);
+  const top6 = ranked.slice(0, 6);
+  const race = tightRace(ranked, p => p.licence_gm || 0, 'money');
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">💼 LICENCE RANKING</h2>
+        <p class="section-subtitle">Top licence sellers — ranked by Licence GM Amount</p>
+      </div>
+      ${tightRaceBanner(race, 'Licence')}
+      ${renderMatchSheet(top6, {
+        badge: '💼 LICENCE LEADER', color: '#F2C75C', keyPrefix: 'lic',
+        valueOf: p => p.licence_gm || 0, fmt: 'money', statLabel: 'Licence GM Amount',
+        line: p => `Leading the licence charts with ${fmtMoney(p.licence_gm)} of licence GM.`
+      })}
+      ${fullRankingList('licence', sortedLicence, p => p.licence_gm || 0, 'money', 6)}
     </div>
   `;
 }
@@ -5377,6 +5437,7 @@ function paniniCardInner(p) {
   const playmakerRank = sortedPlaymaker.findIndex(x => x.name === p.name) + 1;
   const totalRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
   const licenceRank = sortedLicence.findIndex(x => x.name === p.name) + 1;
+  const rookieRank = p.is_rookie ? sortedRookies.findIndex(x => x.name === p.name) + 1 : 0;
   const initials = p.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const cards = [];
   if (p.yellow_meetings) cards.push('🟨');
@@ -5402,7 +5463,7 @@ function paniniCardInner(p) {
     : '';
   // Collectible "honours" — Panini-style achievement badges earned from the
   // player's standings. Shown as a row of chips under the stats.
-  const honours = computeHonours(p, { goldenRank, playmakerRank, totalRank, licenceRank, clean });
+  const honours = computeHonours(p, { goldenRank, playmakerRank, totalRank, licenceRank, rookieRank, clean });
   // Rarity tier (Sorare-style) from the player's best rank across categories.
   const bestRank = Math.min(...[goldenRank, playmakerRank, totalRank, licenceRank].filter(r => r > 0));
   const rarity = bestRank === 1 ? { label: 'UNIQUE', cls: 'unique' }
@@ -5437,7 +5498,8 @@ function paniniCardInner(p) {
       ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB', 'golden')}
       ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
       ${stat('💰 PS Total', fmtMoney(p.ps_total), totalRank ? '#' + totalRank + ' overall' : '—')}
-      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'awards') : ''}
+      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'licence') : ''}
+      ${p.is_rookie ? stat('🌱 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookies') : ''}
     </div>
     ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div><div class="pc-honour-hint">👆 Tap a badge to see what it means</div>` : ''}`;
 }
@@ -5457,6 +5519,7 @@ function computeHonours(p, r) {
   if (top10s >= 2) h.push({ icon: '🌟', label: 'Double Threat', tip: 'Top 10 in two categories' });
   if (r.clean) h.push({ icon: '🧤', label: 'Clean Sheet', tip: 'Playing fully by the rules' });
   if (p.is_rookie && r.goldenRank && r.goldenRank <= 20) h.push({ icon: '🌱', label: 'Rising Star', tip: 'Rookie in the Golden Boot top 20' });
+  if (p.is_rookie && r.rookieRank && r.rookieRank <= 3) h.push({ icon: '🌱', label: 'Rookie Podium', tip: `Top 3 Rookie Cup (#${r.rookieRank})` });
   if ((p.meetings || 0) >= 8) h.push({ icon: '🏃', label: 'Engine', tip: `${fmtNum(p.meetings)} meetings/week` });
   return h.slice(0, 6);
 }
@@ -5781,6 +5844,8 @@ function render() {
     case 'spotlight': content = renderSpotlight(); break;
     case 'golden': content = renderGoldenBoot(); break;
     case 'playmaker': content = renderPlaymaker(); break;
+    case 'rookies': content = renderRookies(); break;
+    case 'licence': content = renderLicence(); break;
     case 'awards': content = renderSpecialAwards(); break;
     case 'var': content = renderVAR(); break;
     case 'position': content = renderMyPosition(); break;
@@ -7143,7 +7208,7 @@ function setChromeVisible(visible) {
 
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight', 'var', 'fairplay', 'awards'];
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'rookies', 'licence', 'spotlight', 'var', 'fairplay', 'awards'];
 
 // No auto-rotation: TV mode is a manually-driven deck so commentators control the
 // pace. Navigate with arrows / dots / swipe / ← → keys.
@@ -7161,6 +7226,12 @@ function tvGoto(i) {
 
 function enterTV() {
   tvMode = true; tvPanel = 0;
+  // Projection mode must stay live indefinitely: clear any idle pause and make
+  // sure polling is running so a wall-mounted screen keeps catching sheet edits.
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  idlePaused = false;
+  showIdleBanner(false);
+  if (isLoggedIn()) { startPolling(); backgroundRefresh(); }
   // Note: we deliberately do NOT call requestFullscreen() — it triggers the
   // browser's native "press Esc to exit full screen" banner. The overlay already
   // covers the whole viewport; use F11 manually for true fullscreen if wanted.
@@ -7175,6 +7246,7 @@ function exitTV() {
   try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
   const root = document.getElementById('tv-root');
   if (root) root.innerHTML = '';
+  armIdleTimer(); // back to a normal tab → resume idle auto-pause behavior
   refreshScrollTop();
 }
 
@@ -7253,6 +7325,14 @@ function tvPanelHTML(kind) {
   if (kind === 'playmaker') {
     const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
     return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true });
+  }
+  if (kind === 'rookies') {
+    const items = sortedRookies.filter(p => p.ps_nb > 0).slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
+    return tvMatchSheet(items, { title: '🌱 ROOKIE CUP — TOP NEWCOMERS', sub: 'Under a year at Devoteam · PS Bookings New Business', badge: '🌱 TOP ROOKIE', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
+  }
+  if (kind === 'licence') {
+    const items = sortedLicence.filter(p => p.licence_gm > 0).slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.licence_gm) }));
+    return tvMatchSheet(items, { title: '💼 LICENCE — TOP SELLERS', sub: 'Licence GM Amount', badge: '💼 LICENCE LEADER', valLabel: 'LICENCE GM AMOUNT', unit: 'LICENCE GM', clickable: true });
   }
   if (kind === 'var') {
     // Ordered by PS Total desc — consistent with the player ranking, so the top
@@ -7491,7 +7571,7 @@ function showIdleBanner(show) {
   }
 }
 function goIdle() {
-  if (idlePaused) return;
+  if (idlePaused || tvMode) return; // never pause a TV/projection screen
   idlePaused = true;
   stopPolling();
   showIdleBanner(true);
@@ -7507,6 +7587,7 @@ function resumeFromIdle() {
 }
 function armIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
+  if (tvMode) return; // a projection screen has no interaction — keep it live forever
   idleTimer = setTimeout(goIdle, CONFIG.IDLE_TIMEOUT_MS);
 }
 // Any meaningful interaction re-arms the idle timer (and resumes if paused).

@@ -2,6 +2,10 @@
 
 > Brief technique complet pour passer la maquette HTML en application production-ready.
 > Document destiné à Claude Code (Anthropic) pour piloter l'implémentation.
+>
+> 🧠 **Mémoire inter-sessions** : lire [`DECISIONS.md`](./DECISIONS.md) en début de session
+> (historique des décisions, actions humaines en attente, TODO). Le mettre à jour en fin de
+> session. Ce `CLAUDE.md` = état cible ; `DECISIONS.md` = historique + ce qui reste à faire.
 
 ---
 
