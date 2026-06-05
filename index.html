@@ -1958,6 +1958,14 @@ img, table { max-width: 100%; }
 .tv-awcol { flex: 1 1 380px; min-width: 0; }
 .tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 34px); color: var(--gold); text-align: center; margin-bottom: 1.4vh; letter-spacing: 0.02em; }
 .tv-awcol .tv-list { gap: 1vh; }
+/* Two-column awards show top 5 each, so rows are more compact than the single-
+   column lists — smaller portrait/padding gives the name room (no char wrapping). */
+.tv-awcol .tv-row { padding: 0.7vh clamp(10px, 1.1vw, 18px); border-radius: 12px; gap: clamp(8px, 1vw, 16px); }
+.tv-awcol .tv-pos { font-size: clamp(18px, 3vmin, 38px); }
+.tv-awcol .tv-avatar { width: clamp(40px, 5vmin, 66px); height: clamp(40px, 5vmin, 66px); }
+.tv-awcol .tv-name { font-size: clamp(15px, 2.3vmin, 27px); }
+.tv-awcol .tv-name em { font-size: 0.46em; margin-top: 2px; }
+.tv-awcol .tv-val { font-size: clamp(17px, 2.8vmin, 34px); }
 .tv-row {
   /* Cap the vw-based spacing so it doesn't explode on large screens and starve
      the name column (which used to force ugly char-by-char wrapping). */
@@ -7366,8 +7374,8 @@ function tvPanelHTML(kind) {
     const awRows = (list, valFn) => list.length
       ? list.map((p, i) => tvPersonRow(i, p, valFn(p))).join('')
       : `<div class="tv-row"><span class="tv-name" style="opacity:.7">To be revealed</span></div>`;
-    const lic = awRows(sortedLicence.slice(0, 3), p => fmtMoney(p.licence_gm));
-    const rook = awRows(sortedRookies.slice(0, 3), p => fmtMoney(p.ps_nb));
+    const lic = awRows(sortedLicence.slice(0, 5), p => fmtMoney(p.licence_gm));
+    const rook = awRows(sortedRookies.slice(0, 5), p => fmtMoney(p.ps_nb));
     return `<div class="tv-title">⭐ SPECIAL AWARDS</div><div class="tv-sub">Licence &amp; Rookie of the Year</div>
       <div class="tv-awards">
         <div class="tv-awcol"><div class="tv-awh">💼 Licence</div><div class="tv-list">${lic}</div></div>
