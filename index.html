@@ -2602,7 +2602,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v24';
+const BUILD = 'v25';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2619,11 +2619,14 @@ const CONFIG = {
   //   ?admin=<ADMIN_KEY>   (deactivate with ?admin=off). Change this secret as you like.
   ADMIN_KEY: 'leandre-refresh-2026',
   ADMIN_FLAG: 'devoteam_wc_admin_v1',
-  RANKS_KEY: 'devoteam_wc_ranks_v1', // snapshot of last-visit ranks for ▲▼ movement
-  SNAPSHOT_KEY: 'devoteam_wc_data_v1', // last successful payload → instant paint on return
+  // Evolution baselines bumped to _v2 at the official Monday kickoff: any snapshot
+  // from pre-launch testing is dropped so the first real (start-of-contest) load
+  // becomes the reference. Movement ▲▼ and the weekly digest count from Monday on.
+  RANKS_KEY: 'devoteam_wc_ranks_v2', // snapshot of last-visit ranks for ▲▼ movement
+  SNAPSHOT_KEY: 'devoteam_wc_data_v2', // last successful payload → instant paint on return
   SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000, // ignore cached data older than 6h
-  WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v1', // ranks snapshot keyed by period (weekly digest)
-  WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v1', // computed "what changed" digest for a period
+  WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v2', // ranks snapshot keyed by period (weekly digest)
+  WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v2', // computed "what changed" digest for a period
   INSTALL_DISMISS_KEY: 'devoteam_wc_install_dismissed_v1', // user dismissed the "install" banner
   INSTALLED_KEY: 'devoteam_wc_installed_v1',          // we believe the app is installed on this device
   OPEN_DISMISS_KEY: 'devoteam_wc_open_dismissed_v1'   // user dismissed the "open in the app" nudge
