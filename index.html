@@ -2646,7 +2646,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v29';
+const BUILD = 'v30';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2864,11 +2864,26 @@ const colorForTeam = team => team ? TEAM_COLORS[hashStr(team) % TEAM_COLORS.leng
 const teamKey = s => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, ' ');
 const sameTeam = (a, b) => teamKey(a) === teamKey(b);
 
+// Temporary nickname overrides — teams that announced a name before Jose's Sheet
+// was updated. The Sheet's own "Team Nickname" column ALWAYS takes precedence;
+// these only fill the gap. Safe to leave (they just match) or remove once the
+// Sheet carries them. Keys are matched case/space-insensitively (teamKey).
+const NICKNAME_OVERRIDES = {};
+[
+  ['SWEDEN',  'Snowball'],
+  ['NORWAY',  'Team Haaland'],
+  ['DENMARK', 'Grand Danois'],
+].forEach(pair => { NICKNAME_OVERRIDES[teamKey(pair[0])] = pair[1]; });
+function nicknameOverride(country) {
+  return NICKNAME_OVERRIDES[teamKey(country)] || '';
+}
+
 // Team display: when the Sheet gives a team a nickname, show it big with the
 // official ("known") name small underneath. Teams without a nickname yet just
 // show their official name, exactly as before. `realClass` styles the small line.
 function teamNameHTML(team, realClass) {
-  const nick = (team && typeof team.nickname === 'string') ? team.nickname.trim() : '';
+  let nick = (team && typeof team.nickname === 'string') ? team.nickname.trim() : '';
+  if (!nick && team) nick = nicknameOverride(team.country); // stopgap until the Sheet catches up
   const name = escapeHtml(team ? team.country : '');
   if (!nick) return name;
   return `${escapeHtml(nick)}<span class="${realClass || 'team-realname'}">${name}</span>`;
