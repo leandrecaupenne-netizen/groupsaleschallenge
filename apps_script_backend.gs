@@ -296,6 +296,18 @@ function doGet(e) {
   }
 }
 
+// Keep the Web App warm so the FIRST real request never hits a multi-second cold
+// start (which leaves users staring at the loader). Also primes the 30s data cache
+// so the next visitor's fetch is instant.
+//
+// SET UP THE TRIGGER (one-off):
+//   Apps Script editor → ⏰ Triggers (left clock icon) → "+ Add Trigger"
+//   → Function: keepWarm · Event source: Time-driven · Type: Minutes timer
+//   → Every 5 minutes → Save.
+function keepWarm() {
+  try { dataResponse(true); } catch (e) {}
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);

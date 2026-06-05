@@ -2613,7 +2613,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v28';
+const BUILD = 'v29';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2635,7 +2635,7 @@ const CONFIG = {
   // becomes the reference. Movement ▲▼ and the weekly digest count from Monday on.
   RANKS_KEY: 'devoteam_wc_ranks_v3', // snapshot of last-visit ranks for ▲▼ movement
   SNAPSHOT_KEY: 'devoteam_wc_data_v2', // last successful payload → instant paint on return
-  SNAPSHOT_MAX_AGE_MS: 6 * 60 * 60 * 1000, // ignore cached data older than 6h
+  SNAPSHOT_MAX_AGE_MS: 90 * 24 * 60 * 60 * 1000, // paint last-known data INSTANTLY (stale-while-revalidate); the background refresh + visible timestamp correct it. Avoids a 10s blank loader when the Apps Script back-end is cold.
   WEEKSNAP_KEY: 'devoteam_wc_weeksnap_v2', // ranks snapshot keyed by period (weekly digest)
   WEEKDIGEST_KEY: 'devoteam_wc_weekdigest_v2', // computed "what changed" digest for a period
   INSTALL_DISMISS_KEY: 'devoteam_wc_install_dismissed_v1', // user dismissed the "install" banner
@@ -2724,7 +2724,7 @@ const I18N = {
     'pos.start': 'Start typing your name above ↑', 'pos.none': 'No salesperson found with that name. Check spelling or try last name only.',
     'login.sub': 'Sales Challenge 2026 — Internal Access', 'login.ph': 'Enter access code', 'login.btn': 'ACCESS THE LEADERBOARD',
     'login.bad': 'Incorrect access code. Try again.', 'login.err': 'Could not reach the server. Check your connection and retry.', 'login.checking': 'CHECKING...', 'login.waking': '⏳ WAKING THE LIVE DATA…',
-    'load.title': 'WARMING UP', 'load.sub': 'Loading the live leaderboard…',
+    'load.title': 'WARMING UP', 'load.sub': 'Loading the live leaderboard…', 'load.waking': 'Waking the live data — the first load can take a few seconds…',
     'foot.runs': "Challenge runs from {a} to {b} · Award ceremony at Victoria Paris (l'Arc)",
     'foot.data': 'Data: OneBI → Google Sheets · Updated regularly · Monitored Weekly by the VAR',
     'foot.final': '🏆 GRAND FINAL · PARIS · 9 JULY 2026', 'cd.fmt': '🏆 {d}d {h}h {m}m {s}s to the Final', 'cd.live': '🏆 The Final is on — Paris!',
@@ -7591,7 +7591,14 @@ async function init() {
     // Cold path — nothing cached: show the football loader while we fetch.
     const loadStart = performance.now();
     app.innerHTML = renderLoader();
+    // First-ever load with a cold Apps Script can take several seconds. Reassure
+    // after 2.5s so a long wait doesn't look stuck.
+    const wakeTimer = setTimeout(() => {
+      const sub = document.querySelector('.loader-sub');
+      if (sub) sub.textContent = t('load.waking');
+    }, 2500);
     const ok = await fetchData();
+    clearTimeout(wakeTimer);
     if (!ok) {
       app.innerHTML = `<div class="state-msg error">Failed to load data.<br/><button class="login-btn" onclick="location.reload()">Retry</button></div>`;
       return;
