@@ -38,6 +38,19 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Surnoms en mode TV + deck TV reconfiguré
+- **Surnoms TV** : le panneau podium TV affichait le nom officiel (FR - Creative Tech 2)
+  au lieu du surnom. Désormais : surnom en gros (THE STORMERS) + nom officiel en sous-titre,
+  quand il existe. `tvMatchSheet` accepte un `item.id` (clé de lookup = pays) distinct du
+  nom affiché, pour que le tap ouvre toujours le bon squad. In-app (podium/classement/modal)
+  affichait déjà les surnoms via `teamNameHTML`.
+- **Deck TV** réduit et réordonné à la demande : `['podium','golden','playmaker','awards','spotlight']`
+  = Team → Golden → Playmaker → Special Awards (Licence & Rookie) → Top Players.
+  **VAR et Clean Sheet retirés** du mode TV. Les onglets Rookie/Licence dédiés en TV
+  (ajoutés plus tôt) sont retirés du deck (remplacés par le panneau Special Awards combiné).
+  Les onglets in-app Rookie Cup / Licence restent inchangés.
+
+
 ### 2026-06-05 — Classements Rookie & Licence + polish, ré-appliqués sur `main`
 Contexte : `main` avait beaucoup avancé en parallèle (PWA, drapeaux, portraits, tests, et sa
 propre version des nicknames / timestamp Drive / cache 60s). Plutôt que merger une vieille

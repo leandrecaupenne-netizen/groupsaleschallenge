@@ -7208,7 +7208,10 @@ function setChromeVisible(visible) {
 
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'rookies', 'licence', 'spotlight', 'var', 'fairplay', 'awards'];
+// TV/projection deck — exact order requested: Team, Golden, Playmaker,
+// Special Awards (Licence & Rookie), then Top Players. VAR & Clean Sheet are
+// intentionally excluded from the projection.
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'awards', 'spotlight'];
 
 // No auto-rotation: TV mode is a manually-driven deck so commentators control the
 // pace. Navigate with arrows / dots / swipe / ← → keys.
@@ -7268,8 +7271,11 @@ function tvMatchSheet(items, opts) {
   const kind = opts.clickable ? 'player' : (opts.clickTeam ? 'team' : null);
   const clk = !!kind;
   const clkAttr = (item) => {
-    if (kind === 'player') return ` data-tvplayer="${escapeHtml(item.name)}" title="Tap to open ${escapeHtml(item.name)}'s card"`;
-    if (kind === 'team') return ` data-tvteam="${escapeHtml(item.name)}" title="Tap to open ${escapeHtml(item.name)}'s squad"`;
+    // item.id is the lookup key (e.g. official country name) when the displayed
+    // name differs — e.g. a team shown by its nickname but opened by its country.
+    const id = item.id || item.name;
+    if (kind === 'player') return ` data-tvplayer="${escapeHtml(id)}" title="Tap to open ${escapeHtml(item.name)}'s card"`;
+    if (kind === 'team') return ` data-tvteam="${escapeHtml(id)}" title="Tap to open ${escapeHtml(item.name)}'s squad"`;
     return '';
   };
   const tapHint = kind === 'team' ? '👆 tap for the squad' : '👆 tap for the card';
@@ -7315,7 +7321,12 @@ function tvPersonRow(i, p, val) {
 }
 function tvPanelHTML(kind) {
   if (kind === 'podium') {
-    const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: t.country, val: fmtMoney(t.avg_ps) }));
+    // Show the team nickname (e.g. THE STORMERS) when it exists, with the official
+    // name as the small subtitle; id stays the country so the tap opens the squad.
+    const items = sortedTeams.slice(0, 5).map(t => {
+      const nick = (typeof t.nickname === 'string') ? t.nickname.trim() : '';
+      return { id: t.country, name: nick || t.country, team: nick ? t.country : '', val: fmtMoney(t.avg_ps) };
+    });
     return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true });
   }
   if (kind === 'golden') {
@@ -7325,14 +7336,6 @@ function tvPanelHTML(kind) {
   if (kind === 'playmaker') {
     const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
     return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true });
-  }
-  if (kind === 'rookies') {
-    const items = sortedRookies.filter(p => p.ps_nb > 0).slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🌱 ROOKIE CUP — TOP NEWCOMERS', sub: 'Under a year at Devoteam · PS Bookings New Business', badge: '🌱 TOP ROOKIE', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
-  }
-  if (kind === 'licence') {
-    const items = sortedLicence.filter(p => p.licence_gm > 0).slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.licence_gm) }));
-    return tvMatchSheet(items, { title: '💼 LICENCE — TOP SELLERS', sub: 'Licence GM Amount', badge: '💼 LICENCE LEADER', valLabel: 'LICENCE GM AMOUNT', unit: 'LICENCE GM', clickable: true });
   }
   if (kind === 'var') {
     // Ordered by PS Total desc — consistent with the player ranking, so the top
