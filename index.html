@@ -2646,7 +2646,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v32';
+const BUILD = 'v33';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -3591,16 +3591,12 @@ function regionOf(c) {
   if (c.startsWith('FR') || c === 'Devoteam France') return 'FR';
   if (c.startsWith('ES')) return 'ES';
   if (u.includes('PORTUGAL') || u.startsWith('PT ') || u.startsWith('PT-') || u === 'PT') return 'PT';
-  // Benelux = Belgium + Netherlands + Luxembourg (NL is part of Benelux).
-  if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM', 'NETHERLANDS', 'HOLLAND'].indexOf(u) !== -1
-      || u.startsWith('NETHERLANDS') || u.startsWith('NL ') || u.startsWith('NL-')) return 'BENELUX';
-  // careful: "DENMARK" starts with "DE" but is Nordic, so match GERMANY/DACH/"DE - ..." only
+  // careful: "DENMARK" starts with "DE" but is its own nation, so match GERMANY/DACH/"DE - ..." only
   if (u.includes('GERMANY') || u.startsWith('DACH') || u.startsWith('DE -') || u.startsWith('DE-')) return 'DE';
-  // Nordics = Denmark + Norway + Sweden + Finland + Iceland (or any "NORDICS …" entity).
-  if (u.startsWith('NORDIC') || u.startsWith('DENMARK')
-      || ['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
-  // Anything else keeps its own country name as its nation — we don't lump small
-  // markets into a generic "Others" bucket (every country gets its own standing).
+  // No multi-country grouping (no Benelux, no Nordics): every nation gets its own
+  // standing & filter — Belgium, Netherlands, Luxembourg, Denmark, Norway, Sweden,
+  // Finland… each stand alone. FR/ES/DE/PT stay grouped only because they
+  // consolidate business units WITHIN a single country (France/Spain/Germany/Portugal).
   return u;
 }
 
@@ -4366,9 +4362,13 @@ function varBreakers() {
 }
 
 const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics' };
-const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'NORDICS'];
+const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'PT'];
 // Standalone countries (everything not in a group above) get their own flagged label.
 const NATION_LABELS_EXTRA = {
+  // Nordics + Benelux now stand alone (no grouping), so give them their own flags.
+  DENMARK: '🇩🇰 Denmark', SWEDEN: '🇸🇪 Sweden', NORWAY: '🇳🇴 Norway',
+  FINLAND: '🇫🇮 Finland', ICELAND: '🇮🇸 Iceland', BELGIUM: '🇧🇪 Belgium',
+  NETHERLANDS: '🇳🇱 Netherlands', LUXEMBOURG: '🇱🇺 Luxembourg',
   ITALY: '🇮🇹 Italy', SWITZERLAND: '🇨🇭 Switzerland', AUSTRIA: '🇦🇹 Austria',
   POLAND: '🇵🇱 Poland', HUNGARY: '🇭🇺 Hungary', IRELAND: '🇮🇪 Ireland',
   ROMANIA: '🇷🇴 Romania', GREECE: '🇬🇷 Greece', SLOVAKIA: '🇸🇰 Slovakia',
