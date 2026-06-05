@@ -38,6 +38,17 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Pays au lieu de « Others » + rang ex-aequo
+- **Plus de « Others »** : `regionOf` ne regroupe plus les marchés non listés dans un bucket
+  générique — chaque pays devient sa propre nation (Italy, Indonesia, Saudi Arabia, Austria,
+  Alps…). Helpers `nationLabel()` (libellé + drapeau, table `NATION_LABELS_EXTRA`) et
+  `regionsPresentFrom()` (régions présentes, groupes connus puis pays alpha) ; chip/labels
+  « Others » retirés (vue équipes + dropdowns admin VAR/Coach/VAR TIME).
+- **Rang ex-aequo** : en tri inversé, les égalités affichaient des numéros distincts
+  décroissants (ex. trois €4K → #3/#4/#5). Helper `competitionRanks()` (1,2,2,4 : égalités
+  = même rang) appliqué aux 3 tables triables (équipes, nations, joueurs).
+
+
 ### 2026-06-05 — Repasse QA pré-lancement : surnoms d'équipe partout (player lists)
 - Avant : surnoms présents au podium / classement équipes / modal équipe / mode TV, mais
   les **listes joueurs in-app** affichaient l'entité brute. Ajout des helpers

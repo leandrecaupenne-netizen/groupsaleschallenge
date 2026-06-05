@@ -3583,7 +3583,22 @@ function regionOf(c) {
   // Nordics = Denmark + Norway + Sweden + Finland + Iceland (or any "NORDICS …" entity).
   if (u.startsWith('NORDIC') || u.startsWith('DENMARK')
       || ['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
-  return 'OTHER';
+  // Anything else keeps its own country name as its nation — we don't lump small
+  // markets into a generic "Others" bucket (every country gets its own standing).
+  return u;
+}
+
+// Competition ranking (1,2,2,4): equal values share the first one's rank, so a
+// reverse-sorted (worst-first) view never shows descending numbers within a tie.
+// `sortedDesc` must already be best-first.
+function competitionRanks(sortedDesc, keyOf, valOf) {
+  const m = new Map(); let lastV = null, lastR = 0;
+  sortedDesc.forEach((x, i) => {
+    const v = valOf(x);
+    const r = (i > 0 && v === lastV) ? lastR : i + 1;
+    m.set(keyOf(x), r); lastV = v; lastR = r;
+  });
+  return m;
 }
 function nationsRanking() {
   // Aggregate teams into nations (regions): true avg PS per person + member-weighted GM.
@@ -3596,7 +3611,7 @@ function nationsRanking() {
   });
   return Object.values(groups).map(g => ({
     region: g.region,
-    label: VT_REGION_LABELS[g.region] || g.region,
+    label: nationLabel(g.region),
     teams: g.teams,
     people: g.people,
     total_ps: g.total_ps,
@@ -3609,7 +3624,7 @@ function renderNationsTable() {
   const nationsBase = nationsRanking(); // canonical order: avg PS per person, desc
   // The rank/medal is the official nation standing (avg PS per person) and stays
   // put while you re-sort the columns to explore — same idea as the Team Ranking.
-  const rankMap = new Map(nationsBase.map((n, i) => [n.region, i + 1]));
+  const rankMap = competitionRanks(nationsBase, n => n.region, n => n.avg_ps || 0);
   const dir = nationSort.dir === 'asc' ? 1 : -1;
   const orderKey = nationSort.key === 'rank' ? 'avg_ps' : nationSort.key;
   const nations = [...nationsBase].sort((a, b) => orderKey === 'label'
@@ -3659,7 +3674,7 @@ function renderTeamRanking() {
   const filtered = sortedTeams.filter(t =>
     (!search || t.country.toLowerCase().includes(search)) &&
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
-  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
+  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['NORDICS', '❄️ Nordics']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
@@ -3698,7 +3713,7 @@ function renderTeamRanking() {
     // actual leader, even when the list is shown worst-first (ascending order).
     const rankKey = playerSort.key === 'name' ? 'ps_total' : playerSort.key;
     const ranked = [...people].sort((a, b) => (b[rankKey] || 0) - (a[rankKey] || 0));
-    const rankMap = new Map(ranked.map((p, i) => [p.name, i + 1]));
+    const rankMap = competitionRanks(ranked, p => p.name, p => p[rankKey] || 0);
     const displayP = sortedAll.filter(p =>
       (!psearch || p.name.toLowerCase().includes(psearch) || String(p.team).toLowerCase().includes(psearch)) &&
       (teamRegion === 'all' || regionOf(p.team) === teamRegion));
@@ -3767,6 +3782,9 @@ function renderTeamRanking() {
     if (teamSort.key === 'country') return dir * String(a.country).localeCompare(String(b.country));
     return dir * ((a[teamSort.key] || 0) - (b[teamSort.key] || 0));
   });
+  // Official standing (avg PS per person) with ties sharing a rank, so re-sorting
+  // or reversing the table never shows weird descending numbers for ex-aequo teams.
+  const teamRankMap = competitionRanks(sortedTeams, x => x.country, x => x.avg_ps || 0);
   const arrow = k => teamSort.key === k ? (teamSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const sortNote = teamSort.key === 'avg_ps' && teamSort.dir === 'desc' ? '' :
     ` · sorted by ${({country:'team name',members:'members',avg_ps:'avg PS',avg_gm:'avg GM',avg_meetings:'avg meetings',avg_opps:'avg opps'})[teamSort.key]} ${teamSort.dir}`;
@@ -3797,7 +3815,7 @@ function renderTeamRanking() {
           <div class="tt-col-opps th-sort" data-sort="avg_opps">${t('th.avgopps')}${arrow('avg_opps')}</div>
         </div>
         ${display.map(t => {
-          const realRank = sortedTeams.findIndex(x => x.country === t.country) + 1;
+          const realRank = teamRankMap.get(t.country);
           const topClass = realRank === 1 ? 'top-1' : realRank === 2 ? 'top-2' : realRank === 3 ? 'top-3' : '';
           return `
             <div class="teams-table-row ${topClass}" data-team="${escapeHtml(t.country)}">
@@ -4212,7 +4230,7 @@ function renderVAR() {
   const CAP = 12;
   // Same filters as elsewhere: country (region) + entity (team) + name search.
   // They scope the cards AND the clean sheet together.
-  const regionsPresent = VT_REGION_ORDER.filter(r => people.some(p => regionOf(p.team) === r));
+  const regionsPresent = regionsPresentFrom(people, p => p.team);
   const teamsPresent = [...new Set(people
     .filter(p => varRegion === 'all' || regionOf(p.team) === varRegion)
     .map(p => p.team))].sort();
@@ -4236,7 +4254,7 @@ function renderVAR() {
       <input type="text" id="var-search" class="search-input vt-search" placeholder="Search a player by name…" value="${escapeHtml(varSearch)}" />
       <select id="var-region" class="vt-select" aria-label="Filter by country">
         <option value="all">🌐 All countries</option>
-        ${regionsPresent.map(r => `<option value="${r}" ${varRegion === r ? 'selected' : ''}>${VT_REGION_LABELS[r] || r}</option>`).join('')}
+        ${regionsPresent.map(r => `<option value="${r}" ${varRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
       </select>
       <select id="var-team" class="vt-select" aria-label="Filter by entity">
         <option value="all">🏢 All entities</option>
@@ -4327,8 +4345,37 @@ function varBreakers() {
     || (a.p.meetings || 0) - (b.p.meetings || 0));
 }
 
-const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
-const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'NORDICS', 'OTHER'];
+const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics' };
+const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'NORDICS'];
+// Standalone countries (everything not in a group above) get their own flagged label.
+const NATION_LABELS_EXTRA = {
+  ITALY: '🇮🇹 Italy', SWITZERLAND: '🇨🇭 Switzerland', AUSTRIA: '🇦🇹 Austria',
+  POLAND: '🇵🇱 Poland', HUNGARY: '🇭🇺 Hungary', IRELAND: '🇮🇪 Ireland',
+  ROMANIA: '🇷🇴 Romania', GREECE: '🇬🇷 Greece', SLOVAKIA: '🇸🇰 Slovakia',
+  CZECHIA: '🇨🇿 Czechia', 'CZECH REPUBLIC': '🇨🇿 Czechia', CROATIA: '🇭🇷 Croatia',
+  SLOVENIA: '🇸🇮 Slovenia', USA: '🇺🇸 USA', MEXICO: '🇲🇽 Mexico',
+  INDONESIA: '🇮🇩 Indonesia', SINGAPORE: '🇸🇬 Singapore', JAPAN: '🇯🇵 Japan',
+  INDIA: '🇮🇳 India', CHINA: '🇨🇳 China', BRAZIL: '🇧🇷 Brazil', CANADA: '🇨🇦 Canada',
+  AUSTRALIA: '🇦🇺 Australia', TURKEY: '🇹🇷 Turkey', 'SOUTH AFRICA': '🇿🇦 South Africa',
+  UAE: '🇦🇪 UAE', 'SAUDI ARABIA': '🇸🇦 Saudi Arabia', EGYPT: '🇪🇬 Egypt',
+  'MIDDLE EAST': '🌍 Middle East', ALPS: '🏔️ Alps', UK: '🇬🇧 UK', 'UNITED KINGDOM': '🇬🇧 UK'
+};
+// Pretty label for any region/nation key (grouped region, known country, or — as a
+// last resort — the title-cased raw name). Never returns a generic "Others".
+function nationLabel(region) {
+  if (VT_REGION_LABELS[region]) return VT_REGION_LABELS[region];
+  if (NATION_LABELS_EXTRA[region]) return NATION_LABELS_EXTRA[region];
+  return String(region).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+// Regions actually present in the data, grouped ones first (in VT_REGION_ORDER),
+// then any standalone countries alphabetically. Replaces the old fixed list so the
+// new per-country nations show up in the admin filters too.
+function regionsPresentFrom(items, teamOf) {
+  const set = new Set(items.map(x => regionOf(teamOf(x))));
+  const known = VT_REGION_ORDER.filter(r => set.has(r));
+  const extra = [...set].filter(r => VT_REGION_ORDER.indexOf(r) === -1).sort();
+  return known.concat(extra);
+}
 
 // === Admin "COACH ROOM": challenge totals/objectives + contributor breakdown ===
 // The metrics a coach actually tracks toward the big group targets: total PS
@@ -4344,7 +4391,7 @@ function coachFmt(v, kind) { return kind === 'money' ? fmtMoney(v) : kind === 'i
 
 function renderCoachRoom() {
   // Country (region) + entity (team) filters, chained like the other admin views.
-  const regionsPresent = VT_REGION_ORDER.filter(r => people.some(p => regionOf(p.team) === r));
+  const regionsPresent = regionsPresentFrom(people, p => p.team);
   const teamsPresent = [...new Set(people
     .filter(p => coachRegion === 'all' || regionOf(p.team) === coachRegion)
     .map(p => p.team))].sort();
@@ -4425,7 +4472,7 @@ function renderCoachRoom() {
       <div class="vt-controls">
         <select id="coach-region" class="vt-select" aria-label="Filter by country">
           <option value="all">🌐 All countries</option>
-          ${regionsPresent.map(r => `<option value="${r}" ${coachRegion === r ? 'selected' : ''}>${VT_REGION_LABELS[r] || r}</option>`).join('')}
+          ${regionsPresent.map(r => `<option value="${r}" ${coachRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
         </select>
         <select id="coach-team" class="vt-select" aria-label="Filter by entity">
           <option value="all">🏢 All entities</option>
@@ -4507,13 +4554,13 @@ function renderCoachDiveModal() {
       const overall = compliance(people);
       subtitle = `By nation · ${Math.round(overall.pct)}% of ${overall.n} players compliant`;
       body = nations.map((g, i) => row({
-        rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+        rank: '#' + (i + 1), name: nationLabel(g.region), sub: `${g.n} people`,
         barPct: g.pct, color: '#16a34a', flag: FLAG_STRIPES[g.region],
         valText: Math.round(g.pct) + '%', shareText: `${g.c}/${g.n} clean`,
         cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
       })).join('') || `<div class="no-result">No players in scope.</div>`;
     } else {
-      const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+      const regLabel = nationLabel(coachDiveRegion);
       const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
       const rc = compliance(inReg);
       backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
@@ -4558,13 +4605,13 @@ function renderCoachDiveModal() {
       const overall = wgm(people);
       subtitle = `By nation · ${fmtPct(overall.gm)} weighted avg · target ≥ 25%`;
       body = nations.map((g, i) => row({
-        rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+        rank: '#' + (i + 1), name: nationLabel(g.region), sub: `${g.n} people`,
         barPct: (g.gm / maxGm) * 100, color: gmColor(g.gm), flag: FLAG_STRIPES[g.region],
         valText: fmtPct(g.gm), shareText: fmtMoney(g.ps) + ' PS',
         cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
       })).join('') || `<div class="no-result">No PS booked yet.</div>`;
     } else {
-      const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+      const regLabel = nationLabel(coachDiveRegion);
       const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
       const rg = wgm(inReg);
       backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
@@ -4605,12 +4652,12 @@ function renderCoachDiveModal() {
       const nations = Object.values(groups).filter(g => g.v > 0).sort((a, b) => b.v - a.v);
       subtitle = `By nation · ${coachFmt(grandTotal, m.sumFmt)} total`;
       body = nations.map((g, i) => row({
-        rank: '#' + (i + 1), name: VT_REGION_LABELS[g.region] || g.region, sub: `${g.n} people`,
+        rank: '#' + (i + 1), name: nationLabel(g.region), sub: `${g.n} people`,
         value: g.v, of: grandTotal, fmt: m.rowFmt, flag: FLAG_STRIPES[g.region], color: FLAG_STRIPES[g.region] ? FLAG_STRIPES[g.region][0] : 'var(--navy)',
         cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
       })).join('') || `<div class="no-result">No contribution recorded yet.</div>`;
     } else {
-      const regLabel = VT_REGION_LABELS[coachDiveRegion] || coachDiveRegion;
+      const regLabel = nationLabel(coachDiveRegion);
       const inReg = people.filter(p => regionOf(p.team) === coachDiveRegion);
       const regTotal = inReg.reduce((a, p) => a + val(p), 0) || 1;
       backBtn = `<button class="cd-back" id="cd-back">‹ All nations</button>`;
@@ -4658,7 +4705,7 @@ function renderCoachDiveModal() {
 function renderVarTime() {
   const all = varBreakers();
   // Country (region) options present among rule-breakers, in canonical order.
-  const regionsPresent = VT_REGION_ORDER.filter(r => all.some(b => regionOf(b.p.team) === r));
+  const regionsPresent = regionsPresentFrom(all, b => b.p.team);
   // Entity (team) options — limited to the selected country so the two filters chain naturally.
   const teamsPresent = [...new Set(all
     .filter(b => vartimeRegion === 'all' || regionOf(b.p.team) === vartimeRegion)
@@ -4722,7 +4769,7 @@ function renderVarTime() {
         <input type="text" id="vt-search" class="search-input vt-search" placeholder="Search a player by name…" value="${escapeHtml(vartimeSearch)}" />
         <select id="vt-region" class="vt-select" aria-label="Filter by country">
           <option value="all">🌐 All countries</option>
-          ${regionsPresent.map(r => `<option value="${r}" ${vartimeRegion === r ? 'selected' : ''}>${VT_REGION_LABELS[r] || r}</option>`).join('')}
+          ${regionsPresent.map(r => `<option value="${r}" ${vartimeRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
         </select>
         <select id="vt-team" class="vt-select" aria-label="Filter by entity">
           <option value="all">🏢 All entities</option>
@@ -6144,7 +6191,7 @@ function render() {
       const sc = people.filter(p => (coachRegion === 'all' || regionOf(p.team) === coachRegion) && (coachTeam === 'all' || p.team === coachTeam));
       const s = k => sc.reduce((a, p) => a + (Number(p[k]) || 0), 0);
       const hc = sc.length, gmE = sc.reduce((a, p) => a + (Number(p.ps_total) || 0) * (Number(p.ps_total_gm) || 0), 0);
-      const scope = coachTeam !== 'all' ? coachTeam : (coachRegion !== 'all' ? (VT_REGION_LABELS[coachRegion] || coachRegion) : 'All teams');
+      const scope = coachTeam !== 'all' ? coachTeam : (coachRegion !== 'all' ? (nationLabel(coachRegion)) : 'All teams');
       const text = `📋 COACH ROOM — ${period || 'Sales Challenge'} · ${scope}\n`
         + `Total PS: ${fmtMoney(s('ps_total'))} · New Business: ${fmtMoney(s('ps_nb'))}\n`
         + `Avg GM: ${fmtPct(s('ps_total') ? gmE / s('ps_total') : 0)} · Avg meetings/wk: ${fmtNum(hc ? s('meetings') / hc : 0)}\n`
