@@ -38,6 +38,21 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Repasse QA pré-lancement : surnoms d'équipe partout (player lists)
+- Avant : surnoms présents au podium / classement équipes / modal équipe / mode TV, mais
+  les **listes joueurs in-app** affichaient l'entité brute. Ajout des helpers
+  `playerTeamHTML(team, realClass, suffix)` (surnom + entité en petit) et `teamShortLabel`
+  (surnom seul, pour les lignes tronquées `nowrap`).
+- Surnom désormais affiché dans : match-sheet hero + rows (Golden/Playmaker/Rookie/Licence),
+  full-ranking (surnom seul), Special Awards hero + mini (surnom seul), carte joueur,
+  My Position, modal Nation (équipes). **Aucun changement pour les équipes sans surnom**
+  (le helper retombe sur l'entité → risque nul).
+- Surfaces secondaires/admin laissées en entité (VAR, Coach, recherche, ticker, digest).
+- Vérifié : fetchData robuste (timeout/abort, unauthorized→logout, warnings, normalisation
+  GM, recalcul flags discipline, snapshot) ; cartes joueurs = Set de slugs + fallback
+  initiales (onerror) ; deck TV OK.
+
+
 ### 2026-06-05 — Mode TV : revenir au top 5 facilement
 - Le bouton de repli était en bas de la liste étendue (il fallait scroller), donc on
   cliquait « Exit » (qui quitte tout le mode TV). Désormais le bouton « + Show more / ← Back

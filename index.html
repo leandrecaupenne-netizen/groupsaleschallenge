@@ -460,10 +460,13 @@ input { font-family: inherit; }
 
 .tt-team { font-weight: 700; }
 /* Team nickname shown big; the official ("known") name small underneath. */
-.team-realname, .tt-realname, .podium-team-real, .modal-title-real {
+.team-realname, .tt-realname, .podium-team-real, .modal-title-real, .tnk-real-light, .tnk-real-muted {
   display: block; font-family: ui-monospace, monospace; font-weight: 500;
   letter-spacing: 0.02em; line-height: 1.2; margin-top: 2px; text-transform: none;
 }
+/* Official entity name shown small under a team nickname, in the player lists. */
+.tnk-real-light { font-size: 0.84em; color: rgba(255,255,255,0.6); }
+.tnk-real-muted { font-size: 0.84em; color: var(--muted); }
 .tt-realname { font-size: 11px; color: var(--muted); }
 .podium-team-real { font-size: clamp(9px, 1.5vw, 11px); color: rgba(255,255,255,0.82); margin-top: 3px; }
 .modal-title-real { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 3px; }
@@ -2871,6 +2874,27 @@ function teamNameHTML(team, realClass) {
   return `${escapeHtml(nick)}<span class="${realClass || 'team-realname'}">${name}</span>`;
 }
 
+// Single-line team label (nickname if the team has one, else the entity) for the
+// compact, truncated rows (full-ranking list, award runner-ups) where a two-line
+// nickname + entity would be clipped by `white-space: nowrap`.
+function teamShortLabel(teamName) {
+  const t = (teams || []).find(x => x.country === teamName);
+  const nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  return escapeHtml(nick || teamName);
+}
+
+// Same idea from a PLAYER's team string: look up the team to get its nickname and
+// show it big with the official entity small underneath (optional trailing suffix,
+// e.g. a rookie tag, stays on the nickname line). No nickname -> just the entity,
+// so teams without one are byte-for-byte unchanged. Used across the player lists.
+function playerTeamHTML(teamName, realClass, suffix) {
+  const t = (teams || []).find(x => x.country === teamName);
+  const nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  const suf = suffix || '';
+  if (!nick) return escapeHtml(teamName) + suf;
+  return `${escapeHtml(nick)}${suf}<span class="${realClass || 'team-realname'}">${escapeHtml(teamName)}</span>`;
+}
+
 // True if a leader change of `type` happened recently (drives the gold flash).
 const isFlashing = type => flash[type] && flash[type] > Date.now();
 
@@ -3827,7 +3851,7 @@ function renderMatchSheet(list, opts) {
         </div>
         <div class="ms-hero-rank">#1</div>
         <div class="ms-hero-name">${escapeHtml(top.name)}</div>
-        <div class="ms-hero-team">${escapeHtml(top.team)}${top.is_rookie ? ' · 🎓 Rookie' : ''}</div>
+        <div class="ms-hero-team">${playerTeamHTML(top.team, 'tnk-real-light', top.is_rookie ? ' · 🎓 Rookie' : '')}</div>
         <div class="ms-hero-stat">${animNum(opts.keyPrefix + ':' + top.name, opts.valueOf(top), opts.fmt)}</div>
         <div class="ms-hero-stat-label">${opts.statLabel}</div>
         ${opts.line ? `<div class="ms-hero-line">“${opts.line(top)}”</div>` : ''}
@@ -3845,7 +3869,7 @@ function renderMatchSheet(list, opts) {
         <div class="ms-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}<span class="ms-avatar-flag">${flagBars(fl)}</span></div>
         <div class="ms-who">
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
-          <div class="ms-who-team">${escapeHtml(p.team)}</div>
+          <div class="ms-who-team">${playerTeamHTML(p.team, 'tnk-real-muted')}</div>
         </div>
         <div class="ms-figure">
           <div class="ms-val">${fmtByType(v, opts.fmt)}</div>
@@ -3871,7 +3895,7 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount) {
       <div class="fr-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
         <span class="fr-rank">#${rank}</span>
         <span class="fr-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}</span>
-        <span class="fr-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+        <span class="fr-name">${escapeHtml(p.name)}<em>${teamShortLabel(p.team)}</em></span>
         <span class="fr-val">${fmtByType(valueOf(p), fmt)}</span>
       </div>`;
   }).join('') : '';
@@ -4737,7 +4761,7 @@ function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flas
         <div class="indiv-rank ${rank === 1 ? 'medal-1' : ''}">#${rank}${flashType ? movementBadge(flashType, person.name, rank) : ''}</div>
         <div class="indiv-info">
           <div class="indiv-name">${escapeHtml(person.name)}</div>
-          <div class="indiv-team">${escapeHtml(person.team)}</div>
+          <div class="indiv-team">${playerTeamHTML(person.team, 'tnk-real-muted')}</div>
         </div>
       </div>
       <div class="indiv-stat-main">${mainStat}</div>
@@ -4767,7 +4791,7 @@ function awardHero(p, stat, statLabel) {
         <div class="aw-hero-avatar${photoFor(p.name) ? ' has-photo' : ''}">${avatarInner(p.name)}<span class="aw-hero-flag">${flagBars(flag)}</span></div>
         <div class="aw-hero-info">
           <div class="aw-hero-name">${escapeHtml(p.name)}</div>
-          <div class="aw-hero-team">${escapeHtml(p.team)}</div>
+          <div class="aw-hero-team">${playerTeamHTML(p.team, 'tnk-real-light')}</div>
         </div>
         <div class="aw-hero-figure">
           <div class="aw-hero-stat">${stat}</div>
@@ -4784,7 +4808,7 @@ function awardMiniRow(p, rank, stat) {
     <div class="aw-mini" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       <span class="aw-mini-rank">${['', '🥇', '🥈', '🥉'][rank] || ('#' + rank)}</span>
       <span class="aw-mini-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--tc:${c}">${avatarInner(p.name)}</span>
-      <span class="aw-mini-name">${escapeHtml(p.name)}<em>${escapeHtml(p.team)}</em></span>
+      <span class="aw-mini-name">${escapeHtml(p.name)}<em>${teamShortLabel(p.team)}</em></span>
       <span class="aw-mini-stat">${stat}</span>
     </div>`;
 }
@@ -5504,7 +5528,7 @@ function paniniCardInner(p) {
       <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
       <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
-      <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🎓 ROOKIE' : ''}</div>
+      <div class="pc-team">${playerTeamHTML(p.team, 'tnk-real-light', p.is_rookie ? ' · 🎓 ROOKIE' : '')}</div>
       ${disciplineBadge}
       <div class="pc-rating-row">
         <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
@@ -5709,7 +5733,7 @@ function renderNationModal() {
               <div class="members-table-row nation-team-row" data-nteam="${escapeHtml(tm.country)}">
                 <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>
                 <div>
-                  <div class="member-name">${escapeHtml(tm.country)}</div>
+                  <div class="member-name">${teamNameHTML(tm, 'tnk-real-muted')}</div>
                   <div class="member-tenure">tap to view squad →</div>
                 </div>
                 <div class="member-stat">${fmtMoney(tm.avg_ps)}</div>
