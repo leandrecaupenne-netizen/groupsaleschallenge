@@ -43,6 +43,18 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Lisibilité mode nuit + découvrabilité du scroll des onglets
+Branche : `claude/wonderful-edison-W21bT`
+
+- **Mode nuit** : les chiffres du résumé d'équipe (`.modal-summary-value`) restaient en
+  `--navy` (#1E2A78) sur un fond sombre → quasi illisibles. Passés en **or** (`--gold`) en
+  dark mode. Idem pour les titres de règles (`.rules-h`).
+- **Scroll des onglets** : la barre d'onglets scrollait déjà horizontalement mais le seul
+  indice était un dégradé de 28px trop discret sur mobile. Ajout de **chevrons ‹ ›** rouges
+  dans les fades (gauche/droite) + une petite **animation de nudge** (3 pulsations au
+  chargement) sur le chevron droit pour signaler les catégories cachées (Special Awards,
+  VAR Room…). Respecte `prefers-reduced-motion`.
+
 ### 2026-06-05 — Surnoms d'équipe (colonne « Team nicknames »)
 Branche : `claude/wonderful-edison-W21bT`
 
