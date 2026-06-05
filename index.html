@@ -1948,14 +1948,18 @@ img, table { max-width: 100%; }
 .tv-brand { font-family: 'Anton', Impact, sans-serif; letter-spacing: 0.06em; font-size: clamp(16px, 2.4vw, 30px); color: var(--gold); }
 .tv-close { background: rgba(255,255,255,0.12); color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; }
 .tv-close:hover { background: rgba(255,255,255,0.28); }
-.tv-body { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 1; }
+/* `safe center` keeps a panel centred when it fits but falls back to the top
+   (scrollable) when it's taller than the screen — so expanded lists are reachable
+   instead of being clipped off the bottom. */
+.tv-body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: safe center; overflow-y: auto; position: relative; z-index: 1; }
 /* TV fonts scale with vmin (the SMALLER of width/height) so 5 rows still fit on
    wide-but-short screens (e.g. 720p projectors), not just tall ones. */
 .tv-title { font-family: 'Anton', Impact, sans-serif; font-size: clamp(28px, 7vmin, 76px); line-height: 1; text-align: center; }
 .tv-sub { text-align: center; color: rgba(255,255,255,0.7); font-size: clamp(12px, 2vmin, 20px); letter-spacing: 0.08em; text-transform: uppercase; margin: 1vh 0 2.4vh; }
 .tv-list { display: flex; flex-direction: column; gap: 1.2vh; max-width: 1100px; width: 100%; margin: 0 auto; }
-.tv-awards { display: flex; flex-wrap: wrap; gap: 4vw; justify-content: center; max-width: 1200px; margin: 0 auto; }
-.tv-awcol { flex: 1 1 380px; min-width: 0; }
+/* Two columns side by side (Licence | Rookie), always — stacks only on phones. */
+.tv-awards { display: grid; grid-template-columns: 1fr 1fr; gap: 2vh 4vw; align-items: start; max-width: 1280px; margin: 0 auto; width: 100%; }
+.tv-awcol { min-width: 0; }
 .tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 34px); color: var(--gold); text-align: center; margin-bottom: 1.4vh; letter-spacing: 0.02em; }
 .tv-awcol .tv-list { gap: 1vh; }
 /* Two-column awards show top 5 each, so rows are more compact than the single-
@@ -1966,6 +1970,10 @@ img, table { max-width: 100%; }
 .tv-awcol .tv-name { font-size: clamp(15px, 2.3vmin, 27px); }
 .tv-awcol .tv-name em { font-size: 0.46em; margin-top: 2px; }
 .tv-awcol .tv-val { font-size: clamp(17px, 2.8vmin, 34px); }
+/* "+ Show more" toggle on TV ranking panels (top 5 by default, expand for the rest). */
+.tv-more-wrap { text-align: center; margin-top: 2.2vh; }
+.tv-more { background: rgba(255,255,255,0.12); color: var(--gold); border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 1vh 3.2vh; font-family: 'Anton', Impact, sans-serif; font-size: clamp(14px, 2vmin, 22px); letter-spacing: 0.04em; cursor: pointer; }
+.tv-more:hover { background: rgba(255,255,255,0.22); }
 .tv-row {
   /* Cap the vw-based spacing so it doesn't explode on large screens and starve
      the name column (which used to force ugly char-by-char wrapping). */
@@ -2067,8 +2075,7 @@ img, table { max-width: 100%; }
   .tv-name { font-size: clamp(14px, 4.6vw, 22px); line-height: 1.12; min-width: 0; }
   .tv-name em { font-size: 0.55em; }
   .tv-val { flex-basis: 100%; padding-left: calc(1.3em + 10px); font-size: clamp(14px, 4.4vw, 22px); }
-  .tv-awcol { flex-basis: 100%; }
-  .tv-awards { gap: 1.4vh; }
+  .tv-awards { grid-template-columns: 1fr; gap: 1.4vh; }
   .tv-awh { margin-bottom: 0.8vh; }
   /* Safety net on tiny screens: let the panel scroll rather than clip content. */
   .tv-body { justify-content: flex-start; overflow-y: auto; padding-top: 1vh; }
@@ -3543,12 +3550,11 @@ function regionOf(c) {
   // Benelux = Belgium + Netherlands + Luxembourg (NL is part of Benelux).
   if (u.includes('BENELUX') || u.startsWith('BNL') || ['LUXEMBOURG', 'BELGIUM', 'NETHERLANDS', 'HOLLAND'].indexOf(u) !== -1
       || u.startsWith('NETHERLANDS') || u.startsWith('NL ') || u.startsWith('NL-')) return 'BENELUX';
-  // careful: "DENMARK" starts with "DE" but must stay Nordics, so match GERMANY/DACH/"DE - ..." only
+  // careful: "DENMARK" starts with "DE" but is Nordic, so match GERMANY/DACH/"DE - ..." only
   if (u.includes('GERMANY') || u.startsWith('DACH') || u.startsWith('DE -') || u.startsWith('DE-')) return 'DE';
-  // Denmark stands as its own nation (broken out from the Nordics group).
-  if (u === 'DENMARK' || u.startsWith('DENMARK')) return 'DK';
-  // Other Nordic countries by name, or any "NORDICS …" entity (e.g. "NORDICS Cloud").
-  if (u.startsWith('NORDIC') || ['NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
+  // Nordics = Denmark + Norway + Sweden + Finland + Iceland (or any "NORDICS …" entity).
+  if (u.startsWith('NORDIC') || u.startsWith('DENMARK')
+      || ['DENMARK', 'NORWAY', 'SWEDEN', 'FINLAND', 'ICELAND'].indexOf(u) !== -1) return 'NORDICS';
   return 'OTHER';
 }
 function nationsRanking() {
@@ -3625,7 +3631,7 @@ function renderTeamRanking() {
   const filtered = sortedTeams.filter(t =>
     (!search || t.country.toLowerCase().includes(search)) &&
     (teamRegion === 'all' || regionOf(t.country) === teamRegion));
-  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['DK', '🇩🇰 Denmark'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
+  const regions = [['all', 'All'], ['FR', '🇫🇷 France'], ['ES', '🇪🇸 Spain'], ['DE', '🇩🇪 Germany'], ['BENELUX', '🇧🇪 Benelux'], ['PT', '🇵🇹 Portugal'], ['NORDICS', '❄️ Nordics'], ['OTHER', '🌍 Others']];
   const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
@@ -4294,7 +4300,7 @@ function varBreakers() {
 }
 
 const VT_REGION_LABELS = { FR: '🇫🇷 France', ES: '🇪🇸 Spain', DE: '🇩🇪 Germany', BENELUX: '🇧🇪 Benelux', PT: '🇵🇹 Portugal', DK: '🇩🇰 Denmark', NORDICS: '❄️ Nordics', OTHER: '🌍 Others' };
-const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'DK', 'NORDICS', 'OTHER'];
+const VT_REGION_ORDER = ['FR', 'ES', 'DE', 'BENELUX', 'PT', 'NORDICS', 'OTHER'];
 
 // === Admin "COACH ROOM": challenge totals/objectives + contributor breakdown ===
 // The metrics a coach actually tracks toward the big group targets: total PS
@@ -7216,10 +7222,20 @@ function setChromeVisible(visible) {
 
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
+let tvExpanded = false; // ranking panels show top 5 by default; "+" expands them
+const TV_TOP = 5;       // default rows per TV ranking panel
 // TV/projection deck — exact order requested: Team, Golden, Playmaker,
 // Special Awards (Licence & Rookie), then Top Players. VAR & Clean Sheet are
 // intentionally excluded from the projection.
 const TV_PANELS = ['podium', 'golden', 'playmaker', 'awards', 'spotlight'];
+
+// Limit a TV ranking to the top 5, or everything when the user expanded it.
+function tvLimit(list) { return tvExpanded ? list : list.slice(0, TV_TOP); }
+// "+ Show more / − Show top 5" toggle, shown only when there's more than the top 5.
+function tvMoreBtn(total) {
+  if (total <= TV_TOP) return '';
+  return `<div class="tv-more-wrap"><button class="tv-more" data-tvmore="${tvExpanded ? '0' : '1'}">${tvExpanded ? '− Show top 5' : '+ Show more (' + total + ')'}</button></div>`;
+}
 
 // No auto-rotation: TV mode is a manually-driven deck so commentators control the
 // pace. Navigate with arrows / dots / swipe / ← → keys.
@@ -7227,16 +7243,18 @@ function tvGo(delta) {
   if (!tvMode) return;
   const n = TV_PANELS.length;
   tvPanel = (tvPanel + delta + n) % n;
+  tvExpanded = false; // each panel starts collapsed at the top 5
   renderTV();
 }
 function tvGoto(i) {
   if (!tvMode) return;
   tvPanel = ((i % TV_PANELS.length) + TV_PANELS.length) % TV_PANELS.length;
+  tvExpanded = false;
   renderTV();
 }
 
 function enterTV() {
-  tvMode = true; tvPanel = 0;
+  tvMode = true; tvPanel = 0; tvExpanded = false;
   // Projection mode must stay live indefinitely: clear any idle pause and make
   // sure polling is running so a wall-mounted screen keeps catching sheet edits.
   if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
@@ -7331,19 +7349,21 @@ function tvPanelHTML(kind) {
   if (kind === 'podium') {
     // Show the team nickname (e.g. THE STORMERS) when it exists, with the official
     // name as the small subtitle; id stays the country so the tap opens the squad.
-    const items = sortedTeams.slice(0, 5).map(t => {
+    const items = tvLimit(sortedTeams).map(t => {
       const nick = (typeof t.nickname === 'string') ? t.nickname.trim() : '';
       return { id: t.country, name: nick || t.country, team: nick ? t.country : '', val: fmtMoney(t.avg_ps) };
     });
-    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true });
+    return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true }) + tvMoreBtn(sortedTeams.length);
   }
   if (kind === 'golden') {
-    const items = sortedGoldenBoot.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
-    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
+    const full = sortedGoldenBoot.filter(p => p.ps_nb > 0);
+    const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
+    return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true }) + tvMoreBtn(full.length);
   }
   if (kind === 'playmaker') {
-    const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
-    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true });
+    const full = sortedPlaymaker.filter(p => p.opps > 0);
+    const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
+    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true }) + tvMoreBtn(full.length);
   }
   if (kind === 'var') {
     // Ordered by PS Total desc — consistent with the player ranking, so the top
@@ -7374,13 +7394,13 @@ function tvPanelHTML(kind) {
     const awRows = (list, valFn) => list.length
       ? list.map((p, i) => tvPersonRow(i, p, valFn(p))).join('')
       : `<div class="tv-row"><span class="tv-name" style="opacity:.7">To be revealed</span></div>`;
-    const lic = awRows(sortedLicence.slice(0, 5), p => fmtMoney(p.licence_gm));
-    const rook = awRows(sortedRookies.slice(0, 5), p => fmtMoney(p.ps_nb));
+    const lic = awRows(tvLimit(sortedLicence), p => fmtMoney(p.licence_gm));
+    const rook = awRows(tvLimit(sortedRookies), p => fmtMoney(p.ps_nb));
     return `<div class="tv-title">⭐ SPECIAL AWARDS</div><div class="tv-sub">Licence &amp; Rookie of the Year</div>
       <div class="tv-awards">
         <div class="tv-awcol"><div class="tv-awh">💼 Licence</div><div class="tv-list">${lic}</div></div>
         <div class="tv-awcol"><div class="tv-awh">🌱 Rookie of the Year</div><div class="tv-list">${rook}</div></div>
-      </div>`;
+      </div>${tvMoreBtn(Math.max(sortedLicence.length, sortedRookies.length))}`;
   }
   const spots = buildSpotlights();
   if (!spots.length) return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", `<div class="tv-row"><span class="tv-name">No standouts yet.</span></div>`);
@@ -7425,6 +7445,9 @@ function renderTV() {
   // Podium teams are tappable too → open the team's squad over the projection.
   root.querySelectorAll('[data-tvteam]').forEach(el =>
     el.addEventListener('click', () => openTVTeamCard(el.dataset.tvteam)));
+  // "+ Show more" / "− Show top 5" toggle on ranking panels.
+  root.querySelectorAll('[data-tvmore]').forEach(el =>
+    el.addEventListener('click', () => { tvExpanded = el.dataset.tvmore === '1'; renderTV(); }));
 }
 
 // Player card shown ON TOP of the TV projection (its own overlay so it sits

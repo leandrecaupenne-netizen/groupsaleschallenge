@@ -38,6 +38,19 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Fix région Nordics + UX mode TV (côte à côte, scroll, top 5 + « + »)
+- **Bug région Nordics** : le Danemark était une nation séparée (`DK`). Désormais `regionOf`
+  range DENMARK dans `NORDICS` (= DK+NO+SE+FI+IS). Chip/ordre `DK` retirés. Vaut partout
+  (Nations view, drilldown, coach, etc.).
+- **Mode TV — Special Awards en 2 colonnes côte à côte** : `.tv-awards` passé en CSS grid
+  `1fr 1fr` (s'empilait avant en flex-wrap ; 1 colonne seulement ≤640px).
+- **Mode TV — scroll** : `.tv-body` en `justify-content: safe center` + `overflow-y:auto`
+  → centré quand ça tient, scrollable sinon (corrige « je pouvais pas descendre »).
+- **Mode TV — top 5 + bouton « + »** : tous les panneaux classement (podium, golden,
+  playmaker, awards) affichent le top 5 puis un bouton « + Show more » / « − Show top 5 »
+  (état `tvExpanded`, reset à chaque changement de panneau). La limitation TV ne touche pas
+  les onglets in-app (qui gardent leurs classements complets).
+
 ### 2026-06-05 — Surnoms en mode TV + deck TV reconfiguré
 - **Surnoms TV** : le panneau podium TV affichait le nom officiel (FR - Creative Tech 2)
   au lieu du surnom. Désormais : surnom en gros (THE STORMERS) + nom officiel en sous-titre,
