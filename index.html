@@ -2646,7 +2646,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v30';
+const BUILD = 'v31';
 
 // === LIVE CONFIG ===
 const CONFIG = {
@@ -2904,7 +2904,8 @@ function teamShortLabel(teamName) {
 // so teams without one are byte-for-byte unchanged. Used across the player lists.
 function playerTeamHTML(teamName, realClass, suffix) {
   const t = (teams || []).find(x => x.country === teamName);
-  const nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  let nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  if (!nick) nick = nicknameOverride(teamName); // same stopgap as teamNameHTML, so overrides show in player lists too
   const suf = suffix || '';
   if (!nick) return escapeHtml(teamName) + suf;
   return `${escapeHtml(nick)}${suf}<span class="${realClass || 'team-realname'}">${escapeHtml(teamName)}</span>`;
