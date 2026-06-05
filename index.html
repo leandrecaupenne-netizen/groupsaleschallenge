@@ -2330,9 +2330,10 @@ img, table { max-width: 100%; }
 const CONFIG = {
   // Deployed Apps Script /exec endpoint (Web App, access: Anyone).
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec',
-  POLL_INTERVAL_MS: 120000,  // 2 min base (jittered ±25%). Data only changes ~weekly,
-                             // so this is plenty live while keeping the Apps Script
-                             // quota comfortable for ~400 concurrent users.
+  POLL_INTERVAL_MS: 120000,  // 2 min base (jittered ±25%). Catches sheet edits within
+                             // ~2.5 min even when Jose updates several times a week,
+                             // while keeping the Apps Script quota comfortable for
+                             // ~400 concurrent users.
   IDLE_TIMEOUT_MS: 15 * 60 * 1000, // pause polling after 15 min with no interaction
   SESSION_KEY: 'devoteam_wc_session_v1',
   PWD_KEY: 'devoteam_wc_pwd_v1',   // stored access code, sent with each data request
@@ -6325,6 +6326,12 @@ function tvGoto(i) {
 
 function enterTV() {
   tvMode = true; tvPanel = 0;
+  // Projection mode must stay live indefinitely: clear any idle pause and make
+  // sure polling is running so a wall-mounted screen keeps catching sheet edits.
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  idlePaused = false;
+  showIdleBanner(false);
+  if (isLoggedIn()) { startPolling(); backgroundRefresh(); }
   // Note: we deliberately do NOT call requestFullscreen() — it triggers the
   // browser's native "press Esc to exit full screen" banner. The overlay already
   // covers the whole viewport; use F11 manually for true fullscreen if wanted.
@@ -6339,6 +6346,7 @@ function exitTV() {
   try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
   const root = document.getElementById('tv-root');
   if (root) root.innerHTML = '';
+  armIdleTimer(); // back to a normal tab → resume idle auto-pause behavior
   refreshScrollTop();
 }
 
@@ -6616,7 +6624,7 @@ function showIdleBanner(show) {
   }
 }
 function goIdle() {
-  if (idlePaused) return;
+  if (idlePaused || tvMode) return; // never pause a TV/projection screen
   idlePaused = true;
   stopPolling();
   showIdleBanner(true);
@@ -6632,6 +6640,7 @@ function resumeFromIdle() {
 }
 function armIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
+  if (tvMode) return; // a projection screen has no interaction — keep it live forever
   idleTimer = setTimeout(goIdle, CONFIG.IDLE_TIMEOUT_MS);
 }
 // Any meaningful interaction re-arms the idle timer (and resumes if paused).

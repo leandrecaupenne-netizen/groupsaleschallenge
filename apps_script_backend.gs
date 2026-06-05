@@ -107,6 +107,17 @@ function isExcluded(teamName) {
   return SETTINGS.EXCLUDED_TEAMS.map(x => x.toUpperCase()).indexOf(t) !== -1;
 }
 
+// Real last-modified time of the spreadsheet (Drive), so the platform's
+// "Last updated" reflects ANY edit Jose makes — even mid-week, even when nobody
+// touches a manual `last_update` cell. Best-effort: never break the response.
+function sheetLastUpdated() {
+  try {
+    return DriveApp.getFileById(SS.getId()).getLastUpdated().toISOString();
+  } catch (e) {
+    return null;
+  }
+}
+
 // Optional override from a `Config` tab (key/value), if the user adds one.
 function readConfig() {
   const sheet = SS.getSheetByName('Config');
@@ -216,7 +227,10 @@ function dataResponse(fresh) {
   const payload = JSON.stringify({
     teams: teams,
     people: people,
-    updated_at: config.last_update || new Date().toISOString(),
+    // Priority: explicit Config override → real sheet edit time → now.
+    // The sheet edit time is what keeps the timestamp honest when data changes
+    // more often than weekly and nobody updates a manual cell.
+    updated_at: config.last_update || sheetLastUpdated() || new Date().toISOString(),
     period: config.period || SETTINGS.PERIOD,
     challenge_dates: {
       start: config.challenge_start || SETTINGS.CHALLENGE_START,

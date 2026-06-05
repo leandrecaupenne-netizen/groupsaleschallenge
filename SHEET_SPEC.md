@@ -76,13 +76,18 @@ into `apps_script_backend.gs` (`SETTINGS`: password, period, dates). Create a `C
 | key | value | description |
 |-----|-------|-------------|
 | `password` | `devoteam2026` | Access code (overrides the script default) |
-| `last_update` | `2026-06-15T14:30:00Z` | ISO timestamp shown as "Last updated"; if absent the API uses the current time |
+| `last_update` | `2026-06-15T14:30:00Z` | ISO timestamp shown as "Last updated". **Leave this out** unless you want to override: if absent, the API uses the spreadsheet's real last-edit time, so the timestamp moves on its own every time you change the data — no manual cell to maintain. |
 | `period` | `Week 3 of 5` | Header label |
 | `challenge_start` | `2026-06-01` | |
 | `challenge_end` | `2026-07-03` | |
 
-Auto-updating `last_update` (optional): put `=TEXT(NOW(),"YYYY-MM-DD""T""HH:MM:SS""Z""")`
-in its value cell.
+Auto-updating `last_update` is **no longer needed** — the backend now reads the
+spreadsheet's real modification time via Drive. (If you still want a manual override,
+you can put `=TEXT(NOW(),"YYYY-MM-DD""T""HH:MM:SS""Z""")` in its value cell.)
+
+> ⚠️ **Redeploy note:** because the script now reads the file's last-edit time, the
+> next deployment will ask for one extra Google authorization (Drive read). Accept it,
+> then redeploy the Web App as usual.
 
 ---
 

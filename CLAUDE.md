@@ -752,7 +752,9 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - Solution : passer le polling à 60-120 secondes, ou implémenter du cache côté Apps Script (PropertiesService), ou passer aux SSE.
 
 **Données qui ne se mettent pas à jour** :
-- Vérifier que Jose a bien updaté `last_update` dans Config (sinon le timestamp ne bouge pas même si les données changent)
+- Le timestamp `Last updated` suit maintenant la **vraie date de dernière modif de la Sheet** (lue via Drive par l'Apps Script), donc il bouge tout seul à chaque édition de Jose, même plusieurs fois par semaine — sauf si une cellule `last_update` figée est présente dans l'onglet `Config`, qui ferait alors override (à retirer dans ce cas)
+- Le front poll toutes les ~2 min (jitter ±25 %) : une modif de la Sheet apparaît donc en ~2,5 min max (moins le cache serveur de 30 s)
+- Sur un écran de projection (mode TV / `?tv=1`), le polling ne se met **plus** en pause idle : l'écran reste live indéfiniment
 - Vérifier le cache navigateur : Ctrl+Shift+R pour forcer un hard refresh
 
 ---
