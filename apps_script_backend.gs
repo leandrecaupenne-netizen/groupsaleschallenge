@@ -27,6 +27,7 @@ const SETTINGS = {
 // insensitive). Listed fields with numeric:true are coerced to numbers.
 const TEAM_MAP = [
   { field: 'country',       header: 'Country' },
+  { field: 'nickname',      header: 'Team nicknames' },
   { field: 'members',       header: 'Team Members',          numeric: true },
   { field: 'total_ps',      header: 'Total PS Booking',      numeric: true },
   { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },

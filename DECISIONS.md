@@ -14,6 +14,10 @@
 
 ## ⚠️ Actions en attente (à faire par Léandre / humains)
 
+- [ ] **Redéployer l'Apps Script** (nouvelle version) pour servir la colonne `Team nicknames`
+      ajoutée le 2026-06-05 → sinon les surnoms n'apparaissent pas. (Même opération que le
+      redéploiement Drive ci-dessous : un seul redéploiement couvre les deux.)
+
 - [ ] **(fait le 2026-06-05 ?)** Redéployer l'Apps Script avec la nouvelle autorisation
       **Drive** (lecture), sinon le timestamp « Last updated » ne reflétera pas les vraies
       éditions de la Sheet. → Léandre a indiqué « c'est fait » le 2026-06-05, à reconfirmer
@@ -38,6 +42,26 @@
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-05 — Surnoms d'équipe (colonne « Team nicknames »)
+Branche : `claude/wonderful-edison-W21bT`
+
+**Contexte** : Jose a ajouté une colonne **« Team nicknames »** dans l'onglet `Team Ranking`
+(ex. SWEDEN → SNOWBALL, FR - Cyber Trust → THE UNPATCHABLES, FR - N Platform → THE
+NOWVENGERS, GERMANY → The Beckenbauers, NETHERLANDS → "The Flying Dutch…").
+
+**Fait** :
+1. **Backend** : ajout de `{ field: 'nickname', header: 'Team nicknames' }` dans `TEAM_MAP`.
+2. **Front** : helper `teamNick()` (trim + retire les guillemets autour). Surnom affiché,
+   uniquement s'il existe, en italique guillemeté dans : podium (`.podium-nick`),
+   ligne de classement (`.tt-nick`), en-tête du modal équipe (`.modal-nick`), et en
+   sous-titre du hero TV « Top Teams ».
+3. Dégradation propre : tant que le backend n'est pas redéployé, `nickname` est absent →
+   rien ne s'affiche, aucune casse.
+
+**⚠️ TODO créé** : **redéployer l'Apps Script** (nouvelle version) pour que la colonne
+`Team nicknames` soit servie — sinon les surnoms n'apparaissent pas en prod.
+
 
 ### 2026-06-05 — Fiabiliser l'actualisation quand la Sheet change > 1×/semaine
 Branche : `claude/wonderful-edison-W21bT` · Commit : `f6f4c59`

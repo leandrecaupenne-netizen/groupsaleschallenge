@@ -336,6 +336,8 @@ input { font-family: inherit; }
 .podium-card.first .podium-rank { font-size: clamp(44px, 8vw, 64px); }
 .podium-team-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(13px, 2.2vw, 20px); letter-spacing: -0.01em; margin: 8px 0 0; overflow-wrap: break-word; hyphens: none; color: #fff; line-height: 1.12; max-width: 100%; }
 .podium-card.first .podium-team-name { color: var(--gold); font-size: clamp(15px, 2.6vw, 23px); }
+.podium-nick { font-size: clamp(9px, 1.4vw, 12px); font-style: italic; font-weight: 600; color: rgba(255,255,255,0.82); margin-top: 3px; line-height: 1.15; }
+.podium-card.first .podium-nick { color: var(--gold); opacity: 0.9; }
 .podium-stat-main { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vw, 28px); color: #fff; margin-top: auto; font-variant-numeric: tabular-nums; }
 .podium-stat-label { font-size: 8.5px; letter-spacing: 0.12em; color: rgba(255,255,255,0.65); text-transform: uppercase; margin-top: 3px; }
 .podium-stat-meta { display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.78); font-family: ui-monospace, monospace; }
@@ -414,6 +416,7 @@ input { font-family: inherit; }
 .tt-rank.top-3 { color: var(--bronze); }
 
 .tt-team { font-weight: 700; }
+.tt-nick { font-weight: 600; font-style: italic; font-size: 11px; color: var(--usa-red); margin-top: 2px; }
 .tt-members {
   font-family: ui-monospace, monospace;
   font-size: 12px; color: var(--muted);
@@ -1180,6 +1183,7 @@ input { font-family: inherit; }
   letter-spacing: 0.1em;
   margin-top: 4px;
 }
+.modal-nick { font-style: italic; font-weight: 700; font-size: 14px; color: #fff; margin-top: 4px; opacity: 0.95; }
 .modal-close {
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -2954,6 +2958,7 @@ function renderPodiumCard(team, rank, medal, position) {
       <div class="podium-medal">${medal}</div>
       <div class="podium-rank">#${rank}</div>
       <div class="podium-team-name">${escapeHtml(team.country)}</div>
+      ${teamNick(team) ? `<div class="podium-nick">“${escapeHtml(teamNick(team))}”</div>` : ''}
       <div class="podium-stat-main">${animNum('pod:' + team.country, team.avg_ps, 'money')}</div>
       <div class="podium-stat-label">Avg PS / person</div>
       <div class="podium-stat-meta">
@@ -3241,6 +3246,7 @@ function renderTeamRanking() {
               <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${escapeHtml(t.country)}
+                ${teamNick(t) ? `<div class="tt-nick">“${escapeHtml(teamNick(t))}”</div>` : ''}
                 <div class="click-hint">${clickHint}</div>
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>
@@ -4529,6 +4535,17 @@ function flagForTeam(team) {
   return FLAG_STRIPES[regionOf(team)] || FLAG_STRIPES.OTHER;
 }
 
+// Team nickname (optional "Team nicknames" column in the sheet). Trimmed, with a
+// single pair of wrapping quotes stripped. Empty string when the team has none.
+function teamNick(t) {
+  let s = String((t && t.nickname) || '').trim();
+  if (s.length > 1) {
+    const a = s.charAt(0), b = s.charAt(s.length - 1);
+    if ((a === '"' && b === '"') || (a === "'" && b === "'")) s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 // === Export the full standings as a PNG ===
 function generateStandingsImage() {
   const img = new Image();
@@ -4800,6 +4817,7 @@ function renderTeamModal() {
           <div class="modal-rank-badge">#${teamRank}</div>
           <div class="modal-title-block">
             <h2 class="modal-title">${escapeHtml(team.country)}</h2>
+            ${teamNick(team) ? `<div class="modal-nick">“${escapeHtml(teamNick(team))}”</div>` : ''}
             <div class="modal-subtitle">TEAM DETAILS · ${team.members} members · Ranked ${teamRank} of ${sortedTeams.length}</div>
           </div>
           <button class="modal-close" id="modal-close-btn" aria-label="Close">×</button>
@@ -6415,7 +6433,7 @@ function tvPersonRow(i, p, val) {
 }
 function tvPanelHTML(kind) {
   if (kind === 'podium') {
-    const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: t.country, val: fmtMoney(t.avg_ps) }));
+    const items = sortedTeams.slice(0, 5).map(t => ({ name: t.country, team: teamNick(t), val: fmtMoney(t.avg_ps) }));
     return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true });
   }
   if (kind === 'golden') {
