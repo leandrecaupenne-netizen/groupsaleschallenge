@@ -38,6 +38,13 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Nouvelles icônes catégories
+- **Playmaker** : 🎯 → 🌱 (jeune pousse = création d'opportunités). Toutes occurrences,
+  y compris la KPI « Opportunities » du Coach Room.
+- **Rookie** : 🌱 → 🎓 (chapeau de graduate). Toutes occurrences.
+- **Licence** : 💼/📜 unifiés → 📜 (certificat) partout.
+  (Ordre des remplacements : 🌱→🎓 avant 🎯→🌱 pour éviter la collision.)
+
 ### 2026-06-05 — Fix région Nordics + UX mode TV (côte à côte, scroll, top 5 + « + »)
 - **Bug région Nordics** : le Danemark était une nation séparée (`DK`). Désormais `regionOf`
   range DENMARK dans `NORDICS` (= DK+NO+SE+FI+IS). Chip/ordre `DK` retirés. Vaut partout

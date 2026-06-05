@@ -3058,7 +3058,7 @@ function computeWeekDigest(prev) {
   const leaderChecks = [
     ['🏆', 'Team Ranking', sortedTeams[0] && sortedTeams[0].country, prev.teams],
     ['🥇', 'Golden Boot', sortedGoldenBoot[0] && sortedGoldenBoot[0].name, prev.golden],
-    ['🎯', 'Playmaker', sortedPlaymaker[0] && sortedPlaymaker[0].name, prev.playmaker]
+    ['🌱', 'Playmaker', sortedPlaymaker[0] && sortedPlaymaker[0].name, prev.playmaker]
   ];
   leaderChecks.forEach(([icon, label, who, prevMap]) => {
     if (who && prevMap && prevMap[who] !== 1) d.newLeaders.push({ icon, label, who });
@@ -3202,8 +3202,8 @@ function detectLeaderChanges() {
       flash.golden = Date.now() + 9000; changed = true;
     }
     if (cur.playmaker && cur.playmaker !== leaders.playmaker) {
-      showToast(`🎯 ${cur.playmaker} is the new top Playmaker!`);
-      recentEvents.unshift(`🎯 ${cur.playmaker} is the new top Playmaker!`);
+      showToast(`🌱 ${cur.playmaker} is the new top Playmaker!`);
+      recentEvents.unshift(`🌱 ${cur.playmaker} is the new top Playmaker!`);
       flash.playmaker = Date.now() + 9000; changed = true;
     }
     if (recentEvents.length > 8) recentEvents.length = 8;
@@ -3457,9 +3457,9 @@ const TABS = [
   { id: 'teams', label: 'Team Ranking', tip: 'Team standings — the World Cup Winner is the #1 team on average PS Bookings per person' },
   { id: 'spotlight', label: 'Players of the Moment ⭐', tip: "This matchday's standout performers across the challenge" },
   { id: 'golden', label: 'Golden Boot 🥇', tip: 'Top scorers — the 5 salespeople with the most PS Bookings New Business' },
-  { id: 'playmaker', label: 'Playmaker 🎯', tip: 'Top assists — the 5 salespeople who created the most New Business opportunities' },
-  { id: 'rookies', label: 'Rookie Cup 🌱', tip: 'Rookie ranking — best PS Bookings New Business among those under a year at Devoteam' },
-  { id: 'licence', label: 'Licence 💼', tip: 'Licence ranking — top Licence GM Amount across the challenge' },
+  { id: 'playmaker', label: 'Playmaker 🌱', tip: 'Top assists — the 5 salespeople who created the most New Business opportunities' },
+  { id: 'rookies', label: 'Rookie Cup 🎓', tip: 'Rookie ranking — best PS Bookings New Business among those under a year at Devoteam' },
+  { id: 'licence', label: 'Licence 📜', tip: 'Licence ranking — top Licence GM Amount across the challenge' },
   { id: 'awards', label: 'Special Awards', tip: 'Licence, Rookie of the Year, AI Play and Transformative Deal' },
   { id: 'var', label: 'VAR Room 🟨', tip: 'Discipline watch — yellow cards for low meetings or low margin' },
   { id: 'position', label: 'My Position 🔍', tip: 'Search your name to see all your rankings in the challenge' },
@@ -3713,7 +3713,7 @@ function renderTeamRanking() {
                   <span class="member-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
                   <div>
                     <div class="member-name">${escapeHtml(p.name)}</div>
-                    <div class="member-tenure">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+                    <div class="member-tenure">${escapeHtml(p.team)}${p.is_rookie ? ' · 🎓 Rookie' : ''}</div>
                   </div>
                 </div>
                 <div class="member-stat">${fmtMoney(p.ps_total)}</div>
@@ -3823,7 +3823,7 @@ function renderMatchSheet(list, opts) {
         </div>
         <div class="ms-hero-rank">#1</div>
         <div class="ms-hero-name">${escapeHtml(top.name)}</div>
-        <div class="ms-hero-team">${escapeHtml(top.team)}${top.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+        <div class="ms-hero-team">${escapeHtml(top.team)}${top.is_rookie ? ' · 🎓 Rookie' : ''}</div>
         <div class="ms-hero-stat">${animNum(opts.keyPrefix + ':' + top.name, opts.valueOf(top), opts.fmt)}</div>
         <div class="ms-hero-stat-label">${opts.statLabel}</div>
         ${opts.line ? `<div class="ms-hero-line">“${opts.line(top)}”</div>` : ''}
@@ -3906,12 +3906,12 @@ function renderPlaymaker() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">🎯 PLAYMAKER AWARD</h2>
+        <h2 class="section-title">🌱 PLAYMAKER AWARD</h2>
         <p class="section-subtitle">${t('playmaker.sub')}</p>
       </div>
       ${tightRaceBanner(race, 'Playmaker')}
       ${renderMatchSheet(top5, {
-        badge: '🎯 THE PLAYMAKER', color: '#C8102E', keyPrefix: 'pm',
+        badge: '🌱 THE PLAYMAKER', color: '#C8102E', keyPrefix: 'pm',
         valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created',
         line: pickHeadlineFor('playmaker')
       })}
@@ -3930,12 +3930,12 @@ function renderRookies() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">🌱 ROOKIE CUP</h2>
+        <h2 class="section-title">🎓 ROOKIE CUP</h2>
         <p class="section-subtitle">The best newcomers — under a year at Devoteam, ranked by PS Bookings New Business</p>
       </div>
       ${tightRaceBanner(race, 'Rookie Cup')}
       ${renderMatchSheet(top6, {
-        badge: '🌱 TOP ROOKIE', color: '#16A34A', keyPrefix: 'rk',
+        badge: '🎓 TOP ROOKIE', color: '#16A34A', keyPrefix: 'rk',
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
         line: pickHeadlineFor('rookie')
       })}
@@ -3953,12 +3953,12 @@ function renderLicence() {
   return `
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">💼 LICENCE RANKING</h2>
+        <h2 class="section-title">📜 LICENCE RANKING</h2>
         <p class="section-subtitle">Top licence sellers — ranked by Licence GM Amount</p>
       </div>
       ${tightRaceBanner(race, 'Licence')}
       ${renderMatchSheet(top6, {
-        badge: '💼 LICENCE LEADER', color: '#F2C75C', keyPrefix: 'lic',
+        badge: '📜 LICENCE LEADER', color: '#F2C75C', keyPrefix: 'lic',
         valueOf: p => p.licence_gm || 0, fmt: 'money', statLabel: 'Licence GM Amount',
         line: p => `Leading the licence charts with ${fmtMoney(p.licence_gm)} of licence GM.`
       })}
@@ -4029,7 +4029,7 @@ function buildSpotlights() {
 
   const pm = take(sortedPlaymaker, p => p.opps > 0);
   if (pm) spots.push({
-    cat: 'THE PLAYMAKER', icon: '🎯', person: pm,
+    cat: 'THE PLAYMAKER', icon: '🌱', person: pm,
     value: pm.opps, fmt: 'int', statLabel: 'Opportunities created',
     headline: pickHeadline('playmaker', pm)
   });
@@ -4141,7 +4141,7 @@ function renderSpotlight() {
           <span class="ms-hero-flag">${flagBars(fFlag)}</span>
         </div>
         <div class="ms-hero-name" style="margin-top:8px">${escapeHtml(featured.person.name)}</div>
-        <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🌱 Rookie' : ''}</div>
+        <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🎓 Rookie' : ''}</div>
         <div class="ms-hero-stat" data-countup="${featured.value}" data-fmt="${featured.fmt}">${spotStatText(featured)}</div>
         <div class="ms-hero-stat-label">${featured.statLabel}</div>
         <div class="ms-hero-line">“${featured.headline}”</div>
@@ -4309,7 +4309,7 @@ const COACH_METRICS = [
   { key: 'ps_total', label: '💰 PS Total',     sumFmt: 'money', rowFmt: 'money', desc: 'Total PS Bookings (all business)' },
   { key: 'ps_nb',    label: '🥇 PS New Business', sumFmt: 'money', rowFmt: 'money', desc: 'New Business booked' },
   { key: 'meetings', label: '🤝 Meetings/wk',  sumFmt: 'num',   rowFmt: 'num',   desc: 'Client meetings per week' },
-  { key: 'opps',     label: '🎯 Opportunities', sumFmt: 'int',   rowFmt: 'int',   desc: 'Opportunities created' },
+  { key: 'opps',     label: '🌱 Opportunities', sumFmt: 'int',   rowFmt: 'int',   desc: 'Opportunities created' },
   { key: 'licence_gm', label: '📜 Licence GM',  sumFmt: 'money', rowFmt: 'money', desc: 'Licence GM amount' }
 ];
 function coachFmt(v, kind) { return kind === 'money' ? fmtMoney(v) : kind === 'int' ? Math.round(v || 0).toLocaleString('en-US') : fmtNum(v); }
@@ -4355,7 +4355,7 @@ function renderCoachRoom() {
     kpi('🥇', fmtMoney(totalNB), 'New Business', `${(nbShare * 100).toFixed(0)}% of total PS`, 'ps_nb'),
     kpi('📈', fmtPct(avgGM), 'Avg Gross Margin', 'weighted by PS €', 'ps_total_gm'),
     kpi('🤝', coachFmt(totalMeet, 'int'), 'Total Meetings / week', `${fmtNum(avgMeet)} avg · target 5+`, 'meetings'),
-    kpi('🎯', coachFmt(totalOpps, 'int'), 'Opportunities created', 'Stage 2+ · > €50K', 'opps'),
+    kpi('🌱', coachFmt(totalOpps, 'int'), 'Opportunities created', 'Stage 2+ · > €50K', 'opps'),
     kpi('📜', fmtMoney(totalLic), 'Licence GM', 'cumulated', 'licence_gm')
   ].join('');
 
@@ -4411,7 +4411,7 @@ function renderCoachRoom() {
       <div class="coach-disc coach-disc-click" data-kpi="discipline" role="button" tabindex="0" title="See who's compliant vs on a yellow card">
         <div class="coach-disc-head"><span>🟢 Playing by the rules <span class="coach-kpi-dd">↳ deep dive</span></span><span><b>${clean}</b> clean · <b>${onCard}</b> on a yellow card</span></div>
         <div class="coach-disc-bar"><span style="width:${cleanPct}%"></span></div>
-        <div class="coach-disc-foot">${cleanPct}% of all ${headcount} players in scope are fully compliant · 🌱 ${rookies} rookies</div>
+        <div class="coach-disc-foot">${cleanPct}% of all ${headcount} players in scope are fully compliant · 🎓 ${rookies} rookies</div>
       </div>
 
       <div class="coach-contrib">
@@ -4837,7 +4837,7 @@ function renderSpecialAwards() {
       <div class="awards-grid">
         <div class="award-card" style="--c: #F2C75C">
           <div class="award-header">
-            <span class="award-icon">💼</span>
+            <span class="award-icon">📜</span>
             <div>
               <div class="award-title">LICENCE</div>
               <div class="award-subtitle">Top 3 · Licence GM Amount</div>
@@ -4848,7 +4848,7 @@ function renderSpecialAwards() {
 
         <div class="award-card" style="--c: #16A34A">
           <div class="award-header">
-            <span class="award-icon">🌱</span>
+            <span class="award-icon">🎓</span>
             <div>
               <div class="award-title">ROOKIE OF THE YEAR</div>
               <div class="award-subtitle">Top 3 · Less than 1 year · PS Bookings NB</div>
@@ -4992,7 +4992,7 @@ function renderPositionDetails(person) {
       </div>
       ${person.is_rookie ? `
         <div class="rookie-banner">
-          🌱 You are eligible for the <strong>Rookie of the Year</strong> award (less than 1 year at Devoteam)
+          🎓 You are eligible for the <strong>Rookie of the Year</strong> award (less than 1 year at Devoteam)
         </div>
       ` : ''}
     </div>
@@ -5080,7 +5080,7 @@ function drawPlayerCard(person, logo, photo, mode) {
   if (ctx.measureText(name).width > W - 80) ctx.font = '700 32px "Arial Narrow", Impact, sans-serif';
   ctx.fillText(name, W / 2, 452);
   ctx.fillStyle = '#F2C75C'; ctx.font = '700 18px Inter, sans-serif';
-  ctx.fillText(person.team.toUpperCase() + (person.is_rookie ? '  ·  🌱 ROOKIE' : ''), W / 2, 481);
+  ctx.fillText(person.team.toUpperCase() + (person.is_rookie ? '  ·  🎓 ROOKIE' : ''), W / 2, 481);
 
   // discipline pastille (same logic as the on-screen card)
   const yc = [];
@@ -5105,7 +5105,7 @@ function drawPlayerCard(person, logo, photo, mode) {
   const tRank = sortedPSTotal.findIndex(p => p.name === person.name) + 1;
   const rows = [
     ['⚽ GOLDEN BOOT', gRank ? '#' + gRank : '—', fmtMoney(person.ps_nb) + ' NB'],
-    ['🎯 PLAYMAKER', pRank ? '#' + pRank : '—', Number(person.opps || 0).toFixed(0) + ' opps'],
+    ['🌱 PLAYMAKER', pRank ? '#' + pRank : '—', Number(person.opps || 0).toFixed(0) + ' opps'],
     ['💰 PS TOTAL', fmtMoney(person.ps_total), tRank ? '#' + tRank + ' overall' : '—'],
     ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : '✅ on target'],
     ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : '✅ on target']
@@ -5500,7 +5500,7 @@ function paniniCardInner(p) {
       <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
       <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
-      <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🌱 ROOKIE' : ''}</div>
+      <div class="pc-team">${escapeHtml(p.team)}${p.is_rookie ? ' · 🎓 ROOKIE' : ''}</div>
       ${disciplineBadge}
       <div class="pc-rating-row">
         <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
@@ -5510,10 +5510,10 @@ function paniniCardInner(p) {
     </div>
     <div class="pc-stats">
       ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB', 'golden')}
-      ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
+      ${stat('🌱 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
       ${stat('💰 PS Total', fmtMoney(p.ps_total), totalRank ? '#' + totalRank + ' overall' : '—')}
       ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'licence') : ''}
-      ${p.is_rookie ? stat('🌱 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookies') : ''}
+      ${p.is_rookie ? stat('🎓 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookies') : ''}
     </div>
     ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div><div class="pc-honour-hint">👆 Tap a badge to see what it means</div>` : ''}`;
 }
@@ -5526,14 +5526,14 @@ function computeHonours(p, r) {
   else if (best <= 3) h.push({ icon: '🏅', label: 'Podium', tip: 'Top 3 in a category' });
   else if (best <= 10) h.push({ icon: '🔟', label: 'Top 10 Club', tip: 'Top 10 in a category' });
   if (r.goldenRank && r.goldenRank <= 5) h.push({ icon: '⚽', label: 'Sharpshooter', tip: `Top 5 Golden Boot (#${r.goldenRank})` });
-  if (r.playmakerRank && r.playmakerRank <= 5) h.push({ icon: '🎯', label: 'Playmaker', tip: `Top 5 Playmaker (#${r.playmakerRank})` });
+  if (r.playmakerRank && r.playmakerRank <= 5) h.push({ icon: '🌱', label: 'Playmaker', tip: `Top 5 Playmaker (#${r.playmakerRank})` });
   if (r.licenceRank && r.licenceRank <= 3) h.push({ icon: '📜', label: 'Licence Pro', tip: `Top 3 Licence GM (#${r.licenceRank})` });
   // Double threat: top-10 in two different boards.
   const top10s = [r.goldenRank, r.playmakerRank, r.totalRank].filter(x => x > 0 && x <= 10).length;
   if (top10s >= 2) h.push({ icon: '🌟', label: 'Double Threat', tip: 'Top 10 in two categories' });
   if (r.clean) h.push({ icon: '🧤', label: 'Clean Sheet', tip: 'Playing fully by the rules' });
-  if (p.is_rookie && r.goldenRank && r.goldenRank <= 20) h.push({ icon: '🌱', label: 'Rising Star', tip: 'Rookie in the Golden Boot top 20' });
-  if (p.is_rookie && r.rookieRank && r.rookieRank <= 3) h.push({ icon: '🌱', label: 'Rookie Podium', tip: `Top 3 Rookie Cup (#${r.rookieRank})` });
+  if (p.is_rookie && r.goldenRank && r.goldenRank <= 20) h.push({ icon: '🎓', label: 'Rising Star', tip: 'Rookie in the Golden Boot top 20' });
+  if (p.is_rookie && r.rookieRank && r.rookieRank <= 3) h.push({ icon: '🎓', label: 'Rookie Podium', tip: `Top 3 Rookie Cup (#${r.rookieRank})` });
   if ((p.meetings || 0) >= 8) h.push({ icon: '🏃', label: 'Engine', tip: `${fmtNum(p.meetings)} meetings/week` });
   return h.slice(0, 6);
 }
@@ -5616,7 +5616,7 @@ function renderTeamModal() {
               const cards = [];
               if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
               if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(m.ps_total_gm)})">🟨</span>`);
-              const tenureLabel = m.is_rookie ? '🌱 Rookie' : (m.tenure || '');
+              const tenureLabel = m.is_rookie ? '🎓 Rookie' : (m.tenure || '');
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${idx === 0 ? 'top' : ''}">#${idx+1}</div>
@@ -5790,9 +5790,9 @@ function buildTickerItems() {
   recentEvents.slice(0, 4).forEach(e => it.push({ text: e }));
   if (sortedTeams[0]) it.push({ text: `🏆 ${sortedTeams[0].country} lead the World Cup — ${fmtMoney(sortedTeams[0].avg_ps)}/person`, team: sortedTeams[0].country });
   if (sortedGoldenBoot[0]) it.push({ text: `🥇 Golden Boot: ${sortedGoldenBoot[0].name} — ${fmtMoney(sortedGoldenBoot[0].ps_nb)} NB`, player: sortedGoldenBoot[0].name });
-  if (sortedPlaymaker[0]) it.push({ text: `🎯 Playmaker: ${sortedPlaymaker[0].name} — ${Number(sortedPlaymaker[0].opps || 0).toFixed(0)} opps`, player: sortedPlaymaker[0].name });
-  if (sortedRookies[0]) it.push({ text: `🌱 Top rookie: ${sortedRookies[0].name} — ${fmtMoney(sortedRookies[0].ps_nb)}`, player: sortedRookies[0].name });
-  if (sortedLicence[0]) it.push({ text: `💼 Licence leader: ${sortedLicence[0].name} — ${fmtMoney(sortedLicence[0].licence_gm)}`, player: sortedLicence[0].name });
+  if (sortedPlaymaker[0]) it.push({ text: `🌱 Playmaker: ${sortedPlaymaker[0].name} — ${Number(sortedPlaymaker[0].opps || 0).toFixed(0)} opps`, player: sortedPlaymaker[0].name });
+  if (sortedRookies[0]) it.push({ text: `🎓 Top rookie: ${sortedRookies[0].name} — ${fmtMoney(sortedRookies[0].ps_nb)}`, player: sortedRookies[0].name });
+  if (sortedLicence[0]) it.push({ text: `📜 Licence leader: ${sortedLicence[0].name} — ${fmtMoney(sortedLicence[0].licence_gm)}`, player: sortedLicence[0].name });
   if (period) it.push({ text: `📅 ${period}` });
   return it;
 }
@@ -6840,12 +6840,12 @@ function openRules() {
         <ul class="rules-list">
           <li><b>World Cup Winner (Team Ranking)</b> — top team by <i>average PS Bookings per person</i>.</li>
           <li><b>🥇 Golden Boot</b> — top salespeople by <i>PS Bookings New Business</i> (the goalscorers).</li>
-          <li><b>🎯 Playmaker</b> — top salespeople by <i>opportunities created</i> (the assists, Stage 2+ &amp; &gt; €50K).</li>
+          <li><b>🌱 Playmaker</b> — top salespeople by <i>opportunities created</i> (the assists, Stage 2+ &amp; &gt; €50K).</li>
         </ul>
         <h3 class="rules-h">⭐ Special awards</h3>
         <ul class="rules-list">
-          <li><b>💼 Licence</b> — top 3 by Licence GM amount.</li>
-          <li><b>🌱 Rookie of the Year</b> — top 3 with less than a year at Devoteam (by PS NB).</li>
+          <li><b>📜 Licence</b> — top 3 by Licence GM amount.</li>
+          <li><b>🎓 Rookie of the Year</b> — top 3 with less than a year at Devoteam (by PS NB).</li>
           <li><b>🤖 AI Play</b> — most impactful AI deal, picked by the AI Agency.</li>
           <li><b>⚡ Transformative Deal</b> — selected by Group Sales for strategic impact.</li>
         </ul>
@@ -6911,7 +6911,7 @@ function openSearch() {
   let query = '', filter = 'all';
   const el = document.createElement('div');
   el.className = 'modal-overlay'; el.id = 'search-overlay';
-  const chips = [['all', 'All'], ['rookie', '🌱 Rookies'], ['year', 'Over a year'], ['under', '< 1 year']];
+  const chips = [['all', 'All'], ['rookie', '🎓 Rookies'], ['year', 'Over a year'], ['under', '< 1 year']];
   el.innerHTML = `
     <div class="modal search-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -7363,7 +7363,7 @@ function tvPanelHTML(kind) {
   if (kind === 'playmaker') {
     const full = sortedPlaymaker.filter(p => p.opps > 0);
     const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
-    return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true }) + tvMoreBtn(full.length);
+    return tvMatchSheet(items, { title: '🌱 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🌱 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true }) + tvMoreBtn(full.length);
   }
   if (kind === 'var') {
     // Ordered by PS Total desc — consistent with the player ranking, so the top
@@ -7398,8 +7398,8 @@ function tvPanelHTML(kind) {
     const rook = awRows(tvLimit(sortedRookies), p => fmtMoney(p.ps_nb));
     return `<div class="tv-title">⭐ SPECIAL AWARDS</div><div class="tv-sub">Licence &amp; Rookie of the Year</div>
       <div class="tv-awards">
-        <div class="tv-awcol"><div class="tv-awh">💼 Licence</div><div class="tv-list">${lic}</div></div>
-        <div class="tv-awcol"><div class="tv-awh">🌱 Rookie of the Year</div><div class="tv-list">${rook}</div></div>
+        <div class="tv-awcol"><div class="tv-awh">📜 Licence</div><div class="tv-list">${lic}</div></div>
+        <div class="tv-awcol"><div class="tv-awh">🎓 Rookie of the Year</div><div class="tv-list">${rook}</div></div>
       </div>${tvMoreBtn(Math.max(sortedLicence.length, sortedRookies.length))}`;
   }
   const spots = buildSpotlights();
