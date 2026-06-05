@@ -2,6 +2,10 @@
 
 > Brief technique complet pour passer la maquette HTML en application production-ready.
 > Document destiné à Claude Code (Anthropic) pour piloter l'implémentation.
+>
+> 🧠 **Mémoire inter-sessions** : lire [`DECISIONS.md`](./DECISIONS.md) en début de session
+> (historique des décisions, actions humaines en attente, TODO). Le mettre à jour en fin de
+> session. Ce `CLAUDE.md` = état cible ; `DECISIONS.md` = historique + ce qui reste à faire.
 
 ---
 
@@ -777,7 +781,8 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 
 ```
 groupsaleschallenge/
-├── CLAUDE.md                       (ce fichier, contexte pour Claude Code)
+├── CLAUDE.md                       (ce fichier, contexte/état cible pour Claude Code)
+├── DECISIONS.md                    (journal de bord : mémoire inter-sessions, TODO, actions en attente)
 ├── SHEET_SPEC.md                   (spec à transmettre à Jose, extrait de la section 5)
 ├── index.html                      (la plateforme, point d'entrée Vercel)
 ├── apps_script_backend.gs          (le code Apps Script, copie de la section 6)
