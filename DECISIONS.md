@@ -43,6 +43,19 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Classements Rookie & Licence (onglets + TV + deep dive) + merge sur main
+Branche : `claude/wonderful-edison-W21bT` → mergé sur `main`
+
+- **Nouveaux onglets** `Rookie Cup 🌱` et `Licence 💼` : classements complets (hero #1 +
+  full ranking dépliable), même pattern que Golden Boot/Playmaker (`renderRookies`,
+  `renderLicence`). Rookies = PS Bookings NB des <1 an ; Licence = Licence GM Amount.
+- **Mode TV** : panneaux `rookies` et `licence` ajoutés à `TV_PANELS` + `tvPanelHTML`
+  (cliquables). Les lignes du panneau TV `awards` (tvPersonRow) sont aussi devenues
+  cliquables → deep dive des champions licence/rookie en projection.
+- **Deep dive carte joueur** : ajout du rang Rookie Cup (tuile → onglet `rookies`),
+  la tuile Licence pointe désormais vers l'onglet `licence`, et honneur « Rookie Podium ».
+- Tout est cliquable via `data-player` (app) / `data-tvplayer` (TV), déjà géré globalement.
+
 ### 2026-06-05 — Lisibilité mode nuit + découvrabilité du scroll des onglets
 Branche : `claude/wonderful-edison-W21bT`
 

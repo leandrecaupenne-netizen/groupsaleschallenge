@@ -2985,6 +2985,8 @@ const TABS = [
   { id: 'spotlight', label: 'Players of the Moment ⭐', tip: "This matchday's standout performers across the challenge" },
   { id: 'golden', label: 'Golden Boot 🥇', tip: 'Top scorers — the 5 salespeople with the most PS Bookings New Business' },
   { id: 'playmaker', label: 'Playmaker 🎯', tip: 'Top assists — the 5 salespeople who created the most New Business opportunities' },
+  { id: 'rookies', label: 'Rookie Cup 🌱', tip: 'Rookie ranking — best PS Bookings New Business among those under a year at Devoteam' },
+  { id: 'licence', label: 'Licence 💼', tip: 'Licence ranking — top Licence GM Amount across the challenge' },
   { id: 'awards', label: 'Special Awards', tip: 'Licence, Rookie of the Year, AI Play and Transformative Deal' },
   { id: 'var', label: 'VAR Room 🟨', tip: 'Discipline watch — yellow cards for low meetings or low margin' },
   { id: 'position', label: 'My Position 🔍', tip: 'Search your name to see all your rankings in the challenge' },
@@ -3399,6 +3401,53 @@ function renderPlaymaker() {
         line: pickHeadlineFor('playmaker')
       })}
       ${fullRankingList('playmaker', sortedPlaymaker, p => p.opps || 0, 'int', 6)}
+    </div>
+  `;
+}
+
+// Rookie Cup — full ranking of the newcomers (under a year at Devoteam),
+// ranked by PS Bookings New Business. Same match-sheet + full-list pattern as the
+// Golden Boot, so the #1 hero and every row open the player's card (deep dive).
+function renderRookies() {
+  const ranked = sortedRookies.filter(p => p.ps_nb > 0);
+  const top6 = ranked.slice(0, 6);
+  const race = tightRace(ranked, p => p.ps_nb || 0, 'money');
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">🌱 ROOKIE CUP</h2>
+        <p class="section-subtitle">The best newcomers — under a year at Devoteam, ranked by PS Bookings New Business</p>
+      </div>
+      ${tightRaceBanner(race, 'Rookie Cup')}
+      ${renderMatchSheet(top6, {
+        badge: '🌱 TOP ROOKIE', color: '#16A34A', keyPrefix: 'rk',
+        valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
+        line: pickHeadlineFor('rookie')
+      })}
+      ${fullRankingList('rookies', sortedRookies, p => p.ps_nb || 0, 'money', 6)}
+    </div>
+  `;
+}
+
+// Licence ranking — full standings by Licence GM Amount. Same clickable pattern,
+// so the licence champion (and every other seller) can be deep-dived.
+function renderLicence() {
+  const ranked = sortedLicence.filter(p => p.licence_gm > 0);
+  const top6 = ranked.slice(0, 6);
+  const race = tightRace(ranked, p => p.licence_gm || 0, 'money');
+  return `
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">💼 LICENCE RANKING</h2>
+        <p class="section-subtitle">Top licence sellers — ranked by Licence GM Amount</p>
+      </div>
+      ${tightRaceBanner(race, 'Licence')}
+      ${renderMatchSheet(top6, {
+        badge: '💼 LICENCE LEADER', color: '#F2C75C', keyPrefix: 'lic',
+        valueOf: p => p.licence_gm || 0, fmt: 'money', statLabel: 'Licence GM Amount',
+        line: p => `Leading the licence charts with ${fmtMoney(p.licence_gm)} of licence GM.`
+      })}
+      ${fullRankingList('licence', sortedLicence, p => p.licence_gm || 0, 'money', 6)}
     </div>
   `;
 }
@@ -4727,6 +4776,7 @@ function paniniCardInner(p) {
   const playmakerRank = sortedPlaymaker.findIndex(x => x.name === p.name) + 1;
   const totalRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
   const licenceRank = sortedLicence.findIndex(x => x.name === p.name) + 1;
+  const rookieRank = p.is_rookie ? sortedRookies.findIndex(x => x.name === p.name) + 1 : 0;
   const initials = p.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const cards = [];
   if (p.yellow_meetings) cards.push('🟨');
@@ -4752,7 +4802,7 @@ function paniniCardInner(p) {
     : '';
   // Collectible "honours" — Panini-style achievement badges earned from the
   // player's standings. Shown as a row of chips under the stats.
-  const honours = computeHonours(p, { goldenRank, playmakerRank, totalRank, licenceRank, clean });
+  const honours = computeHonours(p, { goldenRank, playmakerRank, totalRank, licenceRank, rookieRank, clean });
   // Rarity tier (Sorare-style) from the player's best rank across categories.
   const bestRank = Math.min(...[goldenRank, playmakerRank, totalRank, licenceRank].filter(r => r > 0));
   const rarity = bestRank === 1 ? { label: 'UNIQUE', cls: 'unique' }
@@ -4787,7 +4837,8 @@ function paniniCardInner(p) {
       ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB', 'golden')}
       ${stat('🎯 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
       ${stat('💰 PS Total', fmtMoney(p.ps_total), '#' + totalRank + ' overall')}
-      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'awards') : ''}
+      ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'licence') : ''}
+      ${p.is_rookie ? stat('🌱 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookies') : ''}
     </div>
     ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div>` : ''}`;
 }
@@ -4802,6 +4853,7 @@ function computeHonours(p, r) {
   if (r.goldenRank && r.goldenRank <= 5) h.push({ icon: '⚽', label: 'Sharpshooter', tip: `Top 5 Golden Boot (#${r.goldenRank})` });
   if (r.playmakerRank && r.playmakerRank <= 5) h.push({ icon: '🎯', label: 'Playmaker', tip: `Top 5 Playmaker (#${r.playmakerRank})` });
   if (r.licenceRank && r.licenceRank <= 3) h.push({ icon: '📜', label: 'Licence Pro', tip: `Top 3 Licence GM (#${r.licenceRank})` });
+  if (p.is_rookie && r.rookieRank && r.rookieRank <= 3) h.push({ icon: '🌱', label: 'Rookie Podium', tip: `Top 3 Rookie Cup (#${r.rookieRank})` });
   // Double threat: top-10 in two different boards.
   const top10s = [r.goldenRank, r.playmakerRank, r.totalRank].filter(x => x > 0 && x <= 10).length;
   if (top10s >= 2) h.push({ icon: '🌟', label: 'Double Threat', tip: 'Top 10 in two categories' });
@@ -5092,6 +5144,8 @@ function render() {
     case 'spotlight': content = renderSpotlight(); break;
     case 'golden': content = renderGoldenBoot(); break;
     case 'playmaker': content = renderPlaymaker(); break;
+    case 'rookies': content = renderRookies(); break;
+    case 'licence': content = renderLicence(); break;
     case 'awards': content = renderSpecialAwards(); break;
     case 'var': content = renderVAR(); break;
     case 'position': content = renderMyPosition(); break;
@@ -6337,7 +6391,7 @@ function setChromeVisible(visible) {
 
 // === LIVE: TV / projection mode ===
 let tvMode = false, tvPanel = 0, tvTimer = null;
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'spotlight', 'var', 'fairplay', 'awards'];
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'rookies', 'licence', 'spotlight', 'var', 'fairplay', 'awards'];
 
 // No auto-rotation: TV mode is a manually-driven deck so commentators control the
 // pace. Navigate with arrows / dots / swipe / ← → keys.
@@ -6435,7 +6489,8 @@ function tvMatchSheet(items, opts) {
 }
 function tvPersonRow(i, p, val) {
   const medal = ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1));
-  return `<div class="tv-row${i === 0 ? ' lead' : ''}">
+  // Clickable → opens the player's card over the projection (deep dive).
+  return `<div class="tv-row tv-clickable${i === 0 ? ' lead' : ''}" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">
     <span class="tv-pos">${medal}</span>
     <span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
     <span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span>
@@ -6454,6 +6509,14 @@ function tvPanelHTML(kind) {
   if (kind === 'playmaker') {
     const items = sortedPlaymaker.slice(0, 5).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
     return tvMatchSheet(items, { title: '🎯 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🎯 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true });
+  }
+  if (kind === 'rookies') {
+    const items = sortedRookies.filter(p => p.ps_nb > 0).slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
+    return tvMatchSheet(items, { title: '🌱 ROOKIE CUP — TOP NEWCOMERS', sub: 'Under a year at Devoteam · PS Bookings New Business', badge: '🌱 TOP ROOKIE', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true });
+  }
+  if (kind === 'licence') {
+    const items = sortedLicence.filter(p => p.licence_gm > 0).slice(0, 5).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.licence_gm) }));
+    return tvMatchSheet(items, { title: '💼 LICENCE — TOP SELLERS', sub: 'Licence GM Amount', badge: '💼 LICENCE LEADER', valLabel: 'LICENCE GM AMOUNT', unit: 'LICENCE GM', clickable: true });
   }
   if (kind === 'var') {
     // Ordered by PS Total desc — consistent with the player ranking, so the top
