@@ -2032,6 +2032,8 @@ img, table { max-width: 100%; }
 .tv-hero-photo { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 0.8vmin 1.4vmin rgba(0,0,0,0.4)); }
 .tv-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 4vmin, 46px); line-height: 1.05; }
 .tv-hero-team { font-family: ui-monospace, monospace; font-size: clamp(10px, 1.6vmin, 16px); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-top: 0.6vmin; }
+/* The official entity name, shown small under the team nickname (TV player lists). */
+.tv-real { display: block; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.72em; letter-spacing: 0.05em; color: rgba(255,255,255,0.55); margin-top: 2px; text-transform: uppercase; }
 .tv-hero-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 7vmin, 76px); color: var(--gold); line-height: 1; margin-top: 1.4vmin; text-shadow: 0 2px 16px rgba(0,0,0,0.35); }
 .tv-hero-sub { font-family: ui-monospace, monospace; font-size: clamp(9px, 1.4vmin, 14px); letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 0.6vmin; }
 .tv-hero-tap { font-family: ui-monospace, monospace; font-size: clamp(8px, 1.2vmin, 12px); letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-top: 1vmin; }
@@ -7286,6 +7288,16 @@ function tvSection(title, sub, rows) {
 }
 // TV "Panini" match-sheet: a giant featured #1 card + the chasing pack as rows.
 // items: [{name, team, val, sub}], opts: { title, sub, accent, valColor, badge }
+// A player's team line for TV: show the team NICKNAME (e.g. THE UNPATCHABLES) with
+// the official entity ("FR - Cyber Trust") small underneath. Falls back to the raw
+// entity when the team has no nickname. Returns HTML (already escaped).
+function tvTeamLabelHTML(teamName) {
+  const t = (teams || []).find(x => x.country === teamName);
+  const nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  if (!nick) return escapeHtml(teamName);
+  return `${escapeHtml(nick)}<small class="tv-real">${escapeHtml(teamName)}</small>`;
+}
+
 function tvMatchSheet(items, opts) {
   if (!items.length) return tvSection(opts.title, opts.sub, `<div class="tv-row"><span class="tv-name">No data yet.</span></div>`);
   const top = items[0];
@@ -7313,7 +7325,7 @@ function tvMatchSheet(items, opts) {
       </div>
       <div class="tv-hero-avatar${photoFor(top.name) ? ' tv-hero-avatar-photo' : ''}">${photoFor(top.name) ? `<img class="tv-hero-photo" src="${photoFor(top.name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('tv-hero-avatar-photo');this.remove()" />` : (initials || '—')}</div>
       <div class="tv-hero-name">${escapeHtml(top.name)}</div>
-      ${top.team ? `<div class="tv-hero-team">${escapeHtml(top.team)}</div>` : ''}
+      ${top.team ? `<div class="tv-hero-team">${kind === 'player' ? tvTeamLabelHTML(top.team) : escapeHtml(top.team)}</div>` : ''}
       <div class="tv-hero-val">${top.val}</div>
       <div class="tv-hero-sub">${opts.valLabel || ''}</div>
       ${clk ? `<div class="tv-hero-tap">${tapHint}</div>` : ''}
@@ -7322,7 +7334,7 @@ function tvMatchSheet(items, opts) {
     <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? clkAttr(p) : ''}>
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
       ${kind === 'player' ? `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>` : ''}
-      <span class="tv-ms-name">${escapeHtml(p.name)}${p.team && p.team !== p.name ? ` <em>${escapeHtml(p.team)}</em>` : ''}</span>
+      <span class="tv-ms-name">${escapeHtml(p.name)}${p.team && p.team !== p.name ? ` <em>${kind === 'player' ? tvTeamLabelHTML(p.team) : escapeHtml(p.team)}</em>` : ''}</span>
       <span class="tv-ms-figure">
         <span class="tv-ms-val">${p.val}</span>
         <span class="tv-ms-unit">${p.unit || opts.unit || ''}</span>
@@ -7341,7 +7353,7 @@ function tvPersonRow(i, p, val) {
   return `<div class="tv-row tv-clickable${i === 0 ? ' lead' : ''}" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">
     <span class="tv-pos">${medal}</span>
     <span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
-    <span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span>
+    <span class="tv-name">${escapeHtml(p.name)} <em>${tvTeamLabelHTML(p.team)}</em></span>
     <span class="tv-val">${val}</span>
   </div>`;
 }

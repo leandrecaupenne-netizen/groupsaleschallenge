@@ -38,6 +38,13 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-05 — Surnoms d'équipe dans les classements joueurs (mode TV)
+- Dans les panneaux joueurs du mode TV (Golden, Playmaker, Special Awards, spotlight),
+  la ligne sous le nom affichait l'entité ("FR - Cyber Trust"). Désormais : **surnom de
+  l'équipe** (ex. THE UNPATCHABLES) + **entité réelle en petit** dessous (`.tv-real`),
+  via le helper `tvTeamLabelHTML(teamName)` (lookup du nickname par `teams.country`).
+  Le podium (panneau équipe) reste inchangé (surnom déjà géré).
+
 ### 2026-06-05 — Nouvelles icônes catégories
 - **Playmaker** : 🎯 → 🌱 (jeune pousse = création d'opportunités). Toutes occurrences,
   y compris la KPI « Opportunities » du Coach Room.
