@@ -2924,7 +2924,35 @@ function playerTeamHTML(teamName, realClass, suffix) {
 const isFlashing = type => flash[type] && flash[type] > Date.now();
 
 // Recompute all rankings from the current `teams` / `people` arrays.
+// Per-record transforms that EVERY data path must apply before anything reads the
+// rankings: duplicate-name disambiguation, GM normalisation, and discipline flags.
+// Lives here (not only in fetchData) so the instant-paint snapshot path and any
+// future loader get identical, fully-derived data — otherwise a card painted from
+// a half-processed `people` array can show a rule-breaker as "playing by the rules".
+// All three steps are idempotent, so calling this on every computeRankings() is safe.
+function normalizePeople() {
+  // Disambiguate duplicate names by appending the team, so `name` stays a UNIQUE
+  // identity key everywhere (clicks, rank lookups, week-digest maps, VAR verdicts).
+  // Idempotent: once names are unique the count is 1 and nothing is appended again.
+  const counts = {};
+  people.forEach(p => { counts[p.name] = (counts[p.name] || 0) + 1; });
+  people.forEach(p => { if (counts[p.name] > 1 && p.team) p.name = `${p.name} · ${p.team}`; });
+  // A GM cell entered as `27` (or "27%") instead of the decimal `0.27` would render
+  // "2700.0%" and never trip yellow_gm. Anything > 1.5 is treated as a percentage.
+  const normGm = v => (typeof v === 'number' && v > 1.5) ? v / 100 : v;
+  people.forEach(p => { p.ps_total_gm = normGm(p.ps_total_gm); p.ps_nb_gm = normGm(p.ps_nb_gm); });
+  teams.forEach(t => { t.avg_gm = normGm(t.avg_gm); });
+  // Discipline flags, recomputed client-side so a blank/zero `meetings` column at
+  // challenge start doesn't flag all 377 players, and so the snapshot path matches.
+  people.forEach(p => {
+    const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
+    p.yellow_meetings = hasData && (p.meetings || 0) < 5;
+    p.yellow_gm = (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0;
+  });
+}
+
 function computeRankings() {
+  normalizePeople();
   sortedTeams = [...teams].sort((a,b) => (b.avg_ps||0) - (a.avg_ps||0));
   sortedGoldenBoot = [...people].sort((a,b) => (b.ps_nb||0) - (a.ps_nb||0));
   sortedPlaymaker = [...people].sort((a,b) => (b.opps||0) - (a.opps||0));
@@ -2966,37 +2994,13 @@ async function fetchData(fresh) {
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name); // ignore empty rows
     applyTeamAliases(); // e.g. ALPS → Switzerland, before names/ranks are computed
-    // Disambiguate duplicate names by appending the team, so `name` stays a UNIQUE
-    // identity key everywhere (clicks, rank lookups, week-digest maps, VAR verdicts
-    // all key on name). With 377 reps a "First LASTNAME" collision is plausible and
-    // would otherwise make both rows open the same card / share a rank.
-    (() => {
-      const counts = {};
-      people.forEach(p => { counts[p.name] = (counts[p.name] || 0) + 1; });
-      people.forEach(p => { if (counts[p.name] > 1 && p.team) p.name = `${p.name} · ${p.team}`; });
-    })();
     updated_at = data.updated_at;
     period = data.period || '';
     challenge_dates = data.challenge_dates || {};
     specialAwards = data.special_awards || {};
 
-    // Defensive: a GM cell entered as `27` (or "27%") instead of the expected
-    // decimal `0.27` would otherwise render "2700.0%" and never trip yellow_gm.
-    // Anything > 1.5 is treated as a percentage and divided by 100.
-    const normGm = v => (typeof v === 'number' && v > 1.5) ? v / 100 : v;
-    people.forEach(p => { p.ps_total_gm = normGm(p.ps_total_gm); p.ps_nb_gm = normGm(p.ps_nb_gm); });
-    teams.forEach(t => { t.avg_gm = normGm(t.avg_gm); });
-
-    // Defensive: recompute discipline flags client-side so a blank/zero `meetings`
-    // column at challenge start doesn't flag all 377 players with a yellow card.
-    // (The backend guards yellow_gm but not yellow_meetings; this keeps both correct
-    // even before the Apps Script is redeployed.)
-    people.forEach(p => {
-      const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
-      p.yellow_meetings = hasData && (p.meetings || 0) < 5;
-      p.yellow_gm = (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0;
-    });
-
+    // Dedup, GM normalisation and discipline flags all happen in computeRankings →
+    // normalizePeople(), so the snapshot path gets the exact same derived data.
     computeRankings();
     initSnapshotOnce();
     detectLeaderChanges();
