@@ -213,6 +213,27 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- localStorage blocked (Safari Private Mode / locked-down browsers) ----------
+  // Storage throwing on every call must NOT trap the user on the login screen: an
+  // in-memory fallback keeps the session + access code alive for the page session.
+  {
+    const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 880 }, hasTouch: true });
+    // Block storage BEFORE any app/script runs (first init script wins the timing).
+    await ctx.addInitScript(() => {
+      const block = () => { throw new DOMException('Storage disabled', 'SecurityError'); };
+      try { Object.defineProperty(window, 'localStorage', { configurable: true, get() { return { getItem: block, setItem: block, removeItem: block, clear: block, key: block, length: 0 }; } }); } catch (e) {}
+    });
+    await ctx.route('**script.google.com**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockData()) }));
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+    if (await page.$('#login-pwd')) { await page.fill('#login-pwd', 'test'); await page.click('#login-btn'); }
+    await page.waitForSelector('.tab-btn', { timeout: 10000 }).catch(() => {});
+    const ok = await page.evaluate(() => !!document.querySelector('.tab-btn') && !document.querySelector('#login-pwd'));
+    log('localStorage blocked: login still reaches the leaderboard', ok);
+    await ctx.close();
+  }
+
   await browser.close(); server.close();
   console.log('\n===== DEEP UX E2E =====');
   results.forEach(r => console.log(r.line));

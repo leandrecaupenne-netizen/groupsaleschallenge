@@ -6705,9 +6705,20 @@ try {
 
 // === LIVE: authentication ===
 // Safe localStorage wrappers — some in-app webviews block storage and throw.
-function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-function safeRemove(k) { try { localStorage.removeItem(k); } catch (e) {} }
+// Storage helpers with an in-memory fallback. When localStorage is unavailable
+// (Safari Private Mode, locked-down corporate browsers, storage quota), the raw
+// API throws on every call — which previously trapped the user on the login screen
+// forever (the session flag could never be read back). MEM keeps the session,
+// access code and data snapshot alive for the current page session so the app is
+// fully usable; it just won't persist across a reload (where storage is blocked
+// anyway). When localStorage works, it's authoritative and MEM is a mirror.
+const MEM = {};
+function safeGet(k) {
+  try { const v = localStorage.getItem(k); return (v === null && k in MEM) ? MEM[k] : v; }
+  catch (e) { return (k in MEM) ? MEM[k] : null; }
+}
+function safeSet(k, v) { MEM[k] = String(v); try { localStorage.setItem(k, v); } catch (e) {} }
+function safeRemove(k) { delete MEM[k]; try { localStorage.removeItem(k); } catch (e) {} }
 
 function isLoggedIn() {
   return safeGet(CONFIG.SESSION_KEY) === '1';
