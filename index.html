@@ -7408,7 +7408,8 @@ function tvSection(title, sub, rows) {
 // entity when the team has no nickname. Returns HTML (already escaped).
 function tvTeamLabelHTML(teamName) {
   const t = (teams || []).find(x => x.country === teamName);
-  const nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  let nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  if (!nick) nick = nicknameOverride(teamName); // same stopgap as the lists: overrides show in TV too
   if (!nick) return escapeHtml(teamName);
   return `${escapeHtml(nick)}<small class="tv-real">${escapeHtml(teamName)}</small>`;
 }
@@ -7477,7 +7478,7 @@ function tvPanelHTML(kind) {
     // Show the team nickname (e.g. THE STORMERS) when it exists, with the official
     // name as the small subtitle; id stays the country so the tap opens the squad.
     const items = tvLimit(sortedTeams).map(t => {
-      const nick = (typeof t.nickname === 'string') ? t.nickname.trim() : '';
+      const nick = ((typeof t.nickname === 'string') ? t.nickname.trim() : '') || nicknameOverride(t.country);
       return { id: t.country, name: nick || t.country, team: nick ? t.country : '', val: fmtMoney(t.avg_ps) };
     });
     return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true }) + tvMoreBtn(sortedTeams.length);
