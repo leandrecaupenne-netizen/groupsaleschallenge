@@ -59,6 +59,19 @@ function mockData() {
   const results = [], errors = [];
   const log = (name, ok, extra = '') => results.push({ ok, line: `${ok ? '✅' : '❌'} ${name}${extra ? ' — ' + extra : ''}` });
 
+  // Static i18n integrity: every t('key') used must exist in I18N.en, otherwise the
+  // raw key string leaks to users (t() falls back to the key). The dynamic `tab.`
+  // prefix has a code-level fallback to the tab's label, so it's exempted.
+  {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const enStart = html.indexOf('en: {', html.indexOf('const I18N'));
+    const enBlock = html.slice(enStart, html.indexOf('\n  },', enStart));
+    const defined = new Set([...enBlock.matchAll(/'([^']+)'\s*:/g)].map(m => m[1]));
+    const used = new Set([...html.matchAll(/\bt\(\s*['"]([^'"]+)['"]/g)].map(m => m[1]));
+    const missing = [...used].filter(k => k !== 'tab.' && !defined.has(k));
+    log('i18n: every t() key is defined (no raw key leaks)', missing.length === 0, missing.length ? 'missing: ' + missing.join(', ') : `${used.size} keys ok`);
+  }
+
   const browser = await PW.chromium.launch({ headless: true, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
   ctx.setDefaultTimeout(5000);
