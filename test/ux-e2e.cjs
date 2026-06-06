@@ -184,6 +184,35 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- XSS regression: sheet data is human-edited, so it must be escaped ----------
+  // A name/team/nickname/period containing HTML must never execute or inject elements.
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 390, height: 880 }, hasTouch: true });
+    // A probe that, if a sink failed to escape, would create a real element we can
+    // detect — and a <script> that would set a global. No `src`, so no benign
+    // resource fetch noise; we assert purely on injection + execution.
+    const evil = '</span><b class="xss-probe">BAD</b><script>window.__XSS=1<\/script>';
+    const evilData = {
+      teams: [{ country: `ITALY${evil}`, nickname: `Nick${evil}`, members: 4, total_ps: 9e6, avg_ps: 2.4e6, avg_gm: 0.2, avg_meetings: 6, avg_opps: 8 },
+              { country: 'DENMARK', members: 4, total_ps: 8e6, avg_ps: 2.2e6, avg_gm: 0.2, avg_meetings: 6, avg_opps: 7 }],
+      people: [{ name: `Evil${evil}`, team: `ITALY${evil}`, tenure: `<6 months`, ps_total: 5e6, ps_total_gm: 0.18, ps_nb: 4e6, ps_nb_gm: 0.2, licence_gm: 5e5, meetings: 3, opps: 40, is_rookie: true },
+               { name: 'Bob Normal', team: 'DENMARK', tenure: 'Over a year', ps_total: 4e6, ps_total_gm: 0.31, ps_nb: 3e6, ps_nb_gm: 0.3, licence_gm: 0, meetings: 6, opps: 30, is_rookie: false }],
+      updated_at: 'u1', period: `Week 1 ${evil}`, challenge_dates: { start: '2026-06-01', end: '2026-07-03' }, special_awards: { ai_play_winner: { name: `AI${evil}`, team: 'ITALY', description: `d${evil}` } }, warnings: []
+    };
+    // Last-registered route wins, so this overrides newPage's default mock with evil data.
+    await ctx.route('**script.google.com**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(evilData) }));
+    await bootstrap(page, BASE);
+    for (const t of await page.$$eval('.tab-btn', els => els.map(e => e.dataset.tab))) { await tab(page, t); await page.waitForTimeout(80); }
+    // Also exercise a team modal + player card (more data sinks).
+    await tab(page, 'teams'); await page.waitForTimeout(120);
+    if (await page.has('[data-team]')) { await page.tap('[data-team]'); await page.waitForTimeout(200); await esc(page); await page.waitForTimeout(120); }
+    const fired = await page.evaluate(() => window.__XSS || 0);
+    const injected = await page.evaluate(() => document.querySelectorAll('.xss-probe').length);
+    log('XSS: malicious sheet data does not execute', fired === 0, `__XSS=${fired}`);
+    log('XSS: malicious sheet data injects no elements', injected === 0, `probes=${injected}`);
+    await ctx.close();
+  }
+
   await browser.close(); server.close();
   console.log('\n===== DEEP UX E2E =====');
   results.forEach(r => console.log(r.line));
