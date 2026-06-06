@@ -2244,6 +2244,9 @@ img, table { max-width: 100%; }
 
 /* === Sortable team-table headers === */
 .th-sort, .th-psort, .th-nsort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
+/* Compact sort-direction glyph: small + tight margin so "HEADER ▾" stays inside its
+   column and never collides with the next header on narrow widths / sort states. */
+.th-arr { font-size: 0.64em; margin-left: 2px; vertical-align: 1px; opacity: 0.85; }
 /* On tight table layouts the "/ PERSON" qualifier is dropped (the section
    subtitle already says "per person"); the full label shows on wider screens. */
 @media (max-width: 800px) { .th-thin { display: none; } }
@@ -2853,6 +2856,10 @@ const formatDateShort = iso => {
 };
 
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Compact sort-direction indicator for table headers. A small glyph in a tight span
+// (vs the old ' ▲'/' ▼' full-size + leading space) so "HEADER ▾" can't overflow a
+// narrow column and collide with the next header on small screens / odd sort states.
+const sortArrow = (active, dir) => active ? `<span class="th-arr">${dir === 'asc' ? '▲' : '▼'}</span>` : '';
 
 const TEAM_COLORS = ['#C8102E','#1E2A78','#006847','#F2C75C','#8B5CF6','#EC4899','#0EA5E9','#84CC16','#F97316','#06B6D4'];
 const hashStr = s => {
@@ -3676,7 +3683,7 @@ function renderNationsTable() {
   const nations = [...nationsBase].sort((a, b) => orderKey === 'label'
     ? ndir * String(a.label).localeCompare(String(b.label))
     : ndir * ((a[orderKey] || 0) - (b[orderKey] || 0)));
-  const arrow = k => nationSort.key === k ? (nationSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const arrow = k => sortArrow(nationSort.key === k, nationSort.dir);
   const clickHint = t('teams.clickHint');
   return `
     <div class="nations-table">
@@ -3770,7 +3777,7 @@ function renderTeamRanking() {
     const displayP = sortedAll.filter(p =>
       (!psearch || p.name.toLowerCase().includes(psearch) || String(p.team).toLowerCase().includes(psearch)) &&
       (teamRegion === 'all' || regionOf(p.team) === teamRegion));
-    const pArrow = k => playerSort.key === k ? (playerSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    const pArrow = k => sortArrow(playerSort.key === k, playerSort.dir);
     const metricLabel = { ps_total: 'PS Total', ps_nb: 'PS New Business', ps_total_gm: 'GM', meetings: 'meetings/week', opps: 'opportunities' }[rankKey];
     const PCAP = 100;
     const shown = displayP.slice(0, PCAP);
@@ -3842,7 +3849,7 @@ function renderTeamRanking() {
   // Official standing (avg PS per person) with ties sharing a rank, so re-sorting
   // or reversing the table never shows weird descending numbers for ex-aequo teams.
   const teamRankMap = competitionRanks(sortedTeams, x => x.country, x => x.avg_ps || 0);
-  const arrow = k => teamSort.key === k ? (teamSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const arrow = k => sortArrow(teamSort.key === k, teamSort.dir);
   const sortNote = teamSort.key === 'avg_ps' && teamSort.dir === 'desc' ? '' :
     ` · sorted by ${({rank:'rank',country:'team name',members:'members',avg_ps:'avg PS',avg_gm:'avg GM',avg_meetings:'avg meetings',avg_opps:'avg opps'})[teamSort.key]} ${teamSort.dir}`;
 
