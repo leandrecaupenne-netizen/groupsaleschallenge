@@ -2965,7 +2965,18 @@ function computeRankings() {
 // === LIVE: data fetching ===
 // The access code is sent in the POST body (never in the URL). fresh=true bypasses
 // the server-side 30s cache (used by the manual refresh).
-async function fetchData(fresh) {
+// In-flight guard: poll, visibility-resume, idle-resume and init can all kick a
+// fetch at once on a long-lived tab. Without this, overlapping responses interleave
+// the shared globals (a slow/stale reply landing last overwrites fresh data) and
+// each caller re-renders independently — flicker + wasted Apps Script quota at 400
+// users. Concurrent callers share the one in-flight promise.
+let _fetchInFlight = null;
+function fetchData(fresh) {
+  if (_fetchInFlight) return _fetchInFlight;
+  _fetchInFlight = _fetchDataImpl(fresh).finally(() => { _fetchInFlight = null; });
+  return _fetchInFlight;
+}
+async function _fetchDataImpl(fresh) {
   // Abort a hung request so a cold/asleep Apps Script doesn't leave us waiting
   // forever (the loader would never clear). 20s is generous for a cold start.
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -3709,7 +3720,7 @@ function renderTeamRanking() {
   // country gets its own filter — not just a hardcoded handful.
   const regions = [['all', 'All']].concat(
     regionsPresentFrom(sortedTeams, t => t.country).map(r => [r, nationLabel(r)]));
-  const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${r[0]}">${r[1]}</button>`).join('')}</div>`;
+  const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${escapeHtml(r[0])}">${r[1]}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
   const viewToggle = `
@@ -4228,7 +4239,7 @@ function renderSpotlight() {
           <span class="ms-hero-flag">${flagBars(fFlag)}</span>
         </div>
         <div class="ms-hero-name" style="margin-top:8px">${escapeHtml(featured.person.name)}</div>
-        <div class="ms-hero-team">${escapeHtml(featured.person.team)}${featured.person.is_rookie ? ' · 🎓 Rookie' : ''}</div>
+        <div class="ms-hero-team">${playerTeamHTML(featured.person.team, 'tnk-real-light', featured.person.is_rookie ? ' · 🎓 Rookie' : '')}</div>
         <div class="ms-hero-stat" data-countup="${featured.value}" data-fmt="${featured.fmt}">${spotStatText(featured)}</div>
         <div class="ms-hero-stat-label">${featured.statLabel}</div>
         <div class="ms-hero-line">“${featured.headline}”</div>
@@ -4245,7 +4256,7 @@ function renderSpotlight() {
       <div class="ms-avatar${photoFor(s.person.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(s.person.team)}">${avatarInner(s.person.name)}<span class="ms-avatar-flag">${flagBars(fl)}</span></div>
       <div class="ms-who">
         <div class="ms-who-name">${escapeHtml(s.person.name)}${cardMarkers(s.person)}</div>
-        <div class="ms-who-team">${s.cat} · ${escapeHtml(s.person.team)}</div>
+        <div class="ms-who-team">${s.cat} · ${teamShortLabel(s.person.team)}</div>
       </div>
       <div class="ms-figure">
         <div class="ms-val">${spotStatText(s)}</div>
@@ -4295,7 +4306,7 @@ function renderVAR() {
       <input type="text" id="var-search" class="search-input vt-search" placeholder="Search a player by name…" value="${escapeHtml(varSearch)}" />
       <select id="var-region" class="vt-select" aria-label="Filter by country">
         <option value="all">🌐 All countries</option>
-        ${regionsPresent.map(r => `<option value="${r}" ${varRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
+        ${regionsPresent.map(r => `<option value="${escapeHtml(r)}" ${varRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
       </select>
       <select id="var-team" class="vt-select" aria-label="Filter by entity">
         <option value="all">🏢 All entities</option>
@@ -4410,7 +4421,9 @@ const NATION_LABELS_EXTRA = {
 function nationLabel(region) {
   if (VT_REGION_LABELS[region]) return VT_REGION_LABELS[region];
   if (NATION_LABELS_EXTRA[region]) return NATION_LABELS_EXTRA[region];
-  return String(region).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  // Fallback for a standalone nation = its (sheet-sourced) name, title-cased. Escape
+  // it: this string lands in <option> text and filter-chip labels as HTML.
+  return escapeHtml(String(region).toLowerCase().replace(/\b\w/g, c => c.toUpperCase()));
 }
 // Regions actually present in the data, grouped ones first (in VT_REGION_ORDER),
 // then any standalone countries alphabetically. Replaces the old fixed list so the
@@ -4517,7 +4530,7 @@ function renderCoachRoom() {
       <div class="vt-controls">
         <select id="coach-region" class="vt-select" aria-label="Filter by country">
           <option value="all">🌐 All countries</option>
-          ${regionsPresent.map(r => `<option value="${r}" ${coachRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
+          ${regionsPresent.map(r => `<option value="${escapeHtml(r)}" ${coachRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
         </select>
         <select id="coach-team" class="vt-select" aria-label="Filter by entity">
           <option value="all">🏢 All entities</option>
@@ -4602,7 +4615,7 @@ function renderCoachDiveModal() {
         rank: '#' + (i + 1), name: nationLabel(g.region), sub: `${g.n} people`,
         barPct: g.pct, color: '#16a34a', flag: FLAG_STRIPES[g.region],
         valText: Math.round(g.pct) + '%', shareText: `${g.c}/${g.n} clean`,
-        cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+        cls: 'cd-row-click', attr: `data-cd-region="${escapeHtml(g.region)}"`
       })).join('') || `<div class="no-result">No players in scope.</div>`;
     } else {
       const regLabel = nationLabel(coachDiveRegion);
@@ -4653,7 +4666,7 @@ function renderCoachDiveModal() {
         rank: '#' + (i + 1), name: nationLabel(g.region), sub: `${g.n} people`,
         barPct: (g.gm / maxGm) * 100, color: gmColor(g.gm), flag: FLAG_STRIPES[g.region],
         valText: fmtPct(g.gm), shareText: fmtMoney(g.ps) + ' PS',
-        cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+        cls: 'cd-row-click', attr: `data-cd-region="${escapeHtml(g.region)}"`
       })).join('') || `<div class="no-result">No PS booked yet.</div>`;
     } else {
       const regLabel = nationLabel(coachDiveRegion);
@@ -4699,7 +4712,7 @@ function renderCoachDiveModal() {
       body = nations.map((g, i) => row({
         rank: '#' + (i + 1), name: nationLabel(g.region), sub: `${g.n} people`,
         value: g.v, of: grandTotal, fmt: m.rowFmt, flag: FLAG_STRIPES[g.region], color: FLAG_STRIPES[g.region] ? FLAG_STRIPES[g.region][0] : 'var(--navy)',
-        cls: 'cd-row-click', attr: `data-cd-region="${g.region}"`
+        cls: 'cd-row-click', attr: `data-cd-region="${escapeHtml(g.region)}"`
       })).join('') || `<div class="no-result">No contribution recorded yet.</div>`;
     } else {
       const regLabel = nationLabel(coachDiveRegion);
@@ -4814,7 +4827,7 @@ function renderVarTime() {
         <input type="text" id="vt-search" class="search-input vt-search" placeholder="Search a player by name…" value="${escapeHtml(vartimeSearch)}" />
         <select id="vt-region" class="vt-select" aria-label="Filter by country">
           <option value="all">🌐 All countries</option>
-          ${regionsPresent.map(r => `<option value="${r}" ${vartimeRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
+          ${regionsPresent.map(r => `<option value="${escapeHtml(r)}" ${vartimeRegion === r ? 'selected' : ''}>${nationLabel(r)}</option>`).join('')}
         </select>
         <select id="vt-team" class="vt-select" aria-label="Filter by entity">
           <option value="all">🏢 All entities</option>
@@ -4906,9 +4919,9 @@ function awardMiniRow(p, rank, stat) {
 }
 
 // A data-driven award column: hero #1 + up to two runner-up rows.
-function renderDataAward(list, statFn, emptyMsg) {
+function renderDataAward(list, statFn, emptyMsg, statLabel) {
   if (!list.length) return `<div class="aw-empty">${emptyMsg}</div>`;
-  const hero = awardHero(list[0], statFn(list[0]), list.statLabel || '');
+  const hero = awardHero(list[0], statFn(list[0]), statLabel || '');
   const rest = list.slice(1, 3).map((p, i) => awardMiniRow(p, i + 2, statFn(p))).join('');
   return hero + (rest ? `<div class="aw-mini-list">${rest}</div>` : '');
 }
@@ -4963,7 +4976,7 @@ function renderSpecialAwards() {
               <div class="award-subtitle">Top 3 · Licence GM Amount</div>
             </div>
           </div>
-          ${renderDataAward(topLicences, p => fmtMoney(p.licence_gm), 'No licence GM recorded yet.')}
+          ${renderDataAward(topLicences, p => fmtMoney(p.licence_gm), 'No licence GM recorded yet.', 'Licence GM Amount')}
         </div>
 
         <div class="award-card" style="--c: #16A34A">
@@ -4974,7 +4987,7 @@ function renderSpecialAwards() {
               <div class="award-subtitle">Top 3 · Less than 1 year · PS Bookings NB</div>
             </div>
           </div>
-          ${renderDataAward(topRookies, p => fmtMoney(p.ps_nb), 'No rookies with PS Bookings yet — coming soon.')}
+          ${renderDataAward(topRookies, p => fmtMoney(p.ps_nb), 'No rookies with PS Bookings yet — coming soon.', 'PS Bookings · New Business')}
         </div>
 
         <div class="award-card" style="--c: #8B5CF6">
@@ -6559,12 +6572,27 @@ function bindCardOutsideClose(root) {
 // any overlay is open; it re-arms itself so each Back press peels one layer.
 let overlayGuardArmed = false;
 
+// Body-level overlays built imperatively (not part of render()): search, rules,
+// weekly digest, compare. They sit on top of any render()-managed modal.
+function dynamicOverlay() {
+  return document.querySelector('#search-overlay, #rules-overlay, #digest-overlay, #compare-overlay');
+}
 function anyOverlayOpen() {
-  return !!(varReviewName || openPlayerModal || coachDive || openTeamModal || openNationModal);
+  return !!(varReviewName || openPlayerModal || coachDive || openTeamModal || openNationModal || dynamicOverlay());
 }
 
 // Close exactly the top-most overlay layer (mirrors the Escape handler order).
 function closeTopLayer() {
+  // Dynamic overlays sit on top → peel them first, via their own close() (which
+  // restores scroll-lock and removes their listeners). Re-arm a guard if a tracked
+  // modal is still open underneath.
+  const dyn = dynamicOverlay();
+  if (dyn) {
+    const btn = dyn.querySelector('.modal-close, #search-close, #compare-close, [data-close]');
+    if (btn) btn.click(); else { dyn.remove(); if (!anyOverlayOpen()) document.body.style.overflow = ''; }
+    syncOverlayHistory();
+    return;
+  }
   if (varReviewName) { varReviewName = null; document.body.style.overflow = ''; render(); return; }
   if (openPlayerModal) {
     openPlayerModal = null;
@@ -6930,6 +6958,7 @@ function openDigest() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
+  syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
@@ -6998,6 +7027,7 @@ function openRules() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
+  syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
@@ -7065,6 +7095,7 @@ function openSearch() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
+  syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); if (opener && opener.focus) { try { opener.focus({ preventScroll: true }); } catch (e) {} } };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
@@ -7160,6 +7191,7 @@ function openCompare() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
+  syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { cleanups.forEach(fn => fn()); el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); if (opener && opener.focus) { try { opener.focus({ preventScroll: true }); } catch (e) {} } };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
@@ -7672,7 +7704,7 @@ function restoreFocus(f) {
   if (!f) return;
   const el = document.getElementById(f.id);
   if (!el) return;
-  el.focus();
+  el.focus({ preventScroll: true }); // a mid-type background poll must not jump the page
   try { el.setSelectionRange(f.start, f.end); } catch (e) {}
 }
 

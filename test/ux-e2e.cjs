@@ -191,7 +191,8 @@ function mockData() {
     // A probe that, if a sink failed to escape, would create a real element we can
     // detect — and a <script> that would set a global. No `src`, so no benign
     // resource fetch noise; we assert purely on injection + execution.
-    const evil = '</span><b class="xss-probe">BAD</b><script>window.__XSS=1<\/script>';
+    // Leading `"` and `>` also probe attribute breakout (e.g. region → data-* / <option value>).
+    const evil = '"></span><b class="xss-probe">BAD</b><script>window.__XSS=1<\/script>';
     const evilData = {
       teams: [{ country: `ITALY${evil}`, nickname: `Nick${evil}`, members: 4, total_ps: 9e6, avg_ps: 2.4e6, avg_gm: 0.2, avg_meetings: 6, avg_opps: 8 },
               { country: 'DENMARK', members: 4, total_ps: 8e6, avg_ps: 2.2e6, avg_gm: 0.2, avg_meetings: 6, avg_opps: 7 }],
@@ -201,7 +202,9 @@ function mockData() {
     };
     // Last-registered route wins, so this overrides newPage's default mock with evil data.
     await ctx.route('**script.google.com**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(evilData) }));
-    await bootstrap(page, BASE);
+    // Admin URL so the Coach Room / VAR Time region selects + data-cd-region rows render
+    // (those interpolate region = a raw team name into HTML attributes).
+    await bootstrap(page, BASE + '?admin=' + ADMIN_KEY);
     for (const t of await page.$$eval('.tab-btn', els => els.map(e => e.dataset.tab))) { await tab(page, t); await page.waitForTimeout(80); }
     // Also exercise a team modal + player card (more data sinks).
     await tab(page, 'teams'); await page.waitForTimeout(120);
