@@ -263,6 +263,9 @@ function mockData() {
       return out;
     });
     log('Tied playmakers share a rank on the board', board.Bea === '#2' && board.Cy === '#2' && board.Dan === '#2', JSON.stringify(board));
+    // Photo-finish banner must never advertise a 0-gap tie ("only 0 opps between …").
+    const raceTxt = await page.evaluate(() => { const b = document.querySelector('.race-strip'); return b ? b.textContent : ''; });
+    log('Photo finish never shows a 0-gap tie', !/\b0 opps?\b/.test(raceTxt), raceTxt.replace(/\s+/g, ' ').trim().slice(0, 50));
     await tab(page, 'position'); await page.waitForTimeout(150);
     await page.fill('#position-search', 'Cy Charlie').catch(() => {});
     await page.waitForTimeout(300);

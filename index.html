@@ -3211,6 +3211,10 @@ function tightRace(sorted, valueOf, fmt) {
   let best = null;
   for (let i = 0; i < top.length - 1; i++) {
     const gap = valueOf(top[i]) - valueOf(top[i + 1]);
+    // Skip exact ties: a 0 gap means the two are LEVEL, not in a tight race — showing
+    // "Photo finish · only 0 opps between #3 and #4" is nonsense (and on integer metrics
+    // like opportunities, ties are common). Highlight the closest NON-zero race instead.
+    if (gap <= 0) continue;
     const ref = valueOf(top[i]) || 1;
     const ratio = gap / ref;
     if (best === null || ratio < best.ratio) best = { i, gap, ratio, leader: top[i], chaser: top[i + 1] };
@@ -3223,7 +3227,7 @@ function tightRace(sorted, valueOf, fmt) {
 // tight (≤ 8% of the leader's value). Returns '' when the race isn't close.
 function tightRaceBanner(race, label) {
   if (!race || race.ratio > 0.08) return '';
-  const gapStr = race.fmt === 'money' ? fmtMoney(race.gap) : (race.fmt === 'int' ? Math.round(race.gap) + ' opps' : race.gap);
+  const gapStr = race.fmt === 'money' ? fmtMoney(race.gap) : (race.fmt === 'int' ? Math.round(race.gap) + (Math.round(race.gap) === 1 ? ' opp' : ' opps') : race.gap);
   return `<div class="race-strip" title="It's tight at the top!">
       <span class="race-flame">🔥</span>
       <span class="race-text"><b>Photo finish</b> · only <b>${gapStr}</b> between #${race.rankA} ${race.leader.name ? escapeHtml(race.leader.name) : teamShortLabel(race.leader.country)} and #${race.rankB} ${race.chaser.name ? escapeHtml(race.chaser.name) : teamShortLabel(race.chaser.country)}</span>
