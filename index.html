@@ -1826,8 +1826,10 @@ img, table { max-width: 100%; }
      minmax() min-widths (280–300px) overflowing narrow phones. */
   .individuals-grid,
   .awards-grid,
-  .position-stats,
-  .modal-summary { grid-template-columns: 1fr; }
+  .position-stats { grid-template-columns: 1fr; }
+  /* Team-modal stats: 2 columns on phones (not 1) so all 5 figures are scannable
+     at a glance and the squad list starts ~200px higher up. */
+  .modal-summary { grid-template-columns: 1fr 1fr; gap: 14px 10px; }
 
   /* Search input must not force a 280px minimum on a ~320px screen */
   .search-row { gap: 8px; }
@@ -6296,13 +6298,15 @@ function render() {
       setTabUrl(currentTab);
       render();
       if (changed) {
-        // Bring the new tab's content into view (so you don't stay stranded at
-        // the bottom of the previous list) and play a quick enter transition.
+        // Snap the new tab's content under the sticky tab bar, whether the user was
+        // higher up (still on the team podium hero) or lower down (stranded at the
+        // bottom of the previous list). Without this, tapping a tab from the top left
+        // you staring at the hero with the content ~790px below — friction on mobile.
         const sec = document.querySelector('#app .section');
         if (sec) {
           const tb = document.querySelector('.tabs-wrap');
-          const y = sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8);
-          if (window.scrollY > y) window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+          const y = Math.max(0, sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8));
+          if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
           if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
             sec.classList.remove('tab-enter'); void sec.offsetWidth; sec.classList.add('tab-enter');
           }
