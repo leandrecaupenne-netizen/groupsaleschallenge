@@ -92,7 +92,13 @@ function toNumber(v) {
 // becoming 0 everywhere (which would flatline the leaderboard with no error).
 function readMapped(tab, map, warnings) {
   const sheet = SS.getSheetByName(tab.name);
-  if (!sheet) throw new Error('Tab not found: ' + tab.name);
+  // A missing/renamed tab must NOT crash the whole response (which the front-end
+  // would surface as a generic load failure with no clue). Surface it as a warning
+  // and return no rows, so partial data still paints and the admin sees the cause.
+  if (!sheet) {
+    if (warnings) warnings.push('Tab not found: "' + tab.name + '" — was it renamed or moved? Expected exactly this name.');
+    return [];
+  }
   const values = sheet.getDataRange().getValues();
   if (values.length < tab.headerRow) return [];
 
@@ -171,9 +177,12 @@ function readSpecialAwards() {
   return awards;
 }
 
-// CacheService allows max ~100KB per key, so store the payload in chunks.
+// CacheService allows max ~100KB (bytes) per key, so store the payload in chunks.
+// 45000 CHARACTERS stays under 100KB even when every char is a 2-byte accented
+// name (é, ü, ø, þ…) — at 90000 chars an accent-heavy chunk could exceed the byte
+// cap, making putAll throw and silently disabling the cache for all 400 users.
 // All cache operations are best-effort: caching must never break the response.
-const CACHE_CHUNK = 90000;
+const CACHE_CHUNK = 45000;
 
 function cacheGetLarge(cache, baseKey) {
   try {
@@ -274,19 +283,16 @@ function dataResponse(fresh) {
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'data';
-  const fresh = e && e.parameter && (e.parameter.fresh === '1' || e.parameter.nocache === '1');
   try {
     if (action === 'ping') {
       return jsonResponse({ ok: true, time: new Date().toISOString() });
     }
 
     if (action === 'data') {
-      // Data requires the password. The web app sends it via POST (below); a `pw`
-      // query param is allowed too (handy for manual checks). No password -> no data.
-      if (!passwordOk(e && e.parameter && e.parameter.pw)) {
-        return jsonResponse({ error: 'unauthorized' });
-      }
-      return dataResponse(fresh);
+      // Data is POST-only: the access code travels in the request body, never as a
+      // ?pw= query string (which would leak the code into Apps Script execution logs,
+      // browser history and referrer headers). The web app always POSTs (see doPost).
+      return jsonResponse({ error: 'unauthorized', hint: 'POST {action:"data", password} — data is not served over GET.' });
     }
 
     return jsonResponse({ error: 'Unknown action' });
@@ -297,7 +303,7 @@ function doGet(e) {
 }
 
 // Keep the Web App warm so the FIRST real request never hits a multi-second cold
-// start (which leaves users staring at the loader). Also primes the 30s data cache
+// start (which leaves users staring at the loader). Also primes the 60s data cache
 // so the next visitor's fetch is instant.
 //
 // SET UP THE TRIGGER (one-off):
