@@ -3185,7 +3185,7 @@ function tightRaceBanner(race, label) {
   const gapStr = race.fmt === 'money' ? fmtMoney(race.gap) : (race.fmt === 'int' ? Math.round(race.gap) + ' opps' : race.gap);
   return `<div class="race-strip" title="It's tight at the top!">
       <span class="race-flame">🔥</span>
-      <span class="race-text"><b>Photo finish</b> · only <b>${gapStr}</b> between #${race.rankA} ${escapeHtml(race.leader.name || race.leader.country)} and #${race.rankB} ${escapeHtml(race.chaser.name || race.chaser.country)}</span>
+      <span class="race-text"><b>Photo finish</b> · only <b>${gapStr}</b> between #${race.rankA} ${race.leader.name ? escapeHtml(race.leader.name) : teamShortLabel(race.leader.country)} and #${race.rankB} ${race.chaser.name ? escapeHtml(race.chaser.name) : teamShortLabel(race.chaser.country)}</span>
     </div>`;
 }
 
