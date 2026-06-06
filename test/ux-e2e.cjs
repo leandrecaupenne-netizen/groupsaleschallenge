@@ -237,6 +237,40 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- Tie-aware (competition) ranks on player boards + card ----------
+  // Players on the same figure must share a rank (e.g. three reps on 7 opportunities
+  // are all #2), and the player card / My Position must agree with the board.
+  {
+    const tieData = {
+      teams: [{ country: 'ITALY', members: 4, total_ps: 1000, avg_ps: 250, avg_gm: 0.2, avg_meetings: 6, avg_opps: 8 }],
+      people: [
+        { name: 'Ann Alpha', team: 'ITALY', tenure: 'Over a year', ps_total: 400, ps_total_gm: 0.3, ps_nb: 300, ps_nb_gm: 0.3, licence_gm: 0, meetings: 6, opps: 10, is_rookie: false },
+        { name: 'Bea Bravo', team: 'ITALY', tenure: 'Over a year', ps_total: 300, ps_total_gm: 0.3, ps_nb: 250, ps_nb_gm: 0.3, licence_gm: 0, meetings: 6, opps: 7, is_rookie: false },
+        { name: 'Cy Charlie', team: 'ITALY', tenure: 'Over a year', ps_total: 250, ps_total_gm: 0.3, ps_nb: 240, ps_nb_gm: 0.3, licence_gm: 0, meetings: 6, opps: 7, is_rookie: false },
+        { name: 'Dan Delta', team: 'ITALY', tenure: 'Over a year', ps_total: 200, ps_total_gm: 0.3, ps_nb: 230, ps_nb_gm: 0.3, licence_gm: 0, meetings: 6, opps: 7, is_rookie: false }
+      ],
+      updated_at: 'tie1', period: 'Week 2 of 5', challenge_dates: { start: '2026-06-01', end: '2026-07-03' }, special_awards: {}, warnings: []
+    };
+    const { ctx, page } = await newPage({ viewport: { width: 1000, height: 900 } });
+    await ctx.route('**script.google.com**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(tieData) }));
+    await bootstrap(page, BASE);
+    await tab(page, 'playmaker'); await page.waitForTimeout(200);
+    const board = await page.evaluate(() => {
+      const out = {};
+      const grab = (rankSel, scope) => { const nm = (scope.textContent.match(/Ann|Bea|Cy|Dan/) || [])[0]; const rk = (scope.querySelector(rankSel) || {}).textContent; if (nm && rk) out[nm] = rk.trim(); };
+      const hero = document.querySelector('.ms-hero'); if (hero) grab('.ms-hero-rank', hero);
+      document.querySelectorAll('.ms-row').forEach(r => grab('.ms-rank', r));
+      return out;
+    });
+    log('Tied playmakers share a rank on the board', board.Bea === '#2' && board.Cy === '#2' && board.Dan === '#2', JSON.stringify(board));
+    await tab(page, 'position'); await page.waitForTimeout(150);
+    await page.fill('#position-search', 'Cy Charlie').catch(() => {});
+    await page.waitForTimeout(300);
+    const cardRank = await page.evaluate(() => { const t = document.querySelector('[data-goto="playmaker"]'); const m = t && t.textContent.match(/#(\d+)/); return m ? '#' + m[1] : null; });
+    log('Player card playmaker rank matches the board (tie-aware)', cardRank === '#2', `card=${cardRank}`);
+    await ctx.close();
+  }
+
   await browser.close(); server.close();
   console.log('\n===== DEEP UX E2E =====');
   results.forEach(r => console.log(r.line));

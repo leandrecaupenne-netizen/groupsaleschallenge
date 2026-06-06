@@ -2746,6 +2746,9 @@ function avatarInner(name) {
 let DATA = null;
 let teams = [], people = [], updated_at = null, period = '', challenge_dates = {}, specialAwards = {};
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
+// Competition-rank lookups (name -> rank, ties share) for the per-player ranks shown
+// on the player card and My Position — kept in sync with the boards' tie-aware ranks.
+let rankGolden = {}, rankPlaymaker = {}, rankPSTotal = {}, rankLicence = {}, rankRookie = {};
 let dataWarnings = []; // backend column-mapping warnings (shown to admins only)
 let lastRenderedUpdate = null; // updated_at last painted — lets the poll skip a no-op re-render
 
@@ -2972,6 +2975,13 @@ function computeRankings() {
   sortedPSTotal = [...people].sort((a,b) => (b.ps_total||0) - (a.ps_total||0));
   sortedLicence = [...people].filter(p => p.licence_gm > 0).sort((a,b) => (b.licence_gm||0) - (a.licence_gm||0));
   sortedRookies = [...people].filter(p => p.is_rookie && p.ps_nb > 0).sort((a,b) => (b.ps_nb||0) - (a.ps_nb||0));
+  // Tie-aware rank maps for the player card / My Position (object form for O(1) name lookup).
+  const rmap = (arr, vof) => { const m = {}; let lv = null, lr = 0; arr.forEach((p, i) => { const v = vof(p); const r = (i > 0 && v === lv) ? lr : i + 1; m[p.name] = r; lv = v; lr = r; }); return m; };
+  rankGolden = rmap(sortedGoldenBoot, p => p.ps_nb || 0);
+  rankPlaymaker = rmap(sortedPlaymaker, p => p.opps || 0);
+  rankPSTotal = rmap(sortedPSTotal, p => p.ps_total || 0);
+  rankLicence = rmap(sortedLicence, p => p.licence_gm || 0);
+  rankRookie = rmap(sortedRookies, p => p.ps_nb || 0);
 }
 
 // === LIVE: data fetching ===
@@ -3924,6 +3934,10 @@ function renderMatchSheet(list, opts) {
   const rest = list.slice(1);
   const max = opts.valueOf(top) || 1;
   const color = opts.color;
+  // Competition ranks (ties share a rank) so e.g. two players on 12 opportunities both
+  // show #1, not #1 and #2. Matches the player card / My Position / full-ranking ranks.
+  const rkMap = competitionRanks(list, p => p.name, p => opts.valueOf(p) || 0);
+  const rankOf = p => rkMap.get(p.name) || 1;
   const heroCards = cardMarkers(top);
   const heroFlag = flagForTeam(top.team);
   const hero = `
@@ -3934,7 +3948,7 @@ function renderMatchSheet(list, opts) {
           <span class="ms-hero-badge">${opts.badge}</span>
           <span class="ms-hero-flag">${flagBars(heroFlag)}</span>
         </div>
-        <div class="ms-hero-rank">#1</div>
+        <div class="ms-hero-rank">#${rankOf(top)}</div>
         <div class="ms-hero-name">${escapeHtml(top.name)}</div>
         <div class="ms-hero-team">${playerTeamHTML(top.team, 'tnk-real-light', top.is_rookie ? ' · 🎓 Rookie' : '')}</div>
         <div class="ms-hero-stat">${animNum(opts.keyPrefix + ':' + top.name, opts.valueOf(top), opts.fmt)}</div>
@@ -3950,7 +3964,7 @@ function renderMatchSheet(list, opts) {
     const fl = flagForTeam(p.team);
     return `
       <div class="ms-row" data-player="${escapeHtml(p.name)}" style="--c:${color}; --w:${w}%" title="View ${escapeHtml(p.name)}'s card">
-        <div class="ms-rank">#${i + 2}</div>
+        <div class="ms-rank">#${rankOf(p)}</div>
         <div class="ms-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}<span class="ms-avatar-flag">${flagBars(fl)}</span></div>
         <div class="ms-who">
           <div class="ms-who-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
@@ -3972,8 +3986,11 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount) {
   if (ranked.length <= podiumCount) return '';
   const open = !!fullRankOpen[key];
   const rest = ranked.slice(podiumCount);
+  // Competition ranks (ties share) so the full list agrees with the top-5 match-sheet
+  // and the player card — no spurious #7/#8 for two players on the same figure.
+  const rkMap = competitionRanks(ranked, p => p.name, p => valueOf(p) || 0);
   const rows = open ? rest.map((p, i) => {
-    const rank = podiumCount + i + 1;
+    const rank = rkMap.get(p.name);
     const rc = colorForTeam(p.team);
     const ini = String(p.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
     return `
@@ -5136,7 +5153,7 @@ function renderPositionDetails(person) {
   lastRevealedName = person.name;
   if (isNewReveal) celebrateOnRender = true; // → confetti when this paints (you just found yourself!)
 
-  const overallRank = sortedPSTotal.findIndex(p => p.name === person.name) + 1;
+  const overallRank = rankPSTotal[person.name] || 0; // tie-aware, matches the boards
 
   // Same Panini card as everywhere else, centred, with discipline status below.
   return `
@@ -5604,11 +5621,13 @@ function renderVarReviewModal() {
 function paniniCardInner(p) {
   const color = colorForTeam(p.team);
   const flag = flagForTeam(p.team);
-  const goldenRank = sortedGoldenBoot.findIndex(x => x.name === p.name) + 1;
-  const playmakerRank = sortedPlaymaker.findIndex(x => x.name === p.name) + 1;
-  const totalRank = sortedPSTotal.findIndex(x => x.name === p.name) + 1;
-  const licenceRank = sortedLicence.findIndex(x => x.name === p.name) + 1;
-  const rookieRank = p.is_rookie ? sortedRookies.findIndex(x => x.name === p.name) + 1 : 0;
+  // Tie-aware competition ranks (match the boards): two players on the same figure
+  // share a rank, instead of one arbitrarily showing the worse number.
+  const goldenRank = rankGolden[p.name] || 0;
+  const playmakerRank = rankPlaymaker[p.name] || 0;
+  const totalRank = rankPSTotal[p.name] || 0;
+  const licenceRank = rankLicence[p.name] || 0;
+  const rookieRank = p.is_rookie ? (rankRookie[p.name] || 0) : 0;
   const initials = p.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const cards = [];
   if (p.yellow_meetings) cards.push('🟨');
