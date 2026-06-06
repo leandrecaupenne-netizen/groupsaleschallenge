@@ -3065,10 +3065,13 @@ function hydrateFromSnapshot() {
 
 // === Rank movement (▲▼ since last visit) ===
 function buildRankMaps() {
+  // Use competition ranks (ties share a rank), matching what the tables DISPLAY — so
+  // movement (▲▼) compares like-for-like. With plain index ranks, two teams tied on
+  // avg_ps would show a spurious ±1 move when nothing actually changed.
   const m = { teams: {}, golden: {}, playmaker: {} };
-  sortedTeams.forEach((t, i) => { m.teams[t.country] = i + 1; });
-  sortedGoldenBoot.forEach((p, i) => { m.golden[p.name] = i + 1; });
-  sortedPlaymaker.forEach((p, i) => { m.playmaker[p.name] = i + 1; });
+  competitionRanks(sortedTeams, t => t.country, t => t.avg_ps || 0).forEach((v, k) => { m.teams[k] = v; });
+  competitionRanks(sortedGoldenBoot, p => p.name, p => p.ps_nb || 0).forEach((v, k) => { m.golden[k] = v; });
+  competitionRanks(sortedPlaymaker, p => p.name, p => p.opps || 0).forEach((v, k) => { m.playmaker[k] = v; });
   return m;
 }
 // Load the previous visit's ranks (in-memory baseline for the whole session),
