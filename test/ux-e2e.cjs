@@ -158,6 +158,32 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- DISCIPLINE FLAGS regression (cold + snapshot-hydrate paths) ----------
+  // Guards the bug where flags/normalisation lived only in fetchData, so a card painted
+  // on first load (or from the instant-paint snapshot) could show a rule-breaker as
+  // "playing by the rules". Claus Thorsager (GM 0.18 + 3 mtg/wk) breaks BOTH rules;
+  // Thomas Vinther (GM 0.30, 6 mtg/wk) is clean. Asserted on the cold load AND a reload.
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 390, height: 880 }, hasTouch: true });
+    const discFor = async name => {
+      await tab(page, 'position'); await page.waitForTimeout(150);
+      await page.fill('#position-search', name).catch(() => {});
+      await page.waitForTimeout(350);
+      return (await page.evaluate(() => (document.querySelector('.pc-discipline') || {}).textContent || '(none)')).trim();
+    };
+    await bootstrap(page, BASE); // cold path: first fetch, no snapshot
+    const coldBreaker = await discFor('Claus Thorsager');
+    const coldClean = await discFor('Thomas Vinther');
+    log('Cold load: rule-breaker shows a yellow card', coldBreaker.includes('🟨'), coldBreaker);
+    log('Cold load: compliant player shows clean', /playing by the rules/i.test(coldClean), coldClean);
+    // Reload → instant-paint snapshot hydrate path must derive identical flags.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.tab-btn', { timeout: 10000 }).catch(() => {});
+    const warmBreaker = await discFor('Claus Thorsager');
+    log('Reload (snapshot hydrate): rule-breaker still shows a yellow card', warmBreaker.includes('🟨'), warmBreaker);
+    await ctx.close();
+  }
+
   await browser.close(); server.close();
   console.log('\n===== DEEP UX E2E =====');
   results.forEach(r => console.log(r.line));
