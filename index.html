@@ -2812,6 +2812,7 @@ let varReviewName = null;   // player under VAR review (their card + verdict but
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
 let playerReturnToTeam = null; // team to reopen when closing a player card opened from a team modal
 let playerReturnToNation = null; // nation to reopen when closing a player card opened from a nation modal
+let modalReturnFocus = null; // a11y: selector of the control that opened a modal, refocused on close (WCAG 2.4.3)
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
 let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
@@ -3767,7 +3768,7 @@ function renderTeamRanking() {
         </div>
         ${viewToggle}
         <div class="search-row">
-          <input type="text" class="search-input" id="team-search" placeholder="Search a player or team…" value="${escapeHtml(currentSearch)}" />
+          <input type="text" class="search-input" id="team-search" aria-label="Search a player or team" placeholder="Search a player or team…" value="${escapeHtml(currentSearch)}" />
         </div>
         ${regionChips}
         <div class="members-table players-table">
@@ -3841,7 +3842,7 @@ function renderTeamRanking() {
       ${tightRaceBanner(tightRace(sortedTeams, t => t.avg_ps || 0, 'money'), 'Team Ranking')}
       ${moversStrip()}
       <div class="search-row">
-        <input type="text" class="search-input" id="team-search" placeholder="${t('teams.searchPh')}" value="${escapeHtml(currentSearch)}" />
+        <input type="text" class="search-input" id="team-search" aria-label="${t('teams.searchPh')}" placeholder="${t('teams.searchPh')}" value="${escapeHtml(currentSearch)}" />
       </div>
       ${regionChips}
       <div class="teams-table">
@@ -5069,7 +5070,7 @@ function renderMyPosition() {
         <button class="copy-btn js-compare">${t('btn.compare')}</button>
       </div>
       <div class="search-row">
-        <input type="text" class="search-input" id="position-search" placeholder="${t('pos.searchPh')}" value="${escapeHtml(positionQuery)}" autofocus />
+        <input type="text" class="search-input" id="position-search" aria-label="${t('pos.searchPh')}" placeholder="${t('pos.searchPh')}" value="${escapeHtml(positionQuery)}" autofocus />
       </div>
       ${resultHtml}
     </div>
@@ -6044,6 +6045,7 @@ function render() {
     // returns there (and close that modal so they don't stack).
     if (el.dataset.fromTeam && openTeamModal) { playerReturnToTeam = openTeamModal; openTeamModal = null; }
     else if (el.dataset.fromNation && openNationModal) { playerReturnToNation = openNationModal; openNationModal = null; }
+    else setModalTrigger(el); // a11y: remember opener so focus returns here on close
     openPlayerModal = el.dataset.player;
     try { if (navigator.vibrate && !matchMedia('(prefers-reduced-motion: reduce)').matches) navigator.vibrate(8); } catch (e) {} // "pack open" tap (Android)
     render();
@@ -6399,6 +6401,7 @@ function render() {
   // Click sur une row d'équipe → ouvre modal
   document.querySelectorAll('.teams-table-row[data-team]').forEach(row => {
     row.addEventListener('click', () => {
+      setModalTrigger(row); // a11y: focus returns here on close
       openTeamModal = row.dataset.team;
       render();
       // Bloque le scroll du body quand modal ouvert
@@ -6409,6 +6412,7 @@ function render() {
   // Hero podium cards → open the team's squad
   document.querySelectorAll('.podium-card[data-team]').forEach(card => {
     card.addEventListener('click', () => {
+      setModalTrigger(card);
       openTeamModal = card.dataset.team;
       render();
       document.body.style.overflow = 'hidden';
@@ -6418,6 +6422,7 @@ function render() {
   // Click sur une row de nation → ouvre le drilldown nation
   document.querySelectorAll('.nation-row-click[data-nation]').forEach(row => {
     row.addEventListener('click', () => {
+      setModalTrigger(row);
       openNationModal = row.dataset.nation;
       render();
       document.body.style.overflow = 'hidden';
@@ -6474,7 +6479,7 @@ let _modalFocusKey = null;
 function enhanceModals() {
   const ids = ['cd-overlay', 'player-overlay', 'vr-overlay', 'modal-overlay', 'nation-overlay'];
   const open = ids.map(id => document.getElementById(id)).filter(Boolean);
-  if (!open.length) { _modalFocusKey = null; return; }
+  if (!open.length) { _modalFocusKey = null; restoreModalFocusIfClosed(); return; }
   const top = open[open.length - 1];
   const key = open.map(o => o.id).join('|');
   if (key !== _modalFocusKey) {
@@ -7029,6 +7034,7 @@ let refreshScrollTop = () => {};
 
 function openSearch() {
   if (document.getElementById('search-overlay')) return;
+  const opener = document.activeElement; // a11y: return focus here on close
   let query = '', filter = 'all';
   const el = document.createElement('div');
   el.className = 'modal-overlay'; el.id = 'search-overlay';
@@ -7041,14 +7047,14 @@ function openSearch() {
         <button class="modal-close" id="search-close" aria-label="Close">×</button>
       </div>
       <div class="search-modal-body">
-        <input type="text" id="search-input" class="search-input" placeholder="Type a name…" autocomplete="off" />
+        <input type="text" id="search-input" class="search-input" aria-label="Search players and teams" placeholder="Type a name…" autocomplete="off" />
         <div class="search-chips">${chips.map(c => `<button class="search-chip${c[0] === 'all' ? ' on' : ''}" data-f="${c[0]}">${c[1]}</button>`).join('')}</div>
         <div class="search-results" id="search-results"></div>
       </div>
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
-  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); if (opener && opener.focus) { try { opener.focus({ preventScroll: true }); } catch (e) {} } };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#search-close').addEventListener('click', close);
@@ -7102,6 +7108,7 @@ function openSearch() {
 // === Compare mode (two teams or two players head-to-head) ===
 function openCompare() {
   if (document.getElementById('compare-overlay')) return;
+  const opener = document.activeElement; // a11y: return focus here on close
   // Open on the mode that matches where you clicked from: the current Team Ranking
   // sub-view (Teams / Nations / Players), or Players when on the My Position tab.
   let mode = currentTab === 'position' ? 'players'
@@ -7142,7 +7149,7 @@ function openCompare() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
-  const close = () => { cleanups.forEach(fn => fn()); el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
+  const close = () => { cleanups.forEach(fn => fn()); el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); if (opener && opener.focus) { try { opener.focus({ preventScroll: true }); } catch (e) {} } };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#compare-close').addEventListener('click', close);
@@ -7656,6 +7663,29 @@ function restoreFocus(f) {
   if (!el) return;
   el.focus();
   try { el.setSelectionRange(f.start, f.end); } catch (e) {}
+}
+
+// A11y (WCAG 2.4.3): remember which control opened a modal so focus can return to
+// it on close. render() rebuilds #app, so we store a SELECTOR (re-located after the
+// re-render) rather than the element reference. Called from the modal-open handlers.
+const cssEsc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\\]]/g, '\\$&');
+function setModalTrigger(el) {
+  const d = el && el.dataset;
+  modalReturnFocus = !d ? null
+    : d.player ? `[data-player="${cssEsc(d.player)}"]`
+    : d.team   ? `[data-team="${cssEsc(d.team)}"]`
+    : d.nteam  ? `[data-nteam="${cssEsc(d.nteam)}"]`
+    : d.nation ? `[data-nation="${cssEsc(d.nation)}"]`
+    : null;
+}
+// When every in-app overlay has closed, return focus to the opener. Called at the
+// end of render(); the guard means a background poll mid-modal never steals focus.
+function restoreModalFocusIfClosed() {
+  if (!modalReturnFocus) return;
+  if (document.querySelector('.modal-overlay') || document.getElementById('tv-overlay')) return;
+  const t = document.querySelector(modalReturnFocus);
+  modalReturnFocus = null;
+  if (t) { try { t.focus({ preventScroll: true }); } catch (e) {} }
 }
 
 // Small debounce so search inputs don't trigger a full re-render on every
