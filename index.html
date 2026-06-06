@@ -2784,7 +2784,7 @@ function t(k, vars) {
 let currentTab = 'teams';
 let teamSort = { key: 'avg_ps', dir: 'desc' }; // team table sort column/direction
 let playerSort = { key: 'ps_total', dir: 'desc' }; // players view sort column/direction
-let nationSort = { key: 'rank', dir: 'desc' }; // nations view sort column/direction
+let nationSort = { key: 'rank', dir: 'asc' }; // nations view sort column/direction (asc = best-first, see renderNationsTable inversion)
 let teamRegion = 'all'; // team table region filter
 let teamView = 'teams'; // Team Ranking tab view: 'teams' | 'nations'
 let cardPerson = null; // person currently shown in My Position (for the shareable card)
@@ -3788,7 +3788,7 @@ function renderTeamRanking() {
                   <span class="member-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
                   <div>
                     <div class="member-name">${escapeHtml(p.name)}</div>
-                    <div class="member-tenure">${escapeHtml(p.team)}${p.is_rookie ? ' · 🎓 Rookie' : ''}</div>
+                    <div class="member-tenure">${playerTeamHTML(p.team, 'tnk-real-muted', p.is_rookie ? ' · 🎓 Rookie' : '')}</div>
                   </div>
                 </div>
                 <div class="member-stat">${fmtMoney(p.ps_total)}</div>
@@ -5024,7 +5024,7 @@ function renderMyPosition() {
       const toks = nq.split(' ').filter(t => t.length >= 3);
       const sugg = toks.length ? people.filter(p => { const n = normLoose(p.name); return toks.some(t => n.includes(t)); }).slice(0, 6) : [];
       resultHtml = sugg.length
-        ? `<div class="position-result"><div class="suggestion-card"><p class="suggestion-head">No exact match — did you mean:</p><ul class="suggestion-list">${sugg.map(p => `<li class="suggestion-item" data-name="${escapeHtml(p.name)}"><span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span><span class="suggestion-text"><span class="suggestion-name">${escapeHtml(p.name)}</span><span class="suggestion-team">${escapeHtml(p.team)}</span></span></li>`).join('')}</ul></div></div>`
+        ? `<div class="position-result"><div class="suggestion-card"><p class="suggestion-head">No exact match — did you mean:</p><ul class="suggestion-list">${sugg.map(p => `<li class="suggestion-item" data-name="${escapeHtml(p.name)}"><span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span><span class="suggestion-text"><span class="suggestion-name">${escapeHtml(p.name)}</span><span class="suggestion-team">${teamShortLabel(p.team)}</span></span></li>`).join('')}</ul></div></div>`
         : `<div class="position-result"><div class="no-result">${t('pos.none')}</div></div>`;
     } else if (matches.length === 1) {
       resolved = matches[0];
@@ -5044,7 +5044,7 @@ function renderMyPosition() {
                 ${matches.slice(0, 8).map(p => `
                   <li class="suggestion-item" data-name="${escapeHtml(p.name)}">
                     <span class="pic-disc${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
-                    <span class="suggestion-text"><span class="suggestion-name">${escapeHtml(p.name)}</span><span class="suggestion-team">${escapeHtml(p.team)}</span></span>
+                    <span class="suggestion-text"><span class="suggestion-name">${escapeHtml(p.name)}</span><span class="suggestion-team">${teamShortLabel(p.team)}</span></span>
                   </li>
                 `).join('')}
               </ul>
@@ -5101,7 +5101,7 @@ function renderPositionDetails(person) {
     <div class="position-result">
       ${overallRank ? `<div class="position-headline" style="text-align:center;font-family:'Anton',Impact,sans-serif;font-size:clamp(18px,5vw,26px);color:var(--gold);margin:4px 0 14px;letter-spacing:0.02em">You're <b>#${overallRank}</b> of ${people.length} players 🎉</div>` : ''}
       <div class="position-card-wrap${isNewReveal ? ' pc-reveal' : ''}">${paniniCardInner(person)}</div>
-      ${teamRank > 0 ? `<div class="position-teamrank">${escapeHtml(person.team)} · Team #${teamRank} of ${sortedTeams.length}</div>` : ''}
+      ${teamRank > 0 ? `<div class="position-teamrank">${teamShortLabel(person.team)} · Team #${teamRank} of ${sortedTeams.length}</div>` : ''}
       <div class="cards-status">
         ${cards.map(c => `<div class="status-item"><span class="${c.type === 'ok' ? 'status-ok' : 'status-warn'}">${c.label}</span></div>`).join('')}
       </div>
@@ -6048,7 +6048,7 @@ function render() {
   // Keyboard accessibility: the clickable rows/cards are <div>/<span>, so make them
   // focusable and let Enter/Space trigger the same click (one central pass, not 16
   // templates). Buttons/links are already accessible and skipped.
-  document.querySelectorAll('[data-player],[data-team],[data-nteam],[data-nation]').forEach(el => {
+  document.querySelectorAll('[data-player],[data-team],[data-nteam],[data-nation],.th-sort,.th-psort,.th-nsort').forEach(el => {
     if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.dataset.kbd) return;
     el.dataset.kbd = '1';
     el.tabIndex = 0;
