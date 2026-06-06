@@ -35,8 +35,8 @@
   contournement utilisé : lancer via un wrapper qui force `executablePath` vers
   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Le réseau vers script.google.com
   et vercel.app est **bloqué** → les tests **mockent** le fetch (route Playwright).
-- 7 tests de régression en place : discipline (cold+hydrate), XSS (admin+breakout),
-  i18n (clés `t()`), localStorage bloqué.
+- 8 tests de régression en place : discipline (cold+hydrate), XSS (admin+breakout),
+  i18n (clés `t()`), localStorage bloqué, **rangs ex-aequo** (board+carte cohérents).
 
 ---
 
@@ -48,9 +48,11 @@
   `Team Ranking` / `Challenge Ranking`, exclut Morocco/Serbia/Tunisia, colonne nickname
   optionnelle, timestamp = vraie date de modif de la Sheet (Drive). Durci 06-06 :
   data POST-only, onglet manquant non bloquant, cache chunks 45000, `keepWarm`.
-- **Statut (06-06)** : front **audité ligne par ligne + durci**, 7 tests de régression,
-  considéré **launch-ready**. Filtres = tous les pays présents séparément (plus de
-  Nordics/Benelux ; Alps→Switzerland). Surnoms temporaires Sweden/Norway/Denmark.
+- **Statut (06-06)** : front **audité ligne par ligne + repasses UX + couche calcul
+  vérifiée exacte**, 8 tests de régression, considéré **launch-ready**. Filtres = tous les
+  pays présents séparément (plus de Nordics/Benelux ; Alps→Switzerland). Surnoms
+  temporaires Sweden/Norway/Denmark. Rangs **ex-aequo partagés** partout (tables, boards,
+  carte, My Position). Navigation onglets : taper un onglet amène son contenu en vue.
 - **Données** : Jose alimente depuis OneBI ; peut changer plusieurs fois par semaine.
 - **Onglets** : Team Ranking · Players of the Moment · Golden Boot · Playmaker · **Rookie Cup** ·
   **Licence** · Special Awards · VAR Room · My Position (+ admin : VAR TIME, Coach Room).
@@ -59,6 +61,54 @@
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-06 (suite) — Repasses UX + revue de code + couche calcul vérifiée
+Sessions de suivi le même jour (« continue », « repasse UX », « creuse tout »).
+Méthode : détecteurs DOM maison qui **exercent les interactions** (clic sur chaque
+en-tête triable pour révéler les flèches, ouverture des modales/deep-dives), revue de
+code fan-out (4 agents), et tests de calcul avec données **calculées à la main**.
+Tout commité/poussé sur `main`, tout vert.
+
+**UX (navigation + densité) :**
+- **Taper un onglet depuis le haut** révèle son contenu : avant, le podium d'équipe
+  (473px, présent en tête de chaque onglet) restait affiché et il fallait scroller ~790px.
+  Le handler de tab ne scrollait que vers le bas (`scrollY > y`) ; corrigé pour caler le
+  contenu sous la barre d'onglets sticky dans les deux sens. Commit `60810ae`.
+- **Modal équipe** : les 5 stats passaient en **1 colonne** sur mobile (~400px) ; passé en
+  **2 colonnes** (~186px) → stats + effectif visibles d'un coup. Commit `60810ae`.
+
+**Bugs d'affichage (classe « contenu qui déborde sur la cellule voisine ») :**
+- **Flèche de tri RANK collée à TEAM** : « RANK ▼ » (~51px) débordait la colonne 40/30px.
+  Colonne RANK élargie (Teams 52/48px, Players 48px). Commit `a5a4392`.
+- **Fix général** : flèche de tri compacte (`sortArrow()` → `<span class="th-arr">`, 0.64em)
+  dans les 3 tableaux → 0 débordement à toutes largeurs/états (détecteur qui clique chaque
+  en-tête). Commit `3875fcb`.
+- **Coach Room deep-dive** : `FLAG_STRIPES` utilisait les anciennes clés groupées
+  (DK/NORDICS/BENELUX) qui ne matchent plus `regionOf` par-pays → case drapeau **vide** pour
+  la plupart des nations + **double drapeau** FR/ES. Remplacé par le drapeau **emoji** du nom
+  via `regionParts()`. Commit `a290778`.
+
+**Fairness / correctness :**
+- **Rangs ex-aequo sur les boards individuels** : Golden Boot / Playmaker / Rookie / Licence,
+  carte joueur et My Position utilisaient des rangs **index** (`findIndex+1`) → sur égalité
+  (fréquent sur les **opps entiers**) trois joueurs à 7 opps montraient #2/#3/#4. Passés en
+  **rangs de compétition** (ex-aequo partagés) via `renderMatchSheet`/`fullRankingList`
+  self-contained + maps dans `computeRankings` pour la carte/My Position. Test de régression
+  ajouté. Commit `ce242d6`.
+
+**Couche calcul — VÉRIFIÉE EXACTE (données calculées à la main, aucun bug) :**
+- Agrégation Nations (avg_ps = Σtotal_ps/Σmembres, avg_gm pondéré par membres).
+- Totaux Coach Room (PS, NB%, GM pondéré par PS €, meetings, opps, licence).
+- VAR / discipline : sur carton jaune, clean sheet, garde `hasData` (tout-zéro non
+  sanctionné), « 2 strikes » = rouge.
+- Spotlights (5 catégories distinctes + dé-dup), Photo finish (tightRace, seuil 8%),
+  digest hebdo (nouveaux #1 / grimpeurs / nouveaux top-10 / nouveaux cartons), honneurs.
+
+> **Note technique** : `renderIndivCard` est du **code mort** (jamais appelé). Le digest se
+> calcule au **backgroundRefresh décalé (0–2,5s)** après un changement de période (chemin
+> snapshot) — en attendre l'effet dans les tests. Les flèches de tri n'apparaissent qu'après
+> un clic → les détecteurs doivent cliquer les en-têtes pour couvrir cet état.
+
 
 ### 2026-06-06 — Grande campagne d'audit QA + revue de code ligne par ligne
 Objectif : « creuse tout, faut que tout soit parfait » avant le lancement (~400 users).
