@@ -6436,7 +6436,8 @@ function render() {
   // Players view rows carry data-player → handled by the generic [data-player] binding.
   // Team region filter chips
   document.querySelectorAll('.region-chip').forEach(c => {
-    c.addEventListener('click', () => { teamRegion = c.dataset.region; render(); });
+    // Click the already-active flag again to clear the filter (back to "All").
+    c.addEventListener('click', () => { teamRegion = (teamRegion === c.dataset.region) ? 'all' : c.dataset.region; render(); });
   });
   document.querySelectorAll('.view-toggle button[data-view]').forEach(btn => {
     btn.addEventListener('click', () => { teamView = btn.dataset.view; try { safeSet('devoteam_wc_teamview_v1', teamView); } catch (e) {} render(); });
