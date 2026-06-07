@@ -8,7 +8,19 @@
 //
 // Deploy: paste into Extensions → Apps Script of the sheet, then
 // Deploy → New deployment → Web app → execute as Me, access "Anyone".
-// Test: <URL>/exec?action=ping → {"ok":true,...}
+//
+// API (what the platform actually calls):
+//   GET  <URL>/exec?action=ping
+//        -> {"ok":true,"time":...}                       connectivity / cold-start warm-up
+//   POST <URL>/exec   body: {"action":"data","password":"…","fresh":false}
+//        -> { teams, people, updated_at, period, challenge_dates, special_awards, warnings }
+//        -> {"error":"unauthorized"} on a wrong/missing password
+//        (send the body as text/plain to avoid a CORS preflight; set fresh:true to
+//         bypass the 30s server cache, used by the admin manual-refresh button.)
+//   GET  <URL>/exec?action=data
+//        -> {"error":"unauthorized","hint":"POST …"}     data is never served over GET
+//
+// The access code is checked server-side only and is never returned to the client.
 
 // ---- Settings you may edit ----------------------------------------------
 const SETTINGS = {
@@ -24,9 +36,12 @@ const SETTINGS = {
 };
 
 // Map target field -> the column header to look for (matched case/space/newline
-// insensitive). Listed fields with numeric:true are coerced to numbers.
+// insensitive). Use `header` for a single name or `headers` for a list of
+// candidates (first one found wins). `numeric:true` coerces to a number;
+// `optional:true` means "don't add a warning if the column is absent".
 const TEAM_MAP = [
   { field: 'country',       header: 'Country' },
+  { field: 'nickname',      headers: ['Nickname', 'Nick Name', 'Team Nickname', 'Team Name'], optional: true },
   { field: 'members',       header: 'Team Members',          numeric: true },
   { field: 'total_ps',      header: 'Total PS Booking',      numeric: true },
   { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },
@@ -72,8 +87,21 @@ function toNumber(v) {
   return isNaN(n) ? 0 : n;
 }
 
-// Read a tab into array of objects using the given field map.
-function readMapped(tab, map) {
+// Resolve a field's column index from a header row, trying `header` then each of
+// `headers` (tolerant matching). Returns -1 if none match.
+function resolveColIdx(headerRow, m) {
+  const candidates = m.headers ? m.headers : [m.header];
+  for (let i = 0; i < candidates.length; i++) {
+    const idx = headerRow.indexOf(normHeader(candidates[i]));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+// Read a tab into array of objects using the given field map. Any non-optional
+// column that can't be found is reported into the optional `warnings` array
+// (so the platform can surface a sheet/header mismatch without crashing).
+function readMapped(tab, map, warnings) {
   const sheet = SS.getSheetByName(tab.name);
   if (!sheet) throw new Error('Tab not found: ' + tab.name);
   const values = sheet.getDataRange().getValues();
@@ -81,11 +109,14 @@ function readMapped(tab, map) {
 
   const headerRow = values[tab.headerRow - 1].map(normHeader);
   // Resolve each target field to a column index.
-  const cols = map.map(m => ({
-    field: m.field,
-    numeric: !!m.numeric,
-    idx: headerRow.indexOf(normHeader(m.header))
-  }));
+  const cols = map.map(m => {
+    const idx = resolveColIdx(headerRow, m);
+    if (idx < 0 && !m.optional && warnings) {
+      const label = m.headers ? m.headers.join('" / "') : m.header;
+      warnings.push('Column not found in "' + tab.name + '": "' + label + '"');
+    }
+    return { field: m.field, numeric: !!m.numeric, idx: idx };
+  });
 
   const keyField = map[0].field; // first field (country / name) used to skip empty rows
   const out = [];
@@ -198,11 +229,12 @@ function dataResponse(fresh) {
   }
 
   const config = readConfig();
+  const warnings = [];
 
-  const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP)
+  const teams = readMapped(SETTINGS.TEAMS_TAB, TEAM_MAP, warnings)
     .filter(t => !isExcluded(t.country));
 
-  const people = readMapped(SETTINGS.PEOPLE_TAB, PEOPLE_MAP)
+  const people = readMapped(SETTINGS.PEOPLE_TAB, PEOPLE_MAP, warnings)
     .filter(p => !isExcluded(p.team))
     .map(p => {
       const tenure = String(p.tenure || '');
@@ -222,7 +254,8 @@ function dataResponse(fresh) {
       start: config.challenge_start || SETTINGS.CHALLENGE_START,
       end: config.challenge_end || SETTINGS.CHALLENGE_END
     },
-    special_awards: readSpecialAwards()
+    special_awards: readSpecialAwards(),
+    warnings: warnings
   });
 
   cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
@@ -232,19 +265,19 @@ function dataResponse(fresh) {
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'data';
-  const fresh = e && e.parameter && (e.parameter.fresh === '1' || e.parameter.nocache === '1');
   try {
     if (action === 'ping') {
       return jsonResponse({ ok: true, time: new Date().toISOString() });
     }
 
     if (action === 'data') {
-      // Data requires the password. The web app sends it via POST (below); a `pw`
-      // query param is allowed too (handy for manual checks). No password -> no data.
-      if (!passwordOk(e && e.parameter && e.parameter.pw)) {
-        return jsonResponse({ error: 'unauthorized' });
-      }
-      return dataResponse(fresh);
+      // Data is never served over GET — the access code must not travel in a URL
+      // (URLs leak into history, logs and Referer headers). The platform POSTs the
+      // password instead (see doPost). Always refuse here, with a usage hint.
+      return jsonResponse({
+        error: 'unauthorized',
+        hint: 'POST {action:"data", password} — data is not served over GET.'
+      });
     }
 
     return jsonResponse({ error: 'Unknown action' });
@@ -256,10 +289,6 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-
-    if (data.action === 'verify_password') {
-      return jsonResponse({ ok: passwordOk(data.password) });
-    }
 
     if (data.action === 'data') {
       if (!passwordOk(data.password)) {

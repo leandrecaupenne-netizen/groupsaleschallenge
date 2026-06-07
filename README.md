@@ -27,8 +27,9 @@ For the Google Sheet structure to hand to Jose, see [`SHEET_SPEC.md`](./SHEET_SP
 Jose (OneBI) → Google Sheet → Apps Script Web App (JSON API) → index.html (Vercel) → ~400 sales
 ```
 
-The platform polls the API every 30 seconds (paused when the browser tab is hidden to
-save Apps Script quota), with a manual refresh button and a "last updated" timestamp.
+The platform polls the API every ~2 minutes (jittered; paused when the browser tab is
+hidden to save Apps Script quota), with an admin-only manual refresh button and a
+"last updated" timestamp.
 
 ---
 
@@ -65,8 +66,11 @@ const CONFIG = {
 ```
 
 The access password lives **server-side** (the `SETTINGS.PASSWORD` constant in
-`apps_script_backend.gs`, or a `Config` tab if you add one) and is verified by the Apps
-Script `verify_password` action — it is never shipped in the front-end.
+`apps_script_backend.gs`, or a `Config` tab if you add one). The front-end never ships it:
+it POSTs the entered code with the data request (`POST {action:"data", password}`), and a
+correct code is what returns the payload — a wrong one returns `{"error":"unauthorized"}`.
+The code is checked server-side only and is never sent back to the client. (Data is never
+served over GET, so the access code can't leak into a URL/history/logs.)
 
 ### 4. Host on Vercel
 The GitHub repo is connected to Vercel, so deployment is automatic:
@@ -84,9 +88,11 @@ The GitHub repo is connected to Vercel, so deployment is automatic:
 - **Login** — a password gate verified server-side (Apps Script `SETTINGS.PASSWORD`, or a
   `Config` tab override). On success a flag is kept in `localStorage` (`SESSION_KEY`) so the
   session persists across reloads.
-- **Live data** — `fetchData()` calls `?action=data`; rankings are recomputed client-side.
-- **Polling** — every 30s, preserving scroll position and any open team modal; paused when
-  the tab is hidden.
+- **Live data** — `fetchData()` POSTs `{action:"data", password}`; rankings are recomputed
+  client-side. The response also carries a `warnings` array surfacing any sheet/header
+  mismatch the back-end hit while mapping.
+- **Polling** — every ~2 min (jittered, since the sheet only changes ~weekly), preserving
+  scroll position and any open team modal; paused when the tab is hidden.
 - **Resilience** — if a poll fails, the last known data stays on screen and a discreet
   "⚠ Sync failed" badge appears next to the timestamp until the next successful sync.
 - **Special Awards** — Licence and Rookie are data-driven; AI Play and Transformative Deal
@@ -108,6 +114,24 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
 The login and data load require a reachable `APPS_SCRIPT_URL`.
+
+---
+
+## Live back-end test
+
+`test/run-live.sh` smoke-tests the deployed Apps Script the way `index.html` does —
+ping connectivity, wrong-password rejection, and an authenticated data pull with
+shape/count/integrity checks (team count, people count, excluded teams filtered,
+referential integrity).
+
+```bash
+bash test/run-live.sh
+# or point it elsewhere:
+APPS_SCRIPT_URL=https://script.google.com/macros/s/…/exec PASSWORD=… bash test/run-live.sh
+```
+
+Exit code `0` = all checks passed. It flags people on teams missing from `Team Ranking`
+as a warning (not a failure), since the platform still ranks them.
 
 ---
 
