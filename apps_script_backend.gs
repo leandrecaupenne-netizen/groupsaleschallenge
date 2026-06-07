@@ -8,19 +8,7 @@
 //
 // Deploy: paste into Extensions → Apps Script of the sheet, then
 // Deploy → New deployment → Web app → execute as Me, access "Anyone".
-//
-// API (what the platform actually calls):
-//   GET  <URL>/exec?action=ping
-//        -> {"ok":true,"time":...}                       connectivity / cold-start warm-up
-//   POST <URL>/exec   body: {"action":"data","password":"…","fresh":false}
-//        -> { teams, people, updated_at, period, challenge_dates, special_awards, warnings }
-//        -> {"error":"unauthorized"} on a wrong/missing password
-//        (send the body as text/plain to avoid a CORS preflight; set fresh:true to
-//         bypass the 30s server cache, used by the admin manual-refresh button.)
-//   GET  <URL>/exec?action=data
-//        -> {"error":"unauthorized","hint":"POST …"}     data is never served over GET
-//
-// The access code is checked server-side only and is never returned to the client.
+// Test: <URL>/exec?action=ping → {"ok":true,...}
 
 // ---- Settings you may edit ----------------------------------------------
 const SETTINGS = {
@@ -36,16 +24,16 @@ const SETTINGS = {
 };
 
 // Map target field -> the column header to look for (matched case/space/newline
-// insensitive). Use `header` for a single name or `headers` for a list of
-// candidates (first one found wins). `numeric:true` coerces to a number;
-// `optional:true` means "don't add a warning if the column is absent".
+// insensitive). Listed fields with numeric:true are coerced to numbers.
 const TEAM_MAP = [
   { field: 'country',       header: 'Country' },
-  { field: 'nickname',      headers: ['Nickname', 'Nick Name', 'Team Nickname', 'Team Name'], optional: true },
+  // Optional nickname column (Jose is still filling these in). Several header
+  // spellings accepted; missing → empty string, no warning.
+  { field: 'nickname',      headers: ['Team Nickname', 'Team Nicknames', 'Nickname', 'Nicknames', 'Surnom', 'Surnom équipe'], optional: true },
   { field: 'members',       header: 'Team Members',          numeric: true },
   { field: 'total_ps',      header: 'Total PS Booking',      numeric: true },
   { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },
-  { field: 'avg_gm',        header: 'Average GM',            numeric: true },
+  { field: 'avg_gm',        header: 'Average GM',            numeric: true, pct: true },
   { field: 'avg_meetings',  header: 'Average Meetings',      numeric: true },
   { field: 'avg_opps',      header: 'Average Opportunities', numeric: true }
 ];
@@ -55,9 +43,9 @@ const PEOPLE_MAP = [
   { field: 'team',          header: 'TEAM' },
   { field: 'tenure',        header: 'Tenure' },
   { field: 'ps_total',      header: 'PS Booking Total',     numeric: true },
-  { field: 'ps_total_gm',   header: 'PS Booking Total GM',  numeric: true },
+  { field: 'ps_total_gm',   header: 'PS Booking Total GM',  numeric: true, pct: true },
   { field: 'ps_nb',         header: 'PS Booking NB',        numeric: true },
-  { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     numeric: true },
+  { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     numeric: true, pct: true },
   { field: 'licence_gm',    header: 'Licence GM Amount',    numeric: true },
   { field: 'meetings',      header: 'Meetings',             numeric: true },
   { field: 'opps',          header: 'Opportunities Created',numeric: true }
@@ -70,6 +58,17 @@ function jsonResponse(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// When no Config.last_update is set, fall back to the spreadsheet's real last-edit
+// time so the "Last updated" label reflects data freshness. Best-effort: if the
+// Drive scope isn't granted, degrade to current time rather than failing.
+function lastDataUpdate() {
+  try {
+    return DriveApp.getFileById(SS.getId()).getLastUpdated().toISOString();
+  } catch (e) {
+    return new Date().toISOString();
+  }
 }
 
 // Normalize a header for tolerant matching: lowercase, collapse whitespace/newlines.
@@ -87,36 +86,41 @@ function toNumber(v) {
   return isNaN(n) ? 0 : n;
 }
 
-// Resolve a field's column index from a header row, trying `header` then each of
-// `headers` (tolerant matching). Returns -1 if none match.
-function resolveColIdx(headerRow, m) {
-  const candidates = m.headers ? m.headers : [m.header];
-  for (let i = 0; i < candidates.length; i++) {
-    const idx = headerRow.indexOf(normHeader(candidates[i]));
-    if (idx >= 0) return idx;
-  }
-  return -1;
-}
-
-// Read a tab into array of objects using the given field map. Any non-optional
-// column that can't be found is reported into the optional `warnings` array
-// (so the platform can surface a sheet/header mismatch without crashing).
+// Read a tab into array of objects using the given field map.
+// `warnings` (optional) collects any mapped column whose header wasn't found, so
+// a renamed/typo'd OneBI header surfaces as a visible warning instead of silently
+// becoming 0 everywhere (which would flatline the leaderboard with no error).
 function readMapped(tab, map, warnings) {
   const sheet = SS.getSheetByName(tab.name);
-  if (!sheet) throw new Error('Tab not found: ' + tab.name);
+  // A missing/renamed tab must NOT crash the whole response (which the front-end
+  // would surface as a generic load failure with no clue). Surface it as a warning
+  // and return no rows, so partial data still paints and the admin sees the cause.
+  if (!sheet) {
+    if (warnings) warnings.push('Tab not found: "' + tab.name + '" — was it renamed or moved? Expected exactly this name.');
+    return [];
+  }
   const values = sheet.getDataRange().getValues();
   if (values.length < tab.headerRow) return [];
 
   const headerRow = values[tab.headerRow - 1].map(normHeader);
-  // Resolve each target field to a column index.
+  // Resolve each target field to a column index. A field may list several candidate
+  // headers (m.headers) — the first one found wins — and may be optional (no warning
+  // if absent, e.g. Team Nickname which Jose is still filling in).
   const cols = map.map(m => {
-    const idx = resolveColIdx(headerRow, m);
-    if (idx < 0 && !m.optional && warnings) {
-      const label = m.headers ? m.headers.join('" / "') : m.header;
-      warnings.push('Column not found in "' + tab.name + '": "' + label + '"');
-    }
-    return { field: m.field, numeric: !!m.numeric, idx: idx };
+    const cands = (m.headers || [m.header]).map(normHeader);
+    let idx = -1;
+    for (let k = 0; k < cands.length; k++) { idx = headerRow.indexOf(cands[k]); if (idx >= 0) break; }
+    return { field: m.field, numeric: !!m.numeric, pct: !!m.pct, optional: !!m.optional, idx: idx };
   });
+
+  // Flag any required column we couldn't locate by header (optional ones stay quiet).
+  if (warnings) {
+    map.forEach((m, i) => {
+      if (cols[i].idx < 0 && !m.optional) {
+        warnings.push(tab.name + ': column not found for "' + (m.headers ? m.headers[0] : m.header) + '" (field ' + m.field + ')');
+      }
+    });
+  }
 
   const keyField = map[0].field; // first field (country / name) used to skip empty rows
   const out = [];
@@ -125,7 +129,14 @@ function readMapped(tab, map, warnings) {
     const obj = {};
     cols.forEach(c => {
       let v = c.idx >= 0 ? row[c.idx] : '';
-      obj[c.field] = c.numeric ? toNumber(v) : (v == null ? '' : String(v).trim());
+      if (c.numeric) {
+        let num = toNumber(v);
+        // GM ratios entered as a percentage (e.g. 27 or "27%") → back to a decimal.
+        if (c.pct && num > 1.5) num = num / 100;
+        obj[c.field] = num;
+      } else {
+        obj[c.field] = (v == null ? '' : String(v).trim());
+      }
     });
     if (!obj[keyField]) continue;  // skip blank rows
     out.push(obj);
@@ -166,9 +177,12 @@ function readSpecialAwards() {
   return awards;
 }
 
-// CacheService allows max ~100KB per key, so store the payload in chunks.
+// CacheService allows max ~100KB (bytes) per key, so store the payload in chunks.
+// 45000 CHARACTERS stays under 100KB even when every char is a 2-byte accented
+// name (é, ü, ø, þ…) — at 90000 chars an accent-heavy chunk could exceed the byte
+// cap, making putAll throw and silently disabling the cache for all 400 users.
 // All cache operations are best-effort: caching must never break the response.
-const CACHE_CHUNK = 90000;
+const CACHE_CHUNK = 45000;
 
 function cacheGetLarge(cache, baseKey) {
   try {
@@ -240,9 +254,9 @@ function dataResponse(fresh) {
       const tenure = String(p.tenure || '');
       return Object.assign({}, p, {
         is_rookie: tenure.indexOf('months') !== -1 || tenure.indexOf('<') !== -1,
-        // Yellow card for under 5 meetings/week — but 0 means "not reported" (these
-        // rows also have a blank tenure), so it must NOT be carded.
-        yellow_meetings: (p.meetings || 0) > 0 && (p.meetings || 0) < 5,
+        // Only flag a yellow card once the player has live data — otherwise a blank
+        // `meetings` column at challenge start would flag every player.
+        yellow_meetings: (p.meetings || 0) < 5 && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0),
         yellow_gm: (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0
       });
     });
@@ -250,17 +264,19 @@ function dataResponse(fresh) {
   const payload = JSON.stringify({
     teams: teams,
     people: people,
-    updated_at: config.last_update || new Date().toISOString(),
+    // Prefer an explicit Config.last_update; otherwise reflect when the sheet was
+    // actually last edited (not "now", which would falsely look fresh every build).
+    updated_at: config.last_update || lastDataUpdate(),
     period: config.period || SETTINGS.PERIOD,
     challenge_dates: {
       start: config.challenge_start || SETTINGS.CHALLENGE_START,
       end: config.challenge_end || SETTINGS.CHALLENGE_END
     },
     special_awards: readSpecialAwards(),
-    warnings: warnings
+    warnings: warnings   // [] in the happy path; populated if a header didn't match
   });
 
-  cachePutLarge(cache, CACHE_KEY, payload, 30); // cache 30s (best-effort)
+  cachePutLarge(cache, CACHE_KEY, payload, 60); // cache 60s (best-effort) — data changes ~weekly, so this halves Sheet reads/concurrency with zero visible impact (admin ↻ bypasses it)
   return ContentService.createTextOutput(payload)
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -273,19 +289,29 @@ function doGet(e) {
     }
 
     if (action === 'data') {
-      // Data is never served over GET — the access code must not travel in a URL
-      // (URLs leak into history, logs and Referer headers). The platform POSTs the
-      // password instead (see doPost). Always refuse here, with a usage hint.
-      return jsonResponse({
-        error: 'unauthorized',
-        hint: 'POST {action:"data", password} — data is not served over GET.'
-      });
+      // Data is POST-only: the access code travels in the request body, never as a
+      // ?pw= query string (which would leak the code into Apps Script execution logs,
+      // browser history and referrer headers). The web app always POSTs (see doPost).
+      return jsonResponse({ error: 'unauthorized', hint: 'POST {action:"data", password} — data is not served over GET.' });
     }
 
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
-    return jsonResponse({ error: err.message, stack: err.stack });
+    // Don't leak internals (function names / line numbers) to anonymous callers.
+    return jsonResponse({ error: 'server_error' });
   }
+}
+
+// Keep the Web App warm so the FIRST real request never hits a multi-second cold
+// start (which leaves users staring at the loader). Also primes the 60s data cache
+// so the next visitor's fetch is instant.
+//
+// SET UP THE TRIGGER (one-off):
+//   Apps Script editor → ⏰ Triggers (left clock icon) → "+ Add Trigger"
+//   → Function: keepWarm · Event source: Time-driven · Type: Minutes timer
+//   → Every 5 minutes → Save.
+function keepWarm() {
+  try { dataResponse(true); } catch (e) {}
 }
 
 function doPost(e) {
@@ -301,6 +327,6 @@ function doPost(e) {
 
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
-    return jsonResponse({ error: err.message });
+    return jsonResponse({ error: 'server_error' });
   }
 }
