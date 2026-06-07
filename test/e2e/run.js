@@ -1,0 +1,161 @@
+// End-to-end test — drives the real platform in a real browser against the LIVE
+// back-end, simulating a user: login gate, wrong/right password, leaderboard load,
+// team squad modal, tab navigation, session persistence on reload.
+//
+// Usage:
+//   cd test/e2e && npm install && node run.js
+//   PASSWORD=… node run.js                 # override access code
+//   E2E_INSECURE=1 node run.js             # ignore TLS cert errors (see README)
+//   E2E_HEADFUL=1 node run.js              # show the browser window (local debug)
+//
+// Exit code 0 = all checks passed. Screenshots are written to ./shots/.
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const chromium = require('@sparticuz/chromium').default;
+const puppeteer = require('puppeteer-core');
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const PASSWORD = process.env.PASSWORD || 'devoteam2026';
+const SHOTS = path.join(__dirname, 'shots');
+fs.mkdirSync(SHOTS, { recursive: true });
+
+let fails = 0;
+const ok = (m) => console.log(`  \x1b[32m✓\x1b[0m ${m}`);
+const ko = (m) => { console.log(`  \x1b[31m✗\x1b[0m ${m}`); fails++; };
+const assert = (cond, m) => cond ? ok(m) : ko(m);
+const step = (m) => console.log(`\n\x1b[1m${m}\x1b[0m`);
+
+// --- Minimal static file server for the repo (serves index.html etc.) --------
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+  '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon' };
+function startServer() {
+  return new Promise((resolve) => {
+    const srv = http.createServer((req, res) => {
+      let rel = decodeURIComponent(req.url.split('?')[0]);
+      if (rel === '/') rel = '/index.html';
+      const file = path.join(REPO_ROOT, path.normalize(rel));
+      if (!file.startsWith(REPO_ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+        res.writeHead(404); return res.end('not found');
+      }
+      res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
+      fs.createReadStream(file).pipe(res);
+    });
+    srv.listen(0, '127.0.0.1', () => resolve(srv));
+  });
+}
+
+(async () => {
+  const srv = await startServer();
+  const BASE = `http://127.0.0.1:${srv.address().port}/index.html`;
+  console.log(`Serving repo at ${BASE}`);
+
+  const args = [...chromium.args, '--no-sandbox'];
+  // Opt-in only: some CI/sandbox networks intercept TLS with a CA the bundled
+  // Chromium doesn't trust. Off by default so the test stays strict elsewhere.
+  if (process.env.E2E_INSECURE === '1') args.push('--ignore-certificate-errors');
+
+  const browser = await puppeteer.launch({
+    args,
+    executablePath: await chromium.executablePath(),
+    headless: process.env.E2E_HEADFUL === '1' ? false : true,
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 900 });
+
+  const consoleErrors = [];
+  page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+  const failedReqs = [];
+  page.on('requestfailed', r => failedReqs.push(`${r.method()} ${r.url()} — ${r.failure() && r.failure().errorText}`));
+
+  try {
+    // ---------------------------------------------------------------
+    step('1. Load the app — login gate is shown');
+    await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForSelector('#login-pwd', { timeout: 15000 });
+    assert(!!(await page.$('#login-btn')), 'login screen rendered (#login-pwd + #login-btn)');
+    const teamsBeforeLogin = await page.$$eval('.teams-table-row[data-team]', els => els.length).catch(() => 0);
+    assert(teamsBeforeLogin === 0, 'leaderboard is NOT visible before login');
+    await page.screenshot({ path: path.join(SHOTS, '1-login.png') });
+
+    // ---------------------------------------------------------------
+    step('2. Wrong password is rejected (stays on login, shows error)');
+    await page.type('#login-pwd', 'totally-wrong-code');
+    await page.click('#login-btn');
+    await page.waitForFunction(() => {
+      const e = document.querySelector('.login-error');
+      return e && e.textContent.trim().length > 0;
+    }, { timeout: 25000 }).catch(() => {});
+    const errText = await page.$eval('.login-error', e => e.textContent.trim()).catch(() => '');
+    assert(!!(await page.$('#login-pwd')), 'still on login screen after wrong code');
+    assert(errText.length > 0, `error message shown: "${errText}"`);
+
+    // ---------------------------------------------------------------
+    step('3. Correct password logs in and the leaderboard loads (live data)');
+    await page.$eval('#login-pwd', el => el.value = '');
+    await page.type('#login-pwd', PASSWORD);
+    await page.click('#login-btn');
+    await page.waitForSelector('.teams-table-row[data-team]', { timeout: 45000 });
+    const teamCount = await page.$$eval('.teams-table-row[data-team]', els => els.length);
+    assert(teamCount >= 30, `team rows rendered: ${teamCount} (expected >= 30)`);
+    const podium = await page.$$eval('.podium-card[data-team]', els => els.map(e => e.getAttribute('data-team')));
+    assert(podium.length === 3, `podium shows top 3: ${JSON.stringify(podium)}`);
+    const lastUpd = await page.$eval('#last-update', e => e.textContent.trim()).catch(() => '(no #last-update)');
+    assert(!/loading/i.test(lastUpd), `"last updated" reflects live data: "${lastUpd}"`);
+    await page.screenshot({ path: path.join(SHOTS, '2-leaderboard.png') });
+
+    // ---------------------------------------------------------------
+    step('4. Click a team -> squad modal opens with members');
+    const firstTeam = await page.$eval('.teams-table-row[data-team]', el => el.getAttribute('data-team'));
+    await page.click('.teams-table-row[data-team]');
+    await page.waitForSelector('.modal-overlay', { timeout: 10000 });
+    await page.waitForSelector('.modal-overlay .members-table-row', { timeout: 10000 }).catch(() => {});
+    const memberRows = await page.$$eval('.modal-overlay .members-table-row', els => els.length).catch(() => 0);
+    assert(memberRows > 0, `squad modal for "${firstTeam}" lists ${memberRows} member(s)`);
+    await page.screenshot({ path: path.join(SHOTS, '3-team-modal.png') });
+    await page.keyboard.press('Escape');
+
+    // ---------------------------------------------------------------
+    step('5. Tab navigation — switch to another ranking tab');
+    const tabs = await page.$$eval('.tab-btn[data-tab]', els => els.map(e => e.getAttribute('data-tab')));
+    if (tabs.length > 1) {
+      await page.click(`.tab-btn[data-tab="${tabs[1]}"]`);
+      await new Promise(r => setTimeout(r, 600));
+      const activeTab = await page.$eval('.tab-btn.active', e => e.getAttribute('data-tab')).catch(() => null);
+      assert(activeTab === tabs[1], `switched to tab "${tabs[1]}" (active = "${activeTab}")`);
+      await page.screenshot({ path: path.join(SHOTS, `4-tab-${tabs[1]}.png`) });
+    } else {
+      ko('expected multiple tabs');
+    }
+
+    // ---------------------------------------------------------------
+    step('6. Session persists across reload (localStorage) — no re-login');
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Tab-independent signal: the app persists the active tab across reloads, so the
+    // Team Ranking table may not be the one rendered. The tab bar / hero always is.
+    const cameBackLoggedIn = await page.waitForSelector('#tabs-bar, .hero', { timeout: 45000 })
+      .then(() => true).catch(() => false);
+    assert(cameBackLoggedIn && !(await page.$('#login-pwd')),
+      'reload skipped login and restored the app (session persisted)');
+
+    // ---------------------------------------------------------------
+    step('7. No console errors / failed network requests during the journey');
+    const realFailed = failedReqs.filter(r => !/favicon/i.test(r));
+    assert(consoleErrors.length === 0,
+      consoleErrors.length ? `console errors:\n      ${consoleErrors.slice(0, 5).join('\n      ')}` : 'no console errors');
+    assert(realFailed.length === 0,
+      realFailed.length ? `failed requests:\n      ${realFailed.slice(0, 5).join('\n      ')}` : 'no failed network requests');
+  } finally {
+    await browser.close();
+    srv.close();
+  }
+
+  step('Summary');
+  console.log(`  screenshots in ${SHOTS}`);
+  console.log(`  failures: ${fails}`);
+  console.log(fails ? '\n\x1b[31mE2E FAILED\x1b[0m' : '\n\x1b[32mALL E2E CHECKS PASSED\x1b[0m');
+  process.exit(fails ? 1 : 0);
+})().catch(e => { console.error('\nE2E crashed:', e); process.exit(2); });
