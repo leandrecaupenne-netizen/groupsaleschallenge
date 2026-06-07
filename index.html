@@ -3695,6 +3695,20 @@ function nationsRanking() {
     g.teams += 1; g.people += (t.members || 0); g.total_ps += (t.total_ps || 0);
     g.gmw += (t.avg_gm || 0) * (t.members || 0);
   });
+  // Fold in nations whose teams have NO Team Ranking row (e.g. UK's 14 orphan people):
+  // without this they vanish from the Nations board while still showing up in Players,
+  // VAR and the filter chips. Aggregate those straight from `people` so headcount and
+  // standing stay consistent across every view.
+  const orphan = {};
+  people.forEach(p => {
+    const r = regionOf(p.team);
+    if (groups[r]) return; // region already covered by an official team row
+    const g = orphan[r] || (orphan[r] = { region: r, teams: new Set(), people: 0, total_ps: 0, gmw: 0 });
+    g.teams.add(String(p.team)); g.people += 1; g.total_ps += (p.ps_total || 0); g.gmw += (p.ps_total_gm || 0);
+  });
+  Object.values(orphan).forEach(g => {
+    groups[g.region] = { region: g.region, teams: g.teams.size, people: g.people, total_ps: g.total_ps, gmw: g.gmw };
+  });
   return Object.values(groups).map(g => ({
     region: g.region,
     label: nationLabel(g.region),
@@ -4033,7 +4047,7 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount) {
 }
 
 function renderGoldenBoot() {
-  const top5 = sortedGoldenBoot.filter(p => p.ps_nb > 0).slice(0, 6);
+  const top5 = sortedGoldenBoot.filter(p => p.ps_nb > 0).slice(0, 5);
   const race = tightRace(sortedGoldenBoot, p => p.ps_nb || 0, 'money');
   return `
     <div class="section">
@@ -4047,13 +4061,13 @@ function renderGoldenBoot() {
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
         line: pickHeadlineFor('scorer')
       })}
-      ${fullRankingList('golden', sortedGoldenBoot, p => p.ps_nb || 0, 'money', 6)}
+      ${fullRankingList('golden', sortedGoldenBoot, p => p.ps_nb || 0, 'money', 5)}
     </div>
   `;
 }
 
 function renderPlaymaker() {
-  const top5 = sortedPlaymaker.filter(p => p.opps > 0).slice(0, 6);
+  const top5 = sortedPlaymaker.filter(p => p.opps > 0).slice(0, 5);
   const race = tightRace(sortedPlaymaker, p => p.opps || 0, 'int');
   return `
     <div class="section">
@@ -4067,7 +4081,7 @@ function renderPlaymaker() {
         valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created',
         line: pickHeadlineFor('playmaker')
       })}
-      ${fullRankingList('playmaker', sortedPlaymaker, p => p.opps || 0, 'int', 6)}
+      ${fullRankingList('playmaker', sortedPlaymaker, p => p.opps || 0, 'int', 5)}
     </div>
   `;
 }
@@ -5846,6 +5860,7 @@ function renderTeamModal() {
                 </div>
               `;
             }).join('')}
+            ${members.length ? '' : `<div class="no-result">No members matched to this team in the data yet.</div>`}
           </div>
         </div>
       </div>
@@ -5921,6 +5936,7 @@ function renderNationModal() {
                 <div class="member-stat col-gm">${fmtPct(tm.avg_gm)}</div>
                 <div class="member-stat col-meet">${tm.members}</div>
               </div>`).join('')}
+            ${natTeams.length ? '' : `<div class="no-result">No team-level breakdown yet — this nation has no Team Ranking row (its people still rank individually below).</div>`}
           </div>
 
           <h3 class="modal-section-title">⚽ Top contributors${natPeople.length > TOPN ? ` · top ${TOPN} of ${natPeople.length}` : ''}</h3>
@@ -6440,18 +6456,18 @@ function render() {
     c.addEventListener('click', () => { teamRegion = (teamRegion === c.dataset.region) ? 'all' : c.dataset.region; render(); });
   });
   document.querySelectorAll('.view-toggle button[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => { teamView = btn.dataset.view; try { safeSet('devoteam_wc_teamview_v1', teamView); } catch (e) {} render(); });
+    // Reset the country filter when switching sub-view: Nations has no chip to clear
+    // it, so a filter set in Teams would otherwise stay active (and invisibly leak
+    // into Players).
+    btn.addEventListener('click', () => { teamView = btn.dataset.view; teamRegion = 'all'; try { safeSet('devoteam_wc_teamview_v1', teamView); } catch (e) {} render(); });
   });
 
   const teamSearch = document.getElementById('team-search');
   if (teamSearch) {
     const apply = debounce(() => {
+      const f = captureFocus(); // keep the real caret position (mid-string edits too)
       render();
-      const newInput = document.getElementById('team-search');
-      if (newInput) {
-        newInput.focus();
-        newInput.setSelectionRange(currentSearch.length, currentSearch.length);
-      }
+      restoreFocus(f);
     }, 120);
     teamSearch.addEventListener('input', e => { currentSearch = e.target.value; apply(); });
   }
@@ -6459,12 +6475,9 @@ function render() {
   const posSearch = document.getElementById('position-search');
   if (posSearch) {
     const apply = debounce(() => {
+      const f = captureFocus(); // keep the real caret position (mid-string edits too)
       render();
-      const newInput = document.getElementById('position-search');
-      if (newInput) {
-        newInput.focus();
-        newInput.setSelectionRange(positionQuery.length, positionQuery.length);
-      }
+      restoreFocus(f);
     }, 120);
     posSearch.addEventListener('input', e => { positionQuery = e.target.value; apply(); });
     // Let the mobile "Go/Enter" key dismiss the keyboard once the name is typed,
