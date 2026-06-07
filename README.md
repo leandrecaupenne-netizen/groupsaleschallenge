@@ -107,6 +107,23 @@ device, clear the `devoteam_wc_session_v1` localStorage key.
 
 ---
 
+## Security model
+
+This is a **light internal gate, not real access control** — size the trust accordingly:
+
+- The access code is verified server-side (never shipped in the bundle), but it is a
+  **single shared code** sent with every data request. Anyone with the link + code (or who
+  gets it from another participant) can view the leaderboard. Treat the data as
+  "internal, low-sensitivity" — which it is (names + relative sales standings).
+- **Admin mode** (`?admin=…`) only unlocks UI affordances (manual refresh, VAR TIME, Coach
+  Room) on that device via `localStorage`. The admin key ships in the client bundle, so
+  admin mode is **self-grantable by anyone who reads the JS** — it gates convenience, not
+  data. VAR verdicts entered in admin mode are local-only and never written back.
+- There is **no per-user authentication**. If that's ever required, the path is Google SSO
+  restricted to `@devoteam.com` (see [`CLAUDE.md`](./CLAUDE.md) §10), not the shared code.
+
+---
+
 ## Local preview
 
 Open `index.html` directly, or serve it:

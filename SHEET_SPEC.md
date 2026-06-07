@@ -62,7 +62,11 @@ Playmaker, Rookie, Licence) — they just aren't part of a ranked team.
 
 **Data hygiene** (nice to have, not blocking — the backend already coerces these):
 - Formula errors (`#DIV/0!`, `#N/A`, `#REF!`) are read as `0`.
-- GM columns should be **decimals** (`0.27`), not `27` or `"27%"`.
+- GM columns should be **decimals** (`0.27`), not `27` or `"27%"`. As a safety net the
+  backend treats any GM value **greater than `1.5` as a mis-entered percentage and divides
+  it by 100** (so `27` → `0.27`). Caveat: a *genuine* GM at or above 150% (`1.5`) would be
+  wrongly divided, and a bad value between `1.0`–`1.5` (e.g. `1.2` = 120%) is left as-is —
+  so still prefer clean decimals at source. (Same rule lives in `apps_script_backend.gs`.)
 - Empty rows are skipped.
 
 ---

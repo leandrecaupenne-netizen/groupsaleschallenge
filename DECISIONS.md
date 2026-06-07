@@ -20,8 +20,15 @@
       le déploiement actif pointe bien sur la nouvelle version** (Déployer → Gérer les
       déploiements → Nouvelle version). Le re-save seul corrige `keepWarm` ; le
       redéploiement applique les correctifs serveur au front.
-- [ ] **Trigger `keepWarm`** : vérifier dans ⏰ Triggers → Exécutions qu'il est au vert
-      (il échouait 290× car une ancienne version sans `keepWarm` avait été collée).
+- [x] **Trigger `keepWarm`** : ✅ confirmé au vert le **07-06** (Exécutions « Completed »).
+      Les ~290 échecs « Script function not found » venaient d'une **ancienne version du
+      script** (sans `keepWarm`) collée dans l'éditeur ; depuis le re-collage de la version à
+      jour, le trigger time-driven (toutes les 5 min) s'exécute correctement.
+- [ ] **Donnée amont `UK`** (Jose / OneBI) : 14 personnes ont `TEAM = UK`, mais `UK` n'a
+      **aucune ligne dans `Team Ranking`** → pas de drill-down d'équipe pour elles. Depuis
+      le 07-06 elles sont classées individuellement **et** apparaissent dans la vue Nations
+      (agrégées depuis `people`). Pour fermer le trou : ajouter une ligne `UK` dans
+      `Team Ranking`, ou rattacher ces personnes à une équipe existante.
 - [ ] Vérifier l'URL Vercel de **production** (`groupsaleschallenge.vercel.app`) après push sur `main`.
 - [ ] Compléter les contacts manquants dans `CLAUDE.md` §12 (email Jose, contact IT Devoteam).
 
@@ -61,6 +68,33 @@
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-07 — Drapeaux des chips + revue globale + Top 5 correctifs
+Session web. Branche `claude/ecstatic-noether-P4j8Y`, livrée en **3 PR squash-mergées** sur `main`.
+
+- **Chips de filtre pays → vrais drapeaux** (PR #1) : les chips utilisaient des emojis
+  régionaux (« 🇫🇷 ») qui dégradent en **lettres nues (« FR ») sur Windows/Chrome**. Bascule
+  sur le système de drapeaux maison (`flagBars`/`flagForTeam`, SVG/CSS) déjà utilisé sur
+  podium/cartes. Ajout d'une **suite de tests live** : `test/run-live.sh` (smoke curl du
+  backend déployé), `test/backend-contract.js` (contrat API en sandbox offline),
+  `test/e2e/` (Chromium headless contre le backend **réel** : login, tabs, cross-checks
+  classements, modal, VAR, My Position, mobile, dark, persistance session).
+- **Chips = toggle** (PR #2) : recliquer le drapeau actif enlève le filtre (retour « All »).
+- **Repasse globale + Top 5 correctifs** (PR #3, après revue de code priorisée) :
+  1. Golden Boot & Playmaker affichaient **6** joueurs sous un libellé « Top 5 » → **5**.
+  2. Le filtre pays **fuyait** entre les sous-vues (Teams→Nations→Players) → reset au switch.
+  3. La vue **Nations ignorait `UK`** (orphelins) → agrégation depuis `people`, UK apparaît.
+  4. La **recherche** remettait le curseur en fin de champ à chaque frappe → `captureFocus`/
+     `restoreFocus` (édition en milieu de chaîne OK).
+  5. **États vides** explicites (modal équipe sans membres ; nation sans breakdown d'équipe).
+  Validé : check syntaxe JS, `backend-contract.js`, `run-live.sh`, **e2e live 0 échec**.
+- **Doc** : `SHEET_SPEC.md` documente le seuil GM `>1.5` (auto-correction %→décimal, M2) ;
+  `README.md` ajoute une section « Security model » (mot de passe/clé admin = obfuscation,
+  pas contrôle d'accès, M5) ; `CLAUDE.md` §6 — bloc de code Apps Script obsolète **retiré**,
+  remplacé par un pointeur vers `apps_script_backend.gs` (évite un redéploiement cassé, D3).
+- **keepWarm** : confirmé au vert (les échecs « Script function not found » du 06-06 venaient
+  d'une ancienne version collée ; résolu). Rappel : le `.gs` du repo ≠ projet Apps Script —
+  toute modif du `.gs` doit être **recollée + redéployée** côté Google.
 
 ### 2026-06-06 (suite) — Repasses UX + revue de code + couche calcul vérifiée
 Sessions de suivi le même jour (« continue », « repasse UX », « creuse tout »).
