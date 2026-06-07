@@ -21,7 +21,13 @@ const ROOT = path.resolve(__dirname, '..');
 const ADMIN_KEY = 'leandre-refresh-2026';
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.webp':'image/webp', '.png':'image/png', '.json':'application/json', '.webmanifest':'application/manifest+json', '.svg':'image/svg+xml' };
 
+// Set WC_DATA_FILE=<path to real Apps Script JSON> to drive the detectors on the
+// REAL live data instead of this synthetic fixture (used for the live test).
 function mockData() {
+  if (process.env.WC_DATA_FILE) {
+    try { return JSON.parse(fs.readFileSync(process.env.WC_DATA_FILE, 'utf8')); }
+    catch (e) { console.error('❌ WC_DATA_FILE read failed: ' + e.message); process.exit(2); }
+  }
   const teams = [['DENMARK',4],['FR - M CLOUD',5],['ES ENTERPRISE',4],['BELGIUM',3],['PORTUGAL 2',4],['UK',3]]
     .map(([country, members], i) => ({ country, members, total_ps: 9e6 - i*1e6, avg_ps: 2.2e6 - i*2e5, avg_gm: 0.27 - i*0.01, avg_meetings: 6 - i*0.4, avg_opps: 7 - i }));
   const people = [['Claus Thorsager','DENMARK'],['Thomas Vinther','DENMARK'],['Mael Gaudichon','FR - M CLOUD'],['Juan Carlos Nieto','ES ENTERPRISE'],['Leen Verelst','BELGIUM'],['Rui Passinhas','PORTUGAL 2'],['Amelia Giallella','FR - M CLOUD'],['Sara Garcia','ES ENTERPRISE'],['Sean Foster','UK'],['Ines Mejri','FR - M CLOUD'],['Quentin Bernard','FR - M CLOUD'],['Vincent Chevalier','FR - M CLOUD']]
