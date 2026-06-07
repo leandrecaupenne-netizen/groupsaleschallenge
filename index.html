@@ -3286,26 +3286,36 @@ function launchConfetti() {
 
 // Detect when a #1 changes between refreshes -> celebratory toast + gold flash.
 function detectLeaderChanges() {
+  // Signature = the SET of names tied at the top value (sorted), not just whoever the
+  // sort happened to list first. So if two players are level at #1 and the Sheet swaps
+  // their row order between updates, we DON'T fire a bogus "New leader!" (confetti/toast/
+  // ticker) — the lead only "changes" when the tied-at-top set actually changes.
+  const lead = (sorted, valOf, keyOf) => {
+    if (!sorted.length || !(valOf(sorted[0]) > 0)) return { key: null, sig: '' };
+    const top = valOf(sorted[0]);
+    const sig = sorted.filter(x => valOf(x) === top).map(keyOf).sort().join('|');
+    return { key: keyOf(sorted[0]), sig };
+  };
   const cur = {
-    team: sortedTeams[0] && sortedTeams[0].country,
-    golden: sortedGoldenBoot[0] && sortedGoldenBoot[0].name,
-    playmaker: sortedPlaymaker[0] && sortedPlaymaker[0].name
+    team: lead(sortedTeams, t => t.avg_ps || 0, t => t.country),
+    golden: lead(sortedGoldenBoot, p => p.ps_nb || 0, p => p.name),
+    playmaker: lead(sortedPlaymaker, p => p.opps || 0, p => p.name)
   };
   if (leaders) { // skip the very first load (no baseline yet)
     let changed = false;
-    if (cur.team && cur.team !== leaders.team) {
-      showToast(`🏆 New leaders! ${cur.team} top the Team Ranking`);
-      recentEvents.unshift(`🚨 ${cur.team} take the lead in the World Cup!`);
+    if (cur.team.key && cur.team.sig !== leaders.team.sig) {
+      showToast(`🏆 New leaders! ${cur.team.key} top the Team Ranking`);
+      recentEvents.unshift(`🚨 ${cur.team.key} take the lead in the World Cup!`);
       flash.team = Date.now() + 9000; changed = true;
     }
-    if (cur.golden && cur.golden !== leaders.golden) {
-      showToast(`🥇 ${cur.golden} grabs the Golden Boot top spot!`);
-      recentEvents.unshift(`🥇 ${cur.golden} grabs top spot in the Golden Boot race!`);
+    if (cur.golden.key && cur.golden.sig !== leaders.golden.sig) {
+      showToast(`🥇 ${cur.golden.key} grabs the Golden Boot top spot!`);
+      recentEvents.unshift(`🥇 ${cur.golden.key} grabs top spot in the Golden Boot race!`);
       flash.golden = Date.now() + 9000; changed = true;
     }
-    if (cur.playmaker && cur.playmaker !== leaders.playmaker) {
-      showToast(`🌱 ${cur.playmaker} is the new top Playmaker!`);
-      recentEvents.unshift(`🌱 ${cur.playmaker} is the new top Playmaker!`);
+    if (cur.playmaker.key && cur.playmaker.sig !== leaders.playmaker.sig) {
+      showToast(`🌱 ${cur.playmaker.key} is the new top Playmaker!`);
+      recentEvents.unshift(`🌱 ${cur.playmaker.key} is the new top Playmaker!`);
       flash.playmaker = Date.now() + 9000; changed = true;
     }
     if (recentEvents.length > 8) recentEvents.length = 8;
