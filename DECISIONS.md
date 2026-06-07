@@ -29,7 +29,8 @@
       le 07-06 elles sont classées individuellement **et** apparaissent dans la vue Nations
       (agrégées depuis `people`). Pour fermer le trou : ajouter une ligne `UK` dans
       `Team Ranking`, ou rattacher ces personnes à une équipe existante.
-- [ ] Vérifier l'URL Vercel de **production** (`groupsaleschallenge.vercel.app`) après push sur `main`.
+- [x] Vérifier l'URL Vercel de **production** (`groupsaleschallenge.vercel.app`) : ✅ 07-06,
+      HTTP 200, 548 KB, 1,3 s, sert l'app avec la bonne `APPS_SCRIPT_URL`.
 - [ ] Compléter les contacts manquants dans `CLAUDE.md` §12 (email Jose, contact IT Devoteam).
 
 ---
@@ -78,6 +79,31 @@
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-07 (suite) — Test grandeur nature : charge live + UX + Workspace confirmé
+Repasse UX **en live** (Chromium headless contre le backend déployé, screenshots dans
+`test/e2e/shots/`) : parcours complet validé, **0 échec**, aucune erreur console/réseau.
+Correctifs de la session bien visibles en prod (drapeaux des chips, Golden Boot/Playmaker à
+**5** joueurs, égalités partagées). Fausse alerte levée : le « €312K vs €656K » sur la carte
+spotlight d'Ivan = **artefact de l'animation count-up** capturée en cours, pas un bug (valeur
+et légende utilisent toutes deux `ps_nb`).
+
+**Test de charge grandeur nature** (rafale type coup d'envoi) :
+- **Prod Vercel** : HTTP 200, 548 KB, 1,3 s, bonne `APPS_SCRIPT_URL`.
+- **40 chargements authentifiés simultanés** → **40/40 HTTP 200**, payload **identique**
+  (96 692 o, 32 équipes / 379 personnes, 0 warning) → cache 60 s chunké confirmé. Rafale
+  encaissée en ~7 s wall-clock.
+- Latence/req : médiane **6,1 s**, p95 **6,9 s** — inhérent à Apps Script (aller-retour
+  `/exec` → 302 → googleusercontent). Géré côté UX par l'écran « WARMING UP » au 1er load,
+  puis refresh en arrière-plan toutes les ~2 min.
+- ⚠️→✅ **Quota** : sur **Google Workspace Devoteam** (confirmé par Léandre), pas de limite
+  « 20 000 exéc./jour » du grand public ; quotas Workspace largement suffisants. Seul plafond
+  à surveiller = **30 exécutions simultanées**, confortable grâce au polling ~2 min + jitter +
+  pause onglet caché + cache court. **Aucun garde-fou nécessaire, polling laissé à ~2 min.**
+- Méthode de test : POST via `curl -sS -L --data` **sans** `-X POST` (un `-X POST` force le
+  POST sur la redirection 302 → l'endpoint googleusercontent renvoie 405 ; sans, curl bascule
+  en GET et l'URL one-time sert le payload). À réutiliser pour tout futur test live.
+- **Conclusion : plateforme prête pour les ~400 commerciaux.**
 
 ### 2026-06-07 — Drapeaux des chips + revue globale + Top 5 correctifs
 Session web. Branche `claude/ecstatic-noether-P4j8Y`, livrée en **3 PR squash-mergées** sur `main`.
