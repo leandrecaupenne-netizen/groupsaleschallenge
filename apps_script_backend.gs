@@ -240,7 +240,9 @@ function dataResponse(fresh) {
       const tenure = String(p.tenure || '');
       return Object.assign({}, p, {
         is_rookie: tenure.indexOf('months') !== -1 || tenure.indexOf('<') !== -1,
-        yellow_meetings: (p.meetings || 0) < 5,
+        // Yellow card for under 5 meetings/week — but 0 means "not reported" (these
+        // rows also have a blank tenure), so it must NOT be carded.
+        yellow_meetings: (p.meetings || 0) > 0 && (p.meetings || 0) < 5,
         yellow_gm: (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0
       });
     });
