@@ -82,6 +82,17 @@ const TABS = [
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900 });
 
+  // Pre-seed the "already onboarded" flags so the first-visit guided tour (a
+  // full-screen overlay that intercepts clicks) never appears during the test.
+  // Mirrors what a returning user's browser has; the tour itself is covered by
+  // main's ux-smoke suite.
+  await page.evaluateOnNewDocument(() => {
+    try {
+      localStorage.setItem('devoteam_wc_tour_v1', '1');
+      localStorage.setItem('devoteam_wc_intro_seen_v1', '1');
+    } catch (e) {}
+  });
+
   const consoleErrors = [];
   page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   const failedReqs = [];
