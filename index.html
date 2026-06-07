@@ -2832,10 +2832,12 @@ let snapshotPeriod = undefined; // the period initSnapshotOnce last processed (r
 
 // === UTILS ===
 const fmtMoney = n => {
-  if (!n && n !== 0) return '—';
-  if (n >= 1000000) return `€${(n/1000000).toFixed(2)}M`;
-  if (n >= 1000) return `€${(n/1000).toFixed(0)}K`;
-  return `€${n.toFixed(0)}`;
+  if (n == null || !isFinite(n)) return '—';
+  // Abbreviate by magnitude and keep the sign in front, so a cancelled/negative
+  // booking reads "−€500K" rather than the un-abbreviated "€-500000".
+  const neg = n < 0, a = Math.abs(n);
+  const s = a >= 1000000 ? `€${(a/1000000).toFixed(2)}M` : a >= 1000 ? `€${(a/1000).toFixed(0)}K` : `€${a.toFixed(0)}`;
+  return neg ? '−' + s : s;
 };
 const fmtPct = n => (n == null || !isFinite(n)) ? '—' : `${(n*100).toFixed(1)}%`;
 const fmtNum = (n, d=1) => (n == null || !isFinite(n)) ? '—' : n.toFixed(d);
