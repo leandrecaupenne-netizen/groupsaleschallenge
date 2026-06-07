@@ -1,6 +1,11 @@
 // End-to-end test — drives the real platform in a real browser against the LIVE
-// back-end, simulating a user: login gate, wrong/right password, leaderboard load,
-// team squad modal, tab navigation, session persistence on reload.
+// back-end, simulating a user across the whole app and cross-checking the RENDERED
+// rankings against the data the app actually loaded.
+//
+// Covers: login gate, wrong/right password, leaderboard load, every ranking tab,
+// rendered-vs-data ranking cross-checks, team squad modal, VAR room, My Position
+// search, mobile viewport, dark mode, session persistence on reload, and a
+// console/network error sweep.
 //
 // Usage:
 //   cd test/e2e && npm install && node run.js
@@ -46,6 +51,17 @@ function startServer() {
     srv.listen(0, '127.0.0.1', () => resolve(srv));
   });
 }
+
+// Tabs and a selector proving each one rendered real content.
+const TABS = [
+  { id: 'teams',     sel: '.teams-table-row[data-team]' },
+  { id: 'spotlight', sel: '.ms-hero, .ms-row' },
+  { id: 'golden',    sel: '.ms-hero[data-player], .ms-row[data-player]' },
+  { id: 'playmaker', sel: '.ms-hero[data-player], .ms-row[data-player]' },
+  { id: 'awards',    sel: '.award-card' },
+  { id: 'var',       sel: '.var-row[data-player]' },
+  { id: 'position',  sel: '#position-search' },
+];
 
 (async () => {
   const srv = await startServer();
@@ -99,8 +115,25 @@ function startServer() {
     await page.type('#login-pwd', PASSWORD);
     await page.click('#login-btn');
     await page.waitForSelector('.teams-table-row[data-team]', { timeout: 45000 });
-    const teamCount = await page.$$eval('.teams-table-row[data-team]', els => els.length);
-    assert(teamCount >= 30, `team rows rendered: ${teamCount} (expected >= 30)`);
+
+    // Ground truth: read the data the app actually loaded (exposed as globals) and
+    // compute the expected leaders here, so the cross-checks below compare the
+    // RENDERED UI against the SAME payload — no second fetch, always consistent.
+    const expect = await page.evaluate(() => {
+      const byDesc = (arr, k) => [...arr].sort((a, b) => (b[k] || 0) - (a[k] || 0));
+      return {
+        teamCount: teams.length,
+        peopleCount: people.length,
+        topTeam: byDesc(teams, 'avg_ps')[0].country,
+        topGolden: byDesc(people, 'ps_nb')[0].name,
+        topPlaymaker: byDesc(people, 'opps')[0].name,
+        carded: people.filter(p => p.yellow_meetings || p.yellow_gm).length,
+        // a real name to search for in My Position
+        searchName: byDesc(people, 'opps')[0].name,
+      };
+    });
+    assert(expect.teamCount >= 30, `teams loaded: ${expect.teamCount} (>= 30)`);
+    assert(expect.peopleCount >= 300, `people loaded: ${expect.peopleCount} (>= 300)`);
     const podium = await page.$$eval('.podium-card[data-team]', els => els.map(e => e.getAttribute('data-team')));
     assert(podium.length === 3, `podium shows top 3: ${JSON.stringify(podium)}`);
     const lastUpd = await page.$eval('#last-update', e => e.textContent.trim()).catch(() => '(no #last-update)');
@@ -108,7 +141,34 @@ function startServer() {
     await page.screenshot({ path: path.join(SHOTS, '2-leaderboard.png') });
 
     // ---------------------------------------------------------------
-    step('4. Click a team -> squad modal opens with members');
+    step('4. Every ranking tab renders real content');
+    for (const tb of TABS) {
+      await page.click(`.tab-btn[data-tab="${tb.id}"]`);
+      const found = await page.waitForSelector(tb.sel, { timeout: 15000 }).then(() => true).catch(() => false);
+      const n = await page.$$eval(tb.sel, els => els.length).catch(() => 0);
+      assert(found && n > 0, `tab "${tb.id}" rendered (${n} node(s))`);
+      await page.screenshot({ path: path.join(SHOTS, `tab-${tb.id}.png`) });
+    }
+
+    // ---------------------------------------------------------------
+    step('5. Rendered rankings cross-check the loaded data');
+    await page.click('.tab-btn[data-tab="teams"]');
+    await page.waitForSelector('.teams-table-row[data-team]', { timeout: 15000 });
+    const renderedTop = await page.$eval('.teams-table-row[data-team]', el => el.getAttribute('data-team'));
+    assert(renderedTop === expect.topTeam, `Team Ranking #1 = "${renderedTop}" (expected "${expect.topTeam}")`);
+    await page.click('.tab-btn[data-tab="golden"]');
+    await page.waitForSelector('.ms-hero[data-player]', { timeout: 15000 });
+    const gHero = await page.$eval('.ms-hero[data-player]', el => el.getAttribute('data-player'));
+    assert(gHero === expect.topGolden, `Golden Boot leader = "${gHero}" (expected "${expect.topGolden}")`);
+    await page.click('.tab-btn[data-tab="playmaker"]');
+    await page.waitForSelector('.ms-hero[data-player]', { timeout: 15000 });
+    const pHero = await page.$eval('.ms-hero[data-player]', el => el.getAttribute('data-player'));
+    assert(pHero === expect.topPlaymaker, `Playmaker leader = "${pHero}" (expected "${expect.topPlaymaker}")`);
+
+    // ---------------------------------------------------------------
+    step('6. Click a team -> squad modal opens with members');
+    await page.click('.tab-btn[data-tab="teams"]');
+    await page.waitForSelector('.teams-table-row[data-team]', { timeout: 15000 });
     const firstTeam = await page.$eval('.teams-table-row[data-team]', el => el.getAttribute('data-team'));
     await page.click('.teams-table-row[data-team]');
     await page.waitForSelector('.modal-overlay', { timeout: 10000 });
@@ -119,20 +179,51 @@ function startServer() {
     await page.keyboard.press('Escape');
 
     // ---------------------------------------------------------------
-    step('5. Tab navigation — switch to another ranking tab');
-    const tabs = await page.$$eval('.tab-btn[data-tab]', els => els.map(e => e.getAttribute('data-tab')));
-    if (tabs.length > 1) {
-      await page.click(`.tab-btn[data-tab="${tabs[1]}"]`);
-      await new Promise(r => setTimeout(r, 600));
-      const activeTab = await page.$eval('.tab-btn.active', e => e.getAttribute('data-tab')).catch(() => null);
-      assert(activeTab === tabs[1], `switched to tab "${tabs[1]}" (active = "${activeTab}")`);
-      await page.screenshot({ path: path.join(SHOTS, `4-tab-${tabs[1]}.png`) });
+    step('7. VAR room shows yellow-card players');
+    await page.click('.tab-btn[data-tab="var"]');
+    await page.waitForSelector('.var-row[data-player]', { timeout: 15000 });
+    const varRows = await page.$$eval('.var-row[data-player]', els => els.length);
+    assert(varRows > 0, `VAR room lists ${varRows} carded player row(s) (data has ${expect.carded} carded)`);
+
+    // ---------------------------------------------------------------
+    step('8. My Position search finds a real player');
+    await page.click('.tab-btn[data-tab="position"]');
+    await page.waitForSelector('#position-search', { timeout: 15000 });
+    await page.type('#position-search', expect.searchName);
+    const found = await page.waitForFunction((nm) => {
+      const root = document.querySelector('#app');
+      return root && root.textContent.includes(nm) &&
+        document.querySelectorAll('.ms-mini-badge, .stat, [data-fullrank], .pc-card, .position-details, .ms-hero').length > 0;
+    }, { timeout: 10000 }, expect.searchName).then(() => true).catch(() => false);
+    assert(found, `search "${expect.searchName}" rendered a result with ranking details`);
+    await page.screenshot({ path: path.join(SHOTS, '4-position-search.png') });
+
+    // ---------------------------------------------------------------
+    step('9. Mobile viewport renders (390x844)');
+    await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    await page.click('.tab-btn[data-tab="teams"]');
+    await page.waitForSelector('.teams-table-row[data-team]', { timeout: 15000 });
+    const mRows = await page.$$eval('.teams-table-row[data-team]', els => els.length);
+    assert(mRows >= 30, `mobile: ${mRows} team rows rendered`);
+    await page.screenshot({ path: path.join(SHOTS, '5-mobile.png') });
+    await page.setViewport({ width: 1280, height: 900 });
+
+    // ---------------------------------------------------------------
+    step('10. Dark mode toggle');
+    const themeBtn = await page.$('#theme-btn');
+    if (themeBtn) {
+      const before = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+      await themeBtn.click();
+      await new Promise(r => setTimeout(r, 400));
+      const after = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+      assert(before !== after, `theme toggled: "${before}" -> "${after}"`);
+      await page.screenshot({ path: path.join(SHOTS, '6-dark-mode.png') });
     } else {
-      ko('expected multiple tabs');
+      ko('theme button (#theme-btn) not found');
     }
 
     // ---------------------------------------------------------------
-    step('6. Session persists across reload (localStorage) — no re-login');
+    step('11. Session persists across reload (localStorage) — no re-login');
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
     // Tab-independent signal: the app persists the active tab across reloads, so the
     // Team Ranking table may not be the one rendered. The tab bar / hero always is.
@@ -142,7 +233,7 @@ function startServer() {
       'reload skipped login and restored the app (session persisted)');
 
     // ---------------------------------------------------------------
-    step('7. No console errors / failed network requests during the journey');
+    step('12. No console errors / failed network requests during the journey');
     const realFailed = failedReqs.filter(r => !/favicon/i.test(r));
     assert(consoleErrors.length === 0,
       consoleErrors.length ? `console errors:\n      ${consoleErrors.slice(0, 5).join('\n      ')}` : 'no console errors');

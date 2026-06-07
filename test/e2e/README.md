@@ -42,9 +42,20 @@ Screenshots land in `test/e2e/shots/` (gitignored). Exit code `0` = all checks p
 
 1. The login gate shows and the leaderboard is hidden before auth.
 2. A wrong code is rejected and keeps you on the login screen with an error.
-3. The correct code logs in and the live leaderboard renders (≥30 teams, a top-3
-   podium, and a real "last updated" timestamp from the sheet).
-4. Clicking a team opens its squad modal with member rows.
-5. Tab navigation switches the active ranking tab.
-6. Reloading keeps the session (no re-login) — `localStorage`-backed.
-7. No console errors and no failed network requests during the journey.
+3. The correct code logs in and the live leaderboard renders (≥30 teams, ≥300
+   people, a top-3 podium, and a real "last updated" timestamp from the sheet).
+4. Every ranking tab renders real content (Team Ranking, Players of the Moment,
+   Golden Boot, Playmaker, Special Awards, VAR Room, My Position).
+5. The **rendered** rankings match the data the app loaded — Team Ranking #1,
+   Golden Boot leader and Playmaker leader are re-derived from the in-page payload
+   and compared against the DOM (catches client-side ranking regressions).
+6. Clicking a team opens its squad modal with member rows.
+7. The VAR Room lists yellow-carded players.
+8. My Position search for a real player name returns ranking details.
+9. The app renders on a mobile viewport (390×844).
+10. Dark mode toggles the theme.
+11. Reloading keeps the session (no re-login) — `localStorage`-backed.
+12. No console errors and no failed network requests during the journey.
+
+Screenshots for each major state (`1-login`, `2-leaderboard`, `tab-*`, `3-team-modal`,
+`4-position-search`, `5-mobile`, `6-dark-mode`) are written to `shots/`.
