@@ -14,12 +14,12 @@
 
 ## ⚠️ Actions en attente (à faire par Léandre / humains)
 
-- [ ] **Redéployer l'Apps Script avec la DERNIÈRE version** de `apps_script_backend.gs`
-      (campagne 06-06 : `keepWarm` + onglet manquant non bloquant + data POST-only +
-      cache chunks 45000). Léandre a indiqué « c'est fait » le 06-06 — **à confirmer que
-      le déploiement actif pointe bien sur la nouvelle version** (Déployer → Gérer les
-      déploiements → Nouvelle version). Le re-save seul corrige `keepWarm` ; le
-      redéploiement applique les correctifs serveur au front.
+- [x] **Redéployer l'Apps Script** : ✅ confirmé le **07-06**. Léandre a recollé la dernière
+      version de `apps_script_backend.gs` (via Gérer les déploiements → Modifier → **Nouvelle
+      version**, donc **même URL `/exec`** → rien à toucher côté `index.html`) et
+      `test/run-live.sh` repasse **au vert** (ping, auth, 32 équipes / 379 personnes, aucun
+      warning de mapping). ⚠️ Rappel permanent : le `.gs` du repo ≠ projet Apps Script —
+      toute modif future du `.gs` doit être **recollée + redéployée** côté Google.
 - [x] **Trigger `keepWarm`** : ✅ confirmé au vert le **07-06** (Exécutions « Completed »).
       Les ~290 échecs « Script function not found » venaient d'une **ancienne version du
       script** (sans `keepWarm`) collée dans l'éditeur ; depuis le re-collage de la version à
@@ -44,6 +44,16 @@
   et vercel.app est **bloqué** → les tests **mockent** le fetch (route Playwright).
 - 8 tests de régression en place : discipline (cold+hydrate), XSS (admin+breakout),
   i18n (clés `t()`), localStorage bloqué, **rangs ex-aequo** (board+carte cohérents).
+- **Suite de tests live ajoutée le 07-06** (complète les Playwright mockés en testant le
+  backend **réel** déployé) :
+  - `bash test/run-live.sh` — smoke curl : ping, mauvais mot de passe rejeté, pull
+    authentifié + checks d'intégrité (compte équipes/personnes, exclusions, référentiel).
+  - `node test/backend-contract.js` — contrat de l'API dans un sandbox Apps Script mocké
+    (offline), incl. la règle de discipline (`meetings < 5 && activité`).
+  - `node test/e2e/run.js` — Chromium headless **contre le backend live** (login, onglets,
+    cross-checks classements, modal, VAR, My Position, mobile, dark, persistance session,
+    drapeaux des chips). Deps lourdes gitignored ; `E2E_INSECURE=1` seulement en sandbox à
+    proxy TLS. NB : réseau Google **autorisé** dans cette session-ci (bloqué le 06-06).
 
 ---
 
@@ -95,6 +105,12 @@ Session web. Branche `claude/ecstatic-noether-P4j8Y`, livrée en **3 PR squash-m
 - **keepWarm** : confirmé au vert (les échecs « Script function not found » du 06-06 venaient
   d'une ancienne version collée ; résolu). Rappel : le `.gs` du repo ≠ projet Apps Script —
   toute modif du `.gs` doit être **recollée + redéployée** côté Google.
+- **Backend redéployé + vérifié (fin de session 07-06)** : Léandre a recollé/redéployé
+  `apps_script_backend.gs` (même URL `/exec`) ; `test/run-live.sh` au vert (32 équipes /
+  379 personnes, 0 warning). **4 PR squash-mergées** sur `main` ce jour : #1 (drapeaux chips
+  + suite de tests live), #2 (toggle des chips), #3 (Top 5 correctifs), #4 (doc M2/M5/D3 +
+  journal). Prod Vercel redéployée auto à chaque merge. Reste ouvert : ligne `UK` dans
+  `Team Ranking` (Jose/OneBI), contacts §12, et faire évoluer `PERIOD` au fil des semaines.
 
 ### 2026-06-06 (suite) — Repasses UX + revue de code + couche calcul vérifiée
 Sessions de suivi le même jour (« continue », « repasse UX », « creuse tout »).
