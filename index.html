@@ -2263,6 +2263,12 @@ img, table { max-width: 100%; }
 }
 .search-chip:hover, .region-chip:hover { border-color: var(--usa-red); }
 .search-chip.on, .region-chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+/* Country filter chips carry a real flag (CSS/SVG, via flagBars) so they read on
+   every platform — regional-indicator emoji degrade to bare letters on Windows. */
+.region-chip { display: inline-flex; align-items: center; gap: 7px; }
+.chip-flag { display: inline-flex; width: 20px; height: 13px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.18); flex: 0 0 auto; }
+.chip-flag i { flex: 1; }
+:root[data-theme="dark"] .chip-flag { box-shadow: 0 0 0 1px rgba(255,255,255,0.25); }
 /* Touch: a little more vertical padding so chips clear a ~40px tap height. */
 @media (hover: none) { .search-chip, .region-chip { padding: 12px 16px; } .suggestion-item { min-height: 44px; } }
 
@@ -3761,7 +3767,7 @@ function renderTeamRanking() {
   // country gets its own filter — not just a hardcoded handful.
   const regions = [['all', 'All']].concat(
     regionsPresentFrom(sortedTeams, t => t.country).map(r => [r, nationLabel(r)]));
-  const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${escapeHtml(r[0])}">${r[1]}</button>`).join('')}</div>`;
+  const regionChips = `<div class="region-chips">${regions.map(r => `<button class="region-chip${teamRegion === r[0] ? ' on' : ''}" data-region="${escapeHtml(r[0])}">${chipFlagHtml(r[0])}${regionParts(r[0]).name}</button>`).join('')}</div>`;
   const clickHint = t('teams.clickHint'); // precomputed: `t` is shadowed inside the row map below
 
   const viewToggle = `
@@ -4481,6 +4487,13 @@ function regionParts(region) {
   const l = nationLabel(region);
   const m = l.match(/^([\u{1F1E6}-\u{1F1FF}]{2})\s+([\s\S]+)$/u);
   return m ? { flag: m[1], name: m[2] } : { flag: '', name: l };
+}
+// Real (CSS/SVG) flag markup for a filter chip — uses the same flagBars() the cards
+// use, so it renders on every platform. (The emoji in nationLabel() falls back to bare
+// letters like "FR" on Windows/Chrome.) 'all' and unknown regions → no flag.
+function chipFlagHtml(region) {
+  if (!region || region === 'all') return '';
+  return `<span class="chip-flag" aria-hidden="true">${flagBars(flagForTeam(region))}</span>`;
 }
 // Regions actually present in the data, grouped ones first (in VT_REGION_ORDER),
 // then any standalone countries alphabetically. Replaces the old fixed list so the
@@ -5451,6 +5464,9 @@ Object.keys(NORDIC).forEach(k => { if (COUNTRY_FLAGS[k]) COUNTRY_FLAGS[k].flagIm
 // Spain → full crowned-shield + Pillars-of-Hercules flag (incl. "ES …" entities).
 if (COUNTRY_FLAGS.SPAIN) COUNTRY_FLAGS.SPAIN.flagImg = 'flag-es';
 if (typeof FLAG_STRIPES !== 'undefined' && FLAG_STRIPES.ES) FLAG_STRIPES.ES.flagImg = 'flag-es';
+// Portugal is a grouped market ("PT"), so its filter chip resolves via FLAG_STRIPES,
+// not COUNTRY_FLAGS — tag it too so the chip shows the same crest the cards do.
+if (typeof FLAG_STRIPES !== 'undefined' && FLAG_STRIPES.PT) FLAG_STRIPES.PT.flagImg = 'flag-pt';
 // Render a flag's inner markup: a dedicated SVG flag when tagged, otherwise the
 // vertical colour stripes. Used everywhere a flag appears (cards, rows, podium…).
 function flagBars(colors) {

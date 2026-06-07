@@ -152,6 +152,21 @@ const TABS = [
     await page.screenshot({ path: path.join(SHOTS, '2-leaderboard.png') });
 
     // ---------------------------------------------------------------
+    step('3b. Country filter chips show real (cross-platform) flags');
+    const chipStats = await page.evaluate(() => {
+      const chips = [...document.querySelectorAll('.region-chip')];
+      const all = chips.find(c => c.dataset.region === 'all');
+      return {
+        total: chips.length,
+        withFlag: chips.filter(c => c.querySelector('.chip-flag')).length,
+        allHasFlag: !!(all && all.querySelector('.chip-flag')),
+      };
+    });
+    assert(chipStats.total > 1 && chipStats.withFlag === chipStats.total - 1 && !chipStats.allHasFlag,
+      `country chips carry a flag: ${chipStats.withFlag}/${chipStats.total} (the "All" chip has none)`);
+    await (await page.$('.region-chips')).screenshot({ path: path.join(SHOTS, '2b-country-chips.png') }).catch(() => {});
+
+    // ---------------------------------------------------------------
     step('4. Every ranking tab renders real content');
     for (const tb of TABS) {
       await page.click(`.tab-btn[data-tab="${tb.id}"]`);
