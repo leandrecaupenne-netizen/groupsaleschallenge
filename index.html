@@ -2963,6 +2963,12 @@ function nicknameOverride(country) {
 // stays ONE team — the Sheet has no per-country breakdown to decompose it further.
 const TEAM_ALIASES = {
   'ALPS': 'Switzerland',
+  // The Sheet carries this team under its nickname "Impulse Rainmakers", which has no
+  // "FR" prefix so it was ranking as its own one-team nation (with a hashed/wrong flag).
+  // Map it back to its real Devoteam entity, the French "FR - Digital Impulse", so it
+  // consolidates into France (regionOf → FR, correct flag); NICKNAME_OVERRIDES above
+  // then shows "Impulse RainMakers" big with "FR - Digital Impulse" underneath.
+  'IMPULSE RAINMAKERS': 'FR - Digital Impulse',
 };
 function applyTeamAliases() {
   teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });

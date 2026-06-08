@@ -226,6 +226,39 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- Nickname-aliased team consolidates into its real nation ----------
+  // "Impulse Rainmakers" is the nickname of the French entity "FR - Digital Impulse".
+  // It must fold into France (region FR) — never rank as its own one-team nation — and
+  // show the nickname big with the real name underneath.
+  {
+    const { ctx, page } = await newPage();
+    const data = {
+      teams: [
+        { country: 'Impulse Rainmakers', members: 1, total_ps: 1e6, avg_ps: 1e6, avg_gm: 0.30, avg_meetings: 6, avg_opps: 7 },
+        { country: 'FR - M Cloud',       members: 1, total_ps: 2e6, avg_ps: 2e6, avg_gm: 0.30, avg_meetings: 6, avg_opps: 7 },
+        { country: 'DENMARK',            members: 1, total_ps: 3e6, avg_ps: 3e6, avg_gm: 0.30, avg_meetings: 6, avg_opps: 7 },
+      ],
+      people: [
+        { name: 'Imp One',   team: 'Impulse Rainmakers', tenure: 'Over a year', ps_total: 1e6, ps_total_gm: 0.30, ps_nb: 8e5, ps_nb_gm: 0.30, licence_gm: 0, meetings: 6, opps: 5 },
+        { name: 'Cloud One', team: 'FR - M Cloud',       tenure: 'Over a year', ps_total: 2e6, ps_total_gm: 0.30, ps_nb: 1.5e6, ps_nb_gm: 0.30, licence_gm: 0, meetings: 6, opps: 5 },
+        { name: 'Dane One',  team: 'DENMARK',            tenure: 'Over a year', ps_total: 3e6, ps_total_gm: 0.30, ps_nb: 2e6, ps_nb_gm: 0.30, licence_gm: 0, meetings: 6, opps: 5 },
+      ],
+      updated_at: 'u1', period: 'Week 1', challenge_dates: { start: '2026-06-01', end: '2026-07-03' }, special_awards: {}, warnings: []
+    };
+    await ctx.route('**script.google.com**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) }));
+    await bootstrap(page, BASE);
+    await tab(page, 'teams'); await page.waitForTimeout(150);
+    if (await page.has('[data-view="nations"]')) { await page.tap('[data-view="nations"]'); await page.waitForTimeout(250); }
+    const regions = await page.$$eval('.nation-row[data-nation]', els => els.map(e => e.dataset.nation));
+    log('Aliased team folds into France (region FR present)', regions.includes('FR'), regions.join(','));
+    log('No standalone "Impulse" nation', !regions.some(r => /IMPULSE/i.test(r)), regions.join(','));
+    // Team view: shows the nickname big with the real French entity underneath.
+    await page.tap('[data-view="teams"]'); await page.waitForTimeout(200);
+    const teamsText = await page.evaluate(() => (document.querySelector('.teams-table, #app') || document.body).innerText);
+    log('Team shows nickname + real name', /Impulse RainMakers/i.test(teamsText) && /FR - Digital Impulse/i.test(teamsText));
+    await ctx.close();
+  }
+
   // ---------- XSS regression: sheet data is human-edited, so it must be escaped ----------
   // A name/team/nickname/period containing HTML must never execute or inject elements.
   {

@@ -85,6 +85,19 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 6) — Impulse Rainmakers : rattacher à la France (drapeau + consolidation)
+**Signalé** (Léandre) : dans **Nations Ranking**, « Impulse Rainmakers » apparaissait comme une
+**nation à part** (drapeau italien au hasard) au lieu d'être **consolidée dans la France**.
+**Cause** : la Sheet porte l'équipe sous son **surnom** « Impulse Rainmakers » (sans préfixe
+`FR`), donc `regionOf()` ne la voyait pas comme française → nation standalone. (La suite 4 avait
+corrigé le doublon mais dans le mauvais sens : elle n'avait pas rétabli l'identité française.)
+**Fix** (`index.html`) : alias `TEAM_ALIASES['IMPULSE RAINMAKERS'] → 'FR - Digital Impulse'` :
+l'entité reprend son vrai nom français → `regionOf` = `FR` → **consolidée dans la France, bon
+drapeau** ; et `NICKNAME_OVERRIDES['FR - Digital Impulse'] = 'Impulse RainMakers'` (déjà en place)
+**réaffiche le surnom** en grand avec « FR - Digital Impulse » en dessous. Test de non-régression
+ajouté dans `ux-e2e` (mock dédié : l'équipe se replie dans FR, pas de nation « Impulse », surnom +
+vrai nom). `ux-smoke` + `ux-e2e` **au vert**.
+
 ### 2026-06-08 (suite 5) — Install PWA : instructions par navigateur + détection in-app
 **Signalé** (Léandre) : l'install marche sur **Chrome** mais pas sur « le navigateur Android » —
 en tapant 📲 Install, le message dit « menu ⋮ → Install app / Add to Home screen » mais
