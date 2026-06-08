@@ -2952,6 +2952,7 @@ const NICKNAME_OVERRIDES = {};
   ['SWEDEN',  'Snowball'],
   ['NORWAY',  'Team Haaland'],
   ['DENMARK', 'Grand Danois'],
+  ['FR - Digital Impulse', 'Impulse RainMakers'], // nickname kept; real entity name stays "FR - Digital Impulse"
 ].forEach(pair => { NICKNAME_OVERRIDES[teamKey(pair[0])] = pair[1]; });
 function nicknameOverride(country) {
   return NICKNAME_OVERRIDES[teamKey(country)] || '';
@@ -2962,7 +2963,6 @@ function nicknameOverride(country) {
 // stays ONE team — the Sheet has no per-country breakdown to decompose it further.
 const TEAM_ALIASES = {
   'ALPS': 'Switzerland',
-  'FR - DIGITAL IMPULSE': 'Impulse RainMakers', // team renamed after the Sheet was set up
 };
 function applyTeamAliases() {
   teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });
@@ -2976,7 +2976,9 @@ function teamNameHTML(team, realClass) {
   let nick = (team && typeof team.nickname === 'string') ? team.nickname.trim() : '';
   if (!nick && team) nick = nicknameOverride(team.country); // stopgap until the Sheet catches up
   const name = escapeHtml(team ? team.country : '');
-  if (!nick) return name;
+  // No nickname — or the nickname is just the team's own name (e.g. a team renamed to
+  // its nickname): show a single line instead of printing the same name twice.
+  if (!nick || sameTeam(nick, team.country)) return name;
   return `${escapeHtml(nick)}<span class="${realClass || 'team-realname'}">${name}</span>`;
 }
 
@@ -2998,7 +3000,8 @@ function playerTeamHTML(teamName, realClass, suffix) {
   let nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
   if (!nick) nick = nicknameOverride(teamName); // same stopgap as teamNameHTML, so overrides show in player lists too
   const suf = suffix || '';
-  if (!nick) return escapeHtml(teamName) + suf;
+  // No nickname, or a nickname identical to the team name → single line (no double print).
+  if (!nick || sameTeam(nick, teamName)) return escapeHtml(teamName) + suf;
   return `${escapeHtml(nick)}${suf}<span class="${realClass || 'team-realname'}">${escapeHtml(teamName)}</span>`;
 }
 
