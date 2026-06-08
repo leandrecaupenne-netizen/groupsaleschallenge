@@ -292,6 +292,9 @@ input { font-family: inherit; }
 /* Any element wired to open a player card / team / nation is clickable —
    always show the pointer cursor so the affordance is consistent everywhere. */
 [data-player], [data-team], [data-nteam], [data-nation] { cursor: pointer; }
+/* Once these rows/cards/tabs are linkified (upgradeClickablesToLinks), keep the card
+   look, not the link look. :where() = 0 specificity so any explicit class style wins. */
+a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { color: inherit; text-decoration: none; }
 
 .podium-card {
   position: relative; flex: 0 0 auto;
@@ -939,6 +942,7 @@ input { font-family: inherit; }
 .status-item { font-size: 13px; }
 .status-ok { color: var(--green); font-weight: 600; }
 .status-warn { color: var(--usa-red); font-weight: 700; }
+.status-neutral { color: var(--muted); font-weight: 600; }
 
 .rookie-banner {
   margin-top: 14px; padding: 12px 16px;
@@ -2993,7 +2997,8 @@ function teamNameHTML(team, realClass) {
 // nickname + entity would be clipped by `white-space: nowrap`.
 function teamShortLabel(teamName) {
   const t = (teams || []).find(x => x.country === teamName);
-  const nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  let nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
+  if (!nick) nick = nicknameOverride(teamName); // same override as teamNameHTML/playerTeamHTML, so the nickname is consistent in compact lists too
   return escapeHtml(nick || teamName);
 }
 
@@ -3458,14 +3463,16 @@ function upgradeClickablesToLinks() {
     !el.querySelector('a,button,input,select,textarea') &&
     deepLinkFor(el));
   if (!els.length) return;
-  const displays = els.map(el => getComputedStyle(el).display); // batch the reads (one reflow)
-  els.forEach((el, i) => {
+  // Preserve layout when swapping <div>/<button> → <a> (an <a> defaults to inline).
+  // The display of a given className is constant, so resolve it once per class rather
+  // than per element (color/text-decoration are handled by the CSS rule above).
+  const displayByClass = {};
+  els.forEach(el => { if (!(el.className in displayByClass)) displayByClass[el.className] = getComputedStyle(el).display; });
+  els.forEach(el => {
     const a = document.createElement('a');
     for (const { name, value } of el.attributes) a.setAttribute(name, value);
     a.setAttribute('href', deepLinkFor(el));
-    a.style.display = displays[i];
-    a.style.color = 'inherit';
-    a.style.textDecoration = 'none';
+    a.style.display = displayByClass[el.className];
     a.innerHTML = el.innerHTML;
     el.replaceWith(a);
   });
@@ -3495,6 +3502,16 @@ function bindNewTabGestures() {
     if (el.tagName === 'A') return; // real links open a new tab natively on middle-click
     e.preventDefault(); e.stopImmediatePropagation(); openNew(el);
   }, true);
+  // These rows/cards/tabs used to be role="button" <div>s (activated by Enter AND
+  // Space); once linkified they are real <a>, which natively activate on Enter only
+  // (Space scrolls). Restore Space activation so keyboard users aren't regressed.
+  document.addEventListener('keydown', e => {
+    if (e.key !== ' ' && e.key !== 'Spacebar') return;
+    const el = e.target.closest(SEL);
+    if (!el || el.tagName !== 'A') return;
+    e.preventDefault(); // don't scroll the page
+    el.click();         // → capture handler keeps it in-app (plain click)
+  });
 }
 
 // Transient celebratory toast (auto-dismisses).
@@ -4921,14 +4938,16 @@ function renderCoachDiveModal() {
         cls: 'cd-row-click', attr: `data-cd-team="${escapeHtml(t.team)}"`
       })).join('') || `<div class="no-result">No entity data.</div>`;
       // Players ranked by their own GM% (weight = their PS €); under-25% flagged 🟨.
+      // Flag on the TOTAL GM shown here (this whole dive is total-business margin), so
+      // the 🟨 always matches the number printed — NOT yellow_gm, which is New-Business.
       const players = inReg.filter(p => (Number(p.ps_total) || 0) > 0).sort((a, b) => (b.ps_total_gm || 0) - (a.ps_total_gm || 0)).slice(0, 15);
       const maxP = Math.max(0.001, ...players.map(p => p.ps_total_gm || 0));
-      const playerRows = players.map((p, i) => row({
-        rank: p.yellow_gm ? '🟨' : '#' + (i + 1), name: p.name, sub: p.team, barPct: ((p.ps_total_gm || 0) / maxP) * 100,
-        color: p.yellow_gm ? 'var(--usa-red)' : colorForTeam(p.team), avatar: initials(p.name), photoName: p.name,
+      const playerRows = players.map((p, i) => { const lowGm = (p.ps_total_gm || 0) < 0.25; return row({
+        rank: lowGm ? '🟨' : '#' + (i + 1), name: p.name, sub: p.team, barPct: ((p.ps_total_gm || 0) / maxP) * 100,
+        color: lowGm ? 'var(--usa-red)' : colorForTeam(p.team), avatar: initials(p.name), photoName: p.name,
         valText: fmtPct(p.ps_total_gm), shareText: fmtMoney(p.ps_total) + ' PS',
         cls: 'cd-row-click', attr: `data-player="${escapeHtml(p.name)}"`
-      })).join('') || `<div class="no-result">No players with PS.</div>`;
+      }); }).join('') || `<div class="no-result">No players with PS.</div>`;
       body = `
         <h3 class="cd-h">🏢 Entities · weighted GM%</h3>
         ${entRows}
@@ -5341,6 +5360,10 @@ function renderPositionDetails(person) {
     cards.push({type: 'warn', label: `🟨 Yellow Card · New Business GM below 25% (currently ${fmtPct(indivGm(person))})`});
   } else if (person.ps_nb > 0) {
     cards.push({type: 'ok', label: `✅ New Business GM on target (${fmtPct(indivGm(person))})`});
+  } else {
+    // No New Business → no NB margin to judge. Show a neutral line (not a green ✅, not
+    // a red 🟨) so the GM check doesn't silently vanish, matching the player card.
+    cards.push({type: 'neutral', label: `▫️ New Business GM · no New Business yet`});
   }
 
   // Play the pack-opening reveal only when a NEW player is shown (not on every
@@ -5358,7 +5381,7 @@ function renderPositionDetails(person) {
       <div class="position-card-wrap${isNewReveal ? ' pc-reveal' : ''}">${paniniCardInner(person)}</div>
       ${teamRank > 0 ? `<div class="position-teamrank">${teamShortLabel(person.team)} · Team #${teamRank} of ${sortedTeams.length}</div>` : ''}
       <div class="cards-status">
-        ${cards.map(c => `<div class="status-item"><span class="${c.type === 'ok' ? 'status-ok' : 'status-warn'}">${c.label}</span></div>`).join('')}
+        ${cards.map(c => `<div class="status-item"><span class="${c.type === 'ok' ? 'status-ok' : c.type === 'neutral' ? 'status-neutral' : 'status-warn'}">${c.label}</span></div>`).join('')}
       </div>
       ${person.is_rookie ? `
         <div class="rookie-banner">
@@ -7515,7 +7538,7 @@ function openCompare() {
         ['Playmaker rank', `#${pr(aV)}`, `#${pr(bV)}`, lower(pr(aV), pr(bV))],
         ['Opps created', Number(A.opps || 0).toFixed(0), Number(B.opps || 0).toFixed(0), better(A.opps, B.opps)],
         ['PS Total', fmtMoney(A.ps_total), fmtMoney(B.ps_total), better(A.ps_total, B.ps_total)],
-        ['GM (New Business)', fmtPct(indivGm(A)), fmtPct(indivGm(B)), better(indivGm(A) || 0, indivGm(B) || 0)],
+        ['GM (New Business)', fmtPct(indivGm(A)), fmtPct(indivGm(B)), (indivGm(A) == null || indivGm(B) == null) ? -1 : better(indivGm(A), indivGm(B))],
         ['Meetings / wk', fmtNum(A.meetings), fmtNum(B.meetings), better(A.meetings, B.meetings)]
       ];
     }
@@ -8270,7 +8293,11 @@ async function init() {
     }
     const teamQ = params.get('team');
     if (teamQ) {
-      const tm = teams.find(t => String(t.country).toLowerCase() === teamQ.toLowerCase());
+      // Resolve through the same alias + key normalisation as the data, so a link
+      // shared with a nickname/old name (e.g. ?team=Impulse Rainmakers or ?team=ALPS)
+      // still finds the renamed entity.
+      const wantKey = teamKey(TEAM_ALIASES[teamKey(teamQ)] || teamQ);
+      const tm = teams.find(t => teamKey(t.country) === wantKey);
       if (tm) { currentTab = 'teams'; openTeamModal = tm.country; render(); document.body.style.overflow = 'hidden'; }
     }
     const natQ = params.get('nation');

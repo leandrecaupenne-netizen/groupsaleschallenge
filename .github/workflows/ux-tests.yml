@@ -15,6 +15,26 @@ permissions:
   pull-requests: write   # PR comments
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install ESLint
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save eslint@9 eslint-plugin-html@8 globals@15
+
+      # Lints the inline <script> in index.html, the service worker, and the test
+      # runners. Fails on errors (real bugs); style warnings are shown but don't block.
+      - name: ESLint
+        run: npx eslint .
+
   ux:
     runs-on: ubuntu-latest
     timeout-minutes: 12
