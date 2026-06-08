@@ -7523,7 +7523,7 @@ const TV_TOP = 5;       // default rows per TV ranking panel
 // TV/projection deck — exact order requested: Team, Golden, Playmaker,
 // Special Awards (Licence & Rookie), then Top Players. VAR & Clean Sheet are
 // intentionally excluded from the projection.
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'awards', 'spotlight', 'nations'];
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'awards', 'spotlight', 'var', 'nations'];
 
 // Limit a TV ranking to the top 5, or everything when the user expanded it.
 function tvLimit(list) { return tvExpanded ? list : list.slice(0, TV_TOP); }
