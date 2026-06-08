@@ -2888,6 +2888,11 @@ const fmtMoney = n => {
   return neg ? '−' + s : s;
 };
 const fmtPct = n => (n == null || !isFinite(n)) ? '—' : `${(n*100).toFixed(1)}%`;
+// An individual's gross margin is the margin on NEW BUSINESS only (renewals excluded) —
+// that's what the challenge ranks on. People with no New Business have no NB margin to
+// show, so this returns null → fmtPct renders '—'. Team/nation rankings deliberately keep
+// the Total-business GM (avg_gm / ps_total_gm) and must NOT be routed through this.
+const indivGm = p => ((p && (p.ps_nb || 0) > 0) ? (p.ps_nb_gm || 0) : null);
 const fmtNum = (n, d=1) => (n == null || !isFinite(n)) ? '—' : n.toFixed(d);
 
 const formatDate = iso => {
@@ -3016,7 +3021,9 @@ function normalizePeople() {
   people.forEach(p => {
     const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
     p.yellow_meetings = hasData && (p.meetings || 0) < 5;
-    p.yellow_gm = (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0;
+    // Low-margin card is judged on New Business GM (renewals excluded), and only for
+    // people who actually have New Business — no NB means no margin to fall short.
+    p.yellow_gm = (p.ps_nb_gm || 0) < 0.25 && (p.ps_nb || 0) > 0;
   });
 }
 
@@ -3885,7 +3892,7 @@ function renderTeamRanking() {
       (!psearch || p.name.toLowerCase().includes(psearch) || String(p.team).toLowerCase().includes(psearch)) &&
       (teamRegion === 'all' || regionOf(p.team) === teamRegion));
     const pArrow = k => sortArrow(playerSort.key === k, playerSort.dir);
-    const metricLabel = { ps_total: 'PS Total', ps_nb: 'PS New Business', ps_total_gm: 'GM', meetings: 'meetings/week', opps: 'opportunities' }[rankKey];
+    const metricLabel = { ps_total: 'PS Total', ps_nb: 'PS New Business', ps_nb_gm: 'New Business GM', meetings: 'meetings/week', opps: 'opportunities' }[rankKey];
     const PCAP = 100;
     const shown = displayP.slice(0, PCAP);
     return `
@@ -3907,7 +3914,7 @@ function renderTeamRanking() {
             <div class="th-psort" data-psort="name">PLAYER${pArrow('name')}</div>
             <div class="th-psort" data-psort="ps_total">PS TOTAL${pArrow('ps_total')}</div>
             <div class="th-psort col-nb" data-psort="ps_nb">PS NB${pArrow('ps_nb')}</div>
-            <div class="th-psort col-gm" data-psort="ps_total_gm">GM${pArrow('ps_total_gm')}</div>
+            <div class="th-psort col-gm" data-psort="ps_nb_gm" title="Gross margin on New Business (renewals excluded)">GM${pArrow('ps_nb_gm')}</div>
             <div class="th-psort col-meet" data-psort="meetings">MEET/WK${pArrow('meetings')}</div>
             <div class="th-psort col-opps" data-psort="opps">OPPS · CARDS${pArrow('opps')}</div>
           </div>
@@ -3915,7 +3922,7 @@ function renderTeamRanking() {
             const rank = rankMap.get(p.name);
             const cards = [];
             if (p.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · under 5 meetings/week (${fmtNum(p.meetings)})">🟨</span>`);
-            if (p.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(p.ps_total_gm)})">🟨</span>`);
+            if (p.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · New Business GM below 25% (${fmtPct(indivGm(p))})">🟨</span>`);
             return `
               <div class="members-table-row player-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
                 <div class="member-rank ${rank === 1 ? 'top' : ''}">#${rank}</div>
@@ -3928,7 +3935,7 @@ function renderTeamRanking() {
                 </div>
                 <div class="member-stat">${fmtMoney(p.ps_total)}</div>
                 <div class="member-stat col-nb">${fmtMoney(p.ps_nb)}</div>
-                <div class="member-stat col-gm">${fmtPct(p.ps_total_gm)}</div>
+                <div class="member-stat col-gm">${fmtPct(indivGm(p))}</div>
                 <div class="member-stat col-meet">${fmtNum(p.meetings)}</div>
                 <div class="col-opps">
                   <span class="member-stat">${Number(p.opps || 0).toFixed(0)} opps</span>
@@ -4016,7 +4023,7 @@ function renderTeamRanking() {
 function cardMarkers(person) {
   const c = [];
   if (person.yellow_meetings) c.push(`<span class="ms-mini-badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(person.meetings)})">🟨</span>`);
-  if (person.yellow_gm) c.push(`<span class="ms-mini-badge" title="Yellow Card · GM below 25% (${fmtPct(person.ps_total_gm)})">🟨</span>`);
+  if (person.yellow_gm) c.push(`<span class="ms-mini-badge" title="Yellow Card · New Business GM below 25% (${fmtPct(indivGm(person))})">🟨</span>`);
   return c.join('');
 }
 
@@ -4478,7 +4485,7 @@ function renderVAR() {
         ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`,
           filtersActive ? 'Nobody here for this filter. ✅' : "Everyone's hitting their meetings. ✅",
           { icon: '🟨', sub: 'Not following — under 5 meetings / week' })}
-        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(p.ps_total_gm)}`,
+        ${col(t('var.gm'), lowGm, p => `GM ${fmtPct(indivGm(p))}`,
           filtersActive ? 'Nobody here for this filter. ✅' : 'Margins are healthy. ✅',
           { icon: '🟨', sub: 'Not following — Gross Margin below 25%' })}
         ${col('🧤 Clean Sheet — Fair Play', cleanSorted, p => fmtMoney(p.ps_total),
@@ -4512,7 +4519,7 @@ function varBreakers() {
   return people.filter(p => p.yellow_meetings || p.yellow_gm).map(p => {
     const reasons = [];
     if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} meetings/wk (needs 5)`);
-    if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)} (needs 25%)`);
+    if (p.yellow_gm) reasons.push(`New Business GM ${fmtPct(indivGm(p))} (needs 25%)`);
     return { p, reasons, verdict: (verdicts[p.name] && verdicts[p.name].verdict) || 'pending' };
   }).sort((a, b) =>
     // Top performers first — a high-revenue rep breaking the rules is the most
@@ -4778,7 +4785,7 @@ function renderCoachDiveModal() {
       const cardRows = onCard.map((p, i) => {
         const reasons = [];
         if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} mtg/wk`);
-        if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)}`);
+        if (p.yellow_gm) reasons.push(`NB GM ${fmtPct(indivGm(p))}`);
         return row({
           rank: '🟨', name: p.name, sub: p.team, barPct: 0, color: colorForTeam(p.team),
           avatar: initials(p.name), photoName: p.name, valText: reasons.join(' · '), shareText: 'to coach',
@@ -4998,7 +5005,7 @@ function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flas
   const color = colorForTeam(person.team);
   const cards = [];
   if (person.yellow_meetings) cards.push({icon: '🟨', tip: `Yellow Card · less than 5 meetings/week (${fmtNum(person.meetings)})`});
-  if (person.yellow_gm) cards.push({icon: '🟨', tip: `Yellow Card · GM below 25% (${fmtPct(person.ps_total_gm)})`});
+  if (person.yellow_gm) cards.push({icon: '🟨', tip: `Yellow Card · New Business GM below 25% (${fmtPct(indivGm(person))})`});
   const flashCls = (rank === 1 && flashType && isFlashing(flashType)) ? ' flash-gold' : '';
 
   return `
@@ -5243,9 +5250,9 @@ function renderPositionDetails(person) {
     cards.push({type: 'ok', label: `✅ Meetings target met (${fmtNum(person.meetings)}/wk)`});
   }
   if (person.yellow_gm) {
-    cards.push({type: 'warn', label: `🟨 Yellow Card · GM below 25% (currently ${fmtPct(person.ps_total_gm)})`});
-  } else if (person.ps_total > 0) {
-    cards.push({type: 'ok', label: `✅ GM target met (${fmtPct(person.ps_total_gm)})`});
+    cards.push({type: 'warn', label: `🟨 Yellow Card · New Business GM below 25% (currently ${fmtPct(indivGm(person))})`});
+  } else if (person.ps_nb > 0) {
+    cards.push({type: 'ok', label: `✅ New Business GM on target (${fmtPct(indivGm(person))})`});
   }
 
   // Play the pack-opening reveal only when a NEW player is shown (not on every
@@ -5382,7 +5389,7 @@ function drawPlayerCard(person, logo, photo, mode) {
     ['⚽ GOLDEN BOOT', gRank ? '#' + gRank : '—', fmtMoney(person.ps_nb) + ' NB'],
     ['🌱 PLAYMAKER', pRank ? '#' + pRank : '—', Number(person.opps || 0).toFixed(0) + ' opps'],
     ['💰 PS TOTAL', fmtMoney(person.ps_total), tRank ? '#' + tRank + ' overall' : '—'],
-    ['📊 GROSS MARGIN', fmtPct(person.ps_total_gm), person.yellow_gm ? '🟨 below 25%' : '✅ on target'],
+    ['📊 GM · NEW BUSINESS', fmtPct(indivGm(person)), person.yellow_gm ? '🟨 below 25%' : (person.ps_nb > 0 ? '✅ on target' : '— no New Business')],
     ['🤝 MEETINGS / WK', fmtNum(person.meetings), person.yellow_meetings ? '🟨 under 5' : '✅ on target']
   ];
   let y = 558;
@@ -5700,7 +5707,7 @@ function renderVarReviewModal() {
   const cur = (getVerdicts()[p.name] && getVerdicts()[p.name].verdict) || 'pending';
   const reasons = [];
   if (p.yellow_meetings) reasons.push(`${fmtNum(p.meetings)} meetings/wk (needs 5)`);
-  if (p.yellow_gm) reasons.push(`GM ${fmtPct(p.ps_total_gm)} (needs 25%)`);
+  if (p.yellow_gm) reasons.push(`New Business GM ${fmtPct(indivGm(p))} (needs 25%)`);
   const btns = Object.keys(VERDICT_META).map(k =>
     `<button class="vt-verdict ${cur === k ? 'on ' + k : ''}" data-vrverdict="${k}">${VERDICT_META[k].icon} ${VERDICT_META[k].label}</button>`
   ).join('');
@@ -5744,9 +5751,12 @@ function paniniCardInner(p) {
   // where the hover title is useless).
   const meetOk = !p.yellow_meetings;
   const gmOk = !p.yellow_gm;
+  const gmLine = (p.ps_nb || 0) > 0
+    ? `<span class="pc-rule ${gmOk ? 'ok' : 'bad'}">${gmOk ? '✅' : '🟨'} New Business GM: ${fmtPct(indivGm(p))} ${gmOk ? '(target ≥ 25%)' : '(below 25% — yellow card)'}</span>`
+    : `<span class="pc-rule">▫️ New Business GM: — (no New Business yet)</span>`;
   const explainLines = [
     `<span class="pc-rule ${meetOk ? 'ok' : 'bad'}">${meetOk ? '✅' : '🟨'} Meetings: ${fmtNum(p.meetings)}/week ${meetOk ? '(target 5+)' : '(below 5 — yellow card)'}</span>`,
-    `<span class="pc-rule ${gmOk ? 'ok' : 'bad'}">${gmOk ? '✅' : '🟨'} Gross Margin: ${fmtPct(p.ps_total_gm)} ${gmOk ? '(target ≥ 25%)' : '(below 25% — yellow card)'}</span>`
+    gmLine
   ].join('');
   const explainHint = cards.length
     ? 'Two yellows make a red. Here\'s why:'
@@ -5784,7 +5794,7 @@ function paniniCardInner(p) {
       ${disciplineBadge}
       <div class="pc-rating-row">
         <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
-        <div class="pc-rating"><b>${fmtPct(p.ps_total_gm)}</b><span>GM</span></div>
+        <div class="pc-rating"><b>${fmtPct(indivGm(p))}</b><span>NB GM</span></div>
         <div class="pc-rating"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
       </div>
     </div>
@@ -5895,7 +5905,7 @@ function renderTeamModal() {
             ${members.map((m, idx) => {
               const cards = [];
               if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
-              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(m.ps_total_gm)})">🟨</span>`);
+              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · New Business GM below 25% (${fmtPct(indivGm(m))})">🟨</span>`);
               const tenureLabel = m.is_rookie ? '🎓 Rookie' : (m.tenure || '');
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
@@ -5909,7 +5919,7 @@ function renderTeamModal() {
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
                   <div class="member-stat col-nb">${fmtMoney(m.ps_nb)}</div>
-                  <div class="member-stat col-gm">${fmtPct(m.ps_total_gm)}</div>
+                  <div class="member-stat col-gm">${fmtPct(indivGm(m))}</div>
                   <div class="member-stat col-meet">${fmtNum(m.meetings)}</div>
                   <div class="col-opps">
                     <span class="member-stat">${Number(m.opps||0).toFixed(0)} opps</span>
@@ -6011,7 +6021,7 @@ function renderNationModal() {
             ${topPeople.map((m, i) => {
               const cards = [];
               if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
-              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · GM below 25% (${fmtPct(m.ps_total_gm)})">🟨</span>`);
+              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · New Business GM below 25% (${fmtPct(indivGm(m))})">🟨</span>`);
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-nation="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>
@@ -6024,7 +6034,7 @@ function renderNationModal() {
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
                   <div class="member-stat col-nb">${fmtMoney(m.ps_nb)}</div>
-                  <div class="member-stat col-gm">${fmtPct(m.ps_total_gm)}</div>
+                  <div class="member-stat col-gm">${fmtPct(indivGm(m))}</div>
                   <div class="member-stat col-meet">${fmtNum(m.meetings)}</div>
                   <div class="col-opps">
                     <span class="member-stat">${Number(m.opps || 0).toFixed(0)} opps</span>
@@ -7413,7 +7423,7 @@ function openCompare() {
         ['Playmaker rank', `#${pr(aV)}`, `#${pr(bV)}`, lower(pr(aV), pr(bV))],
         ['Opps created', Number(A.opps || 0).toFixed(0), Number(B.opps || 0).toFixed(0), better(A.opps, B.opps)],
         ['PS Total', fmtMoney(A.ps_total), fmtMoney(B.ps_total), better(A.ps_total, B.ps_total)],
-        ['GM total', fmtPct(A.ps_total_gm), fmtPct(B.ps_total_gm), better(A.ps_total_gm, B.ps_total_gm)],
+        ['GM (New Business)', fmtPct(indivGm(A)), fmtPct(indivGm(B)), better(indivGm(A) || 0, indivGm(B) || 0)],
         ['Meetings / wk', fmtNum(A.meetings), fmtNum(B.meetings), better(A.meetings, B.meetings)]
       ];
     }
@@ -7707,7 +7717,7 @@ function tvPanelHTML(kind) {
       // Show the value AND the target it's missing, like the admin VAR review.
       const bits = [];
       if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk <em>(needs 5)</em>`);
-      if (p.yellow_gm) bits.push(`GM ${fmtPct(p.ps_total_gm)} <em>(needs 25%)</em>`);
+      if (p.yellow_gm) bits.push(`NB GM ${fmtPct(indivGm(p))} <em>(needs 25%)</em>`);
       const av = `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}<span class="tv-avatar-card">🟨</span></span>`;
       return `<div class="tv-row tv-clickable" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">${av}<span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
     }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;

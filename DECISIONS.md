@@ -85,6 +85,30 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite) — GM individuel = New Business uniquement (renouvellements exclus)
+**Problème signalé** (Léandre) : Charles VALET affichait **4% de GM** sur la plateforme alors
+qu'il n'apparaît pas au Player Ranking — ce 4% vient de **renouvellements** (Total business),
+or le challenge ne classe que sur le **New Business**. Données live confirmées : `ps_total_gm`
+= 4% mais `ps_nb` = 0 → `ps_nb_gm` = 0.
+
+**Décision (validée avec Léandre)** :
+- Le **GM d'un individu = GM New Business** (`ps_nb_gm`) partout : Player Ranking (affichage
+  **et** tri de la colonne GM), cartes joueur, fiches, listes membres (modals équipe/nation),
+  My Position, comparateur, verdicts/ticker VAR.
+- **Yellow Card « low GM »** désormais jugée sur le **GM NB < 25%**, et **seulement** pour ceux
+  qui ont du New Business (`ps_nb > 0`). Sans ce garde-fou, les 306 personnes sans NB seraient
+  toutes cardées (0%). Impact réel : ~12 cartes GM (sur GM Total) → **~10** (sur GM NB).
+- **Sans New Business → « — »** (pas de marge à calculer), jamais de carte GM.
+- **Classements équipe / pays / agrégats restent sur le GM Total** (inchangé) : `avg_gm` des
+  équipes, agrégat Nations, et les KPI/dives **Coach Room** (admin) « Avg Gross Margin weighted
+  by PS » conservent le Total business.
+
+**Implémentation** (`index.html`) : helper `indivGm(p)` = `ps_nb>0 ? ps_nb_gm : null`
+(`fmtPct(null)` → « — »), règle `yellow_gm` recalculée sur NB, et bascule de tous les
+affichages GM individuels. Tests mockés mis à jour (un joueur sans NB + un cas GM-NB bas) :
+`ux-smoke` et `ux-e2e` **au vert, 0 erreur JS** (la carte « 🟨🟨 » confirme le déclenchement
+sur GM NB).
+
 ### 2026-06-08 — Système d'historique (snapshots hebdo) + rename d'équipe
 **Objectif** : pouvoir montrer l'**évolution semaine après semaine** des classements. Or Jose
 ne synchronise la Sheet qu'une fois par semaine (le lundi) et OneBI n'a **pas d'historique** —
