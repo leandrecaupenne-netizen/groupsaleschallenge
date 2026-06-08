@@ -3409,6 +3409,40 @@ window.addEventListener('hashchange', () => {
   }
 });
 
+// === Open-in-new-tab support ===
+// The clickable cards/rows/tabs are <div>/<button>, so the browser can't natively
+// offer "open in new tab". We give each a shareable deep-link URL and open it in a
+// new tab on Ctrl/⌘-click or middle-click (the gestures people use for this). The
+// matching ?player=/?team=/?nation= params are read on load (see init) so the new
+// tab lands straight on that card/squad; tabs use the existing #hash.
+function deepLinkFor(el) {
+  const base = location.origin + location.pathname;
+  if (el.dataset.player) return base + '?player=' + encodeURIComponent(el.dataset.player);
+  if (el.dataset.team)   return base + '?team='   + encodeURIComponent(el.dataset.team);
+  if (el.dataset.nteam)  return base + '?team='   + encodeURIComponent(el.dataset.nteam);
+  if (el.dataset.nation) return base + '?nation=' + encodeURIComponent(el.dataset.nation);
+  if (el.classList.contains('tab-btn') && el.dataset.tab) return base + '#' + el.dataset.tab;
+  return null;
+}
+let newTabGesturesBound = false;
+function bindNewTabGestures() {
+  if (newTabGesturesBound) return;
+  newTabGesturesBound = true;
+  const SEL = '[data-player],[data-team],[data-nteam],[data-nation],.tab-btn[data-tab]';
+  const openNew = el => { const href = deepLinkFor(el); if (href) window.open(href, '_blank', 'noopener'); };
+  // Capture phase so we run before the element's own in-place handler and can skip it.
+  document.addEventListener('click', e => {
+    if (!(e.ctrlKey || e.metaKey)) return; // plain click stays in-app
+    const el = e.target.closest(SEL); if (!el) return;
+    e.preventDefault(); e.stopImmediatePropagation(); openNew(el);
+  }, true);
+  document.addEventListener('auxclick', e => {
+    if (e.button !== 1) return; // middle button only
+    const el = e.target.closest(SEL); if (!el) return;
+    e.preventDefault(); e.stopImmediatePropagation(); openNew(el);
+  }, true);
+}
+
 // Transient celebratory toast (auto-dismisses).
 function showToast(msg) {
   const root = document.getElementById('toast-root');
@@ -8166,15 +8200,29 @@ async function init() {
     if (!tvMode && new URLSearchParams(location.search).get('tv') === '1') enterTV();
   } catch (e) {}
 
-  // Shareable player link: ?player=Name opens that player's card on load.
+  // Shareable deep links opened in a new tab (Ctrl/⌘-click or middle-click):
+  // ?player=Name opens that card, ?team=Country / ?nation=Region open that squad.
   try {
-    const who = new URLSearchParams(location.search).get('player');
+    const params = new URLSearchParams(location.search);
+    const who = params.get('player');
     if (who) {
       const match = people.find(p => p.name.toLowerCase() === who.toLowerCase())
         || people.find(p => p.name.toLowerCase().includes(who.toLowerCase()));
       if (match) { openPlayerModal = match.name; render(); document.body.style.overflow = 'hidden'; }
     }
+    const teamQ = params.get('team');
+    if (teamQ) {
+      const tm = teams.find(t => String(t.country).toLowerCase() === teamQ.toLowerCase());
+      if (tm) { currentTab = 'teams'; openTeamModal = tm.country; render(); document.body.style.overflow = 'hidden'; }
+    }
+    const natQ = params.get('nation');
+    if (natQ) {
+      const nat = nationsRanking().find(n => String(n.region).toLowerCase() === natQ.toLowerCase());
+      if (nat) { currentTab = 'teams'; openNationModal = nat.region; render(); document.body.style.overflow = 'hidden'; }
+    }
   } catch (e) {}
+
+  bindNewTabGestures(); // Ctrl/⌘-click & middle-click → open the card/squad/tab in a new tab
 }
 
 // Read the admin activation param before anything else renders.
