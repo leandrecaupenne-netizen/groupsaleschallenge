@@ -25,7 +25,7 @@ function mockData() {
   const teams = [['DENMARK',4],['FR - M CLOUD',5],['ES ENTERPRISE',4],['BELGIUM',3],['PORTUGAL 2',4],['UK',3]]
     .map(([country, members], i) => ({ country, members, total_ps: 9e6 - i*1e6, avg_ps: 2.2e6 - i*2e5, avg_gm: 0.27 - i*0.01, avg_meetings: 6 - i*0.4, avg_opps: 7 - i }));
   const people = [['Claus Thorsager','DENMARK'],['Thomas Vinther','DENMARK'],['Mael Gaudichon','FR - M CLOUD'],['Juan Carlos Nieto','ES ENTERPRISE'],['Leen Verelst','BELGIUM'],['Rui Passinhas','PORTUGAL 2'],['Amelia Giallella','FR - M CLOUD'],['Sara Garcia','ES ENTERPRISE'],['Sean Foster','UK'],['Ines Mejri','FR - M CLOUD'],['Quentin Bernard','FR - M CLOUD'],['Vincent Chevalier','FR - M CLOUD']]
-    .map((n, i) => ({ name: n[0], team: n[1], tenure: i % 3 === 0 ? '<6 months' : 'Over a year', ps_total: 5e6 - i*3e5, ps_total_gm: i % 5 === 0 ? 0.18 : 0.30, ps_nb: 4e6 - i*3e5, ps_nb_gm: 0.28, licence_gm: i < 5 ? 5e5 - i*5e4 : 0, meetings: i % 4 === 0 ? 3 : 6, opps: 15 - i }));
+    .map((n, i) => ({ name: n[0], team: n[1], tenure: i % 3 === 0 ? '<6 months' : 'Over a year', ps_total: 5e6 - i*3e5, ps_total_gm: i % 5 === 0 ? 0.18 : 0.30, ps_nb: i === 8 ? 0 : 4e6 - i*3e5, ps_nb_gm: i % 5 === 0 ? 0.18 : 0.28, licence_gm: i < 5 ? 5e5 - i*5e4 : 0, meetings: i % 4 === 0 ? 3 : 6, opps: 15 - i }));
   return { teams, people, updated_at: new Date().toISOString(), period: 'Week 1 of 5', challenge_dates: { start: '2026-06-01', end: '2026-07-03' }, special_awards: {}, warnings: [] };
 }
 
