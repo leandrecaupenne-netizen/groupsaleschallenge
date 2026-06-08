@@ -1537,6 +1537,26 @@ input { font-family: inherit; }
 }
 .sync-warn.show { display: inline-flex; }
 
+/* Transient confirmation after a manual (admin) refresh — gives feedback even when
+   the data is unchanged (the "Last updated" stamp tracks the sheet's edit time, not
+   the click). */
+.refresh-flash {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: rgba(22,163,74,0.20);
+  color: #86EFAC;
+  border: 1px solid rgba(22,163,74,0.45);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.refresh-flash.warn { background: rgba(220,38,38,0.18); color: #FCA5A5; border-color: rgba(220,38,38,0.4); }
+.refresh-flash.show { display: inline-flex; }
+
 /* === LIVE: login screen === */
 .login-screen {
   min-height: 100vh;
@@ -2626,6 +2646,7 @@ img, table { max-width: 100%; }
       <span class="last-update" id="last-update">Loading...</span>
     </div>
     <span class="sync-warn" id="sync-warn" role="status" aria-live="polite" title="Last sync failed — showing last known data, retrying...">⚠ Sync failed</span>
+    <span class="refresh-flash" id="refresh-flash" role="status" aria-live="polite"></span>
     <button id="digest-btn" class="refresh-btn tv-btn" title="This week's recap" aria-label="This week's recap" style="display:none">📰<span class="digest-dot" id="digest-dot"></span></button>
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
     <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
@@ -3403,6 +3424,19 @@ function fireConfetti(anchor) {
 function setSyncWarning(show) {
   const warn = document.getElementById('sync-warn');
   if (warn) warn.classList.toggle('show', !!show);
+}
+
+// Brief confirmation pill after a manual refresh, so the click always gives feedback
+// (the "Last updated" stamp only moves when the sheet itself was edited).
+let _refreshFlashTimer = null;
+function flashRefresh(text, warn) {
+  const el = document.getElementById('refresh-flash');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('warn', !!warn);
+  el.classList.add('show');
+  if (_refreshFlashTimer) clearTimeout(_refreshFlashTimer);
+  _refreshFlashTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
 // === Animate numbers that change between refreshes ===
@@ -7489,7 +7523,7 @@ const TV_TOP = 5;       // default rows per TV ranking panel
 // TV/projection deck — exact order requested: Team, Golden, Playmaker,
 // Special Awards (Licence & Rookie), then Top Players. VAR & Clean Sheet are
 // intentionally excluded from the projection.
-const TV_PANELS = ['podium', 'golden', 'playmaker', 'awards', 'spotlight'];
+const TV_PANELS = ['podium', 'golden', 'playmaker', 'awards', 'spotlight', 'nations'];
 
 // Limit a TV ranking to the top 5, or everything when the user expanded it.
 function tvLimit(list) { return tvExpanded ? list : list.slice(0, TV_TOP); }
@@ -7563,7 +7597,7 @@ function tvMatchSheet(items, opts) {
   if (!items.length) return tvSection(opts.title, opts.sub, `<div class="tv-row"><span class="tv-name">No data yet.</span></div>`);
   const top = items[0];
   const initials = String(top.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const flag = flagForTeam(top.team || top.name);
+  const flag = flagForTeam(top.flagKey || top.team || top.name);
   const c = colorForTeam(top.team || top.name);
   // Clickable panels open a card over the projection: people panels open the
   // player's Panini card (`player`), the podium opens the team modal (`team`).
@@ -7674,6 +7708,16 @@ function tvPanelHTML(kind) {
         <div class="tv-awcol"><div class="tv-awh">📜 Licence</div><div class="tv-list">${lic}</div></div>
         <div class="tv-awcol"><div class="tv-awh">🎓 Rookie of the Year</div><div class="tv-list">${rook}</div></div>
       </div>${tvMoreBtn(Math.max(sortedLicence.length, sortedRookies.length))}`;
+  }
+  if (kind === 'nations') {
+    // Nations podium: teams aggregated by country (avg PS per person), same ranking
+    // as the in-app Nations view. flagKey carries the region so the hero shows the
+    // same cross-platform flag the country chips use.
+    const nats = nationsRanking(); // already sorted by avg PS per person, desc
+    const items = tvLimit(nats).map(n => ({
+      name: regionParts(n.region).name, team: '', flagKey: n.region, val: fmtMoney(n.avg_ps)
+    }));
+    return tvMatchSheet(items, { title: '🌍 NATIONS — TOP COUNTRIES', sub: 'Average PS Bookings per person · all teams combined', badge: '🌍 TOP NATION', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON' }) + tvMoreBtn(nats.length);
   }
   const spots = buildSpotlights();
   if (!spots.length) return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", `<div class="tv-row"><span class="tv-name">No standouts yet.</span></div>`);
@@ -7936,11 +7980,16 @@ async function manualRefresh() {
   const btn = document.getElementById('refresh-btn');
   if (btn) btn.classList.add('spinning');
   const scrollY = window.scrollY;
-  await fetchData(true); // force a fresh read, bypass server cache
+  const before = updated_at;
+  const ok = await fetchData(true); // force a fresh read, bypass server cache
   suppressAnim = true;
   try { render(); } finally { suppressAnim = false; }
   window.scrollTo(0, scrollY);
   if (tvMode) renderTV();
+  // Always confirm the click did something — even when the sheet hasn't changed
+  // (so "Last updated" legitimately stays put) the admin gets explicit feedback.
+  if (ok) flashRefresh(updated_at && updated_at !== before ? '✓ Updated' : '✓ Up to date');
+  else flashRefresh('⚠ Refresh failed', true);
   if (btn) setTimeout(() => btn.classList.remove('spinning'), 600);
 }
 
