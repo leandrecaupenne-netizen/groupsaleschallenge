@@ -85,6 +85,27 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 2) — Ouvrir cartes / équipes / onglets dans un nouvel onglet
+**Demande** (Léandre) : sur navigateur web, pouvoir ouvrir des cartes (joueur), des équipes
+et des « pages » (onglets) dans un **nouvel onglet**.
+
+**Problème** : les cartes/lignes/onglets sont des `<div>`/`<button>` ouverts en JS (modal),
+pas des `<a href>` → le navigateur ne propose pas nativement « ouvrir dans un nouvel onglet ».
+
+**Décision / implémentation** (`index.html`) :
+- **Deep-links partageables** lus au chargement : `?player=Nom` (existait déjà), **ajout de
+  `?team=Pays` et `?nation=Région`** ; les onglets via `#id` (existait déjà). Une nouvelle
+  fenêtre/onglet atterrit directement sur la bonne carte/équipe/nation.
+- **Gestes natifs** via un handler délégué en phase capture (`deepLinkFor` + `bindNewTabGestures`)
+  : **Ctrl/⌘-clic** et **clic-molette** sur une carte joueur, une équipe, une nation ou un
+  onglet → ouverture dans un **nouvel onglet** (sans ouvrir le modal dans l'onglet courant).
+  Le clic gauche normal reste inchangé (modal in-app).
+- **Limite assumée** : le menu clic-droit « Ouvrir dans un nouvel onglet » du navigateur n'est
+  pas proposé (il faudrait convertir tous les conteneurs en vrais `<a>`, risque de régression
+  layout sur ~20 templates en prod). Ctrl/⌘-clic + clic-molette couvrent les gestes usuels.
+- Tests : `ux-e2e` étendu (deep-links `?player`/`?team`/`?nation` + Ctrl-clic ouvre un onglet
+  popup et n'ouvre pas le modal courant). `ux-smoke` + `ux-e2e` **au vert, 0 erreur JS**.
+
 ### 2026-06-08 (suite) — GM individuel = New Business uniquement (renouvellements exclus)
 **Problème signalé** (Léandre) : Charles VALET affichait **4% de GM** sur la plateforme alors
 qu'il n'apparaît pas au Player Ranking — ce 4% vient de **renouvellements** (Total business),

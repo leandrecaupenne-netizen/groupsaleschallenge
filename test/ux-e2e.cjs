@@ -142,6 +142,41 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- OPEN IN NEW TAB / shareable deep links ----------
+  {
+    // Deep links land straight on the right card/squad on a cold load.
+    const dl = async (qs, sel, name) => {
+      const { ctx, page } = await newPage();
+      await bootstrap(page, `${BASE}${qs}`);
+      await page.waitForTimeout(300);
+      log(name, await page.has(sel));
+      await ctx.close();
+    };
+    await dl('?player=Claus', '#player-overlay', 'Deep link ?player= opens the card on load');
+    await dl('?team=DENMARK', '#modal-overlay', 'Deep link ?team= opens the squad on load');
+    await dl('?nation=DENMARK', '#nation-overlay', 'Deep link ?nation= opens the nation on load');
+
+    // Ctrl-click a player row opens a NEW TAB (popup) on the ?player= deep link,
+    // and does NOT open the in-place modal in the current tab.
+    {
+      const { ctx, page } = await newPage();
+      await bootstrap(page, BASE);
+      await tab(page, 'teams');
+      if (await page.has('[data-view="players"]')) { await page.tap('[data-view="players"]'); await page.waitForTimeout(200); }
+      if (await page.has('.player-row[data-player]')) {
+        const [popup] = await Promise.all([
+          ctx.waitForEvent('page', { timeout: 4000 }).catch(() => null),
+          page.click('.player-row[data-player]', { modifiers: ['Control'] }),
+        ]);
+        const url = popup ? popup.url() : '';
+        log('Ctrl-click opens a new tab on the player deep link', /\?player=/.test(url), url.split('/').pop());
+        log('Ctrl-click does NOT open the modal in the current tab', !(await page.has('#player-overlay')));
+        if (popup) await popup.close();
+      }
+      await ctx.close();
+    }
+  }
+
   // ---------- MOBILE (375px touch): per-tab + modal overflow guard ----------
   {
     const { ctx, page } = await newPage({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
