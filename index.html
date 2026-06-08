@@ -1153,6 +1153,14 @@ input { font-family: inherit; }
 .pc-honour-hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 8px; letter-spacing: 0.02em; }
 /* Once a badge is open, the explanation is showing — the hint is redundant. */
 .pc-honours:has(.pc-honour.on) ~ .pc-honour-hint { display: none; }
+/* In My Position these sit on the green pitch, not the cream card, so the default
+   grey text is near-invisible (light mode). Light them up for the grass backdrop. */
+.position-result .pc-honour-hint { color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.position-result .pc-honour-pop {
+  color: #fff;
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.30);
+}
 
 /* "Photo finish" tight-race strip above a leaderboard. */
 .race-strip {
