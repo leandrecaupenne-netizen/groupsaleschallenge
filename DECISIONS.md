@@ -75,10 +75,50 @@
 - **Onglets** : Team Ranking · Players of the Moment · Golden Boot · Playmaker · **Rookie Cup** ·
   **Licence** · Special Awards · VAR Room · My Position (+ admin : VAR TIME, Coach Room).
 - **Mode TV** (`?tv=1` / 📺) : deck de panneaux projetables, ne se met plus en pause idle.
+- **Historique** : `history/<date>.json` = snapshots hebdo figés (OneBI n'a pas d'historique).
+  Baseline `2026-06-08.json` ; capture auto chaque lundi via GitHub Action (`snapshot.yml`).
+  UI d'évolution à construire après le 2ᵉ point (lundi suivant).
+- **Renames d'équipe** (`TEAM_ALIASES`, index.html) : `ALPS → Switzerland`,
+  `FR - Digital Impulse → Impulse RainMakers`.
 
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-08 — Système d'historique (snapshots hebdo) + rename d'équipe
+**Objectif** : pouvoir montrer l'**évolution semaine après semaine** des classements. Or Jose
+ne synchronise la Sheet qu'une fois par semaine (le lundi) et OneBI n'a **pas d'historique** —
+il faut donc **figer nous-mêmes** un instantané chaque semaine.
+
+- **Baseline Semaine 1** capturée **avant** la 1ʳᵉ synchro → `history/2026-06-08.json`
+  (données live trimées aux champs utiles ; les rangs sont recalculés à la lecture, pas stockés).
+  PR #16, mergée.
+- **Capture automatisée** via **GitHub Action** (mécanisme retenu : zéro infra en plus, pas de
+  changement Apps Script/Vercel). PR #17, mergée :
+  - `.github/workflows/snapshot.yml` — cron **chaque lundi 06:00 UTC** + bouton manuel
+    *Run workflow*. Fetch l'API live, écrit `history/<date>.json`, commit avec `[skip ci]`
+    (n'enclenche pas la suite UX). POST sans `-X` pour gérer le 302 Apps Script (comme
+    `test/run-live.sh`).
+  - `scripts/snapshot.py` — trim du payload + **garde-fou** : sort en erreur (exit≠0) si le
+    payload est `unauthorized`/vide → le job échoue franchement plutôt que de committer un
+    snapshot cassé. Réutilisable en local : `python3 scripts/snapshot.py <live.json> [out_dir]`.
+- **Run de test manuel** déclenché le 08-06 → **vert sur les 5 étapes** (auth, fetch, trim,
+  commit). Pas de doublon créé (contenu identique à la baseline du jour → « nothing to commit »,
+  comportement voulu).
+- **Rename d'équipe** : **`FR - Digital Impulse` → `Impulse RainMakers`**. Ajouté dans
+  `TEAM_ALIASES` (index.html, même mécanisme que `ALPS → Switzerland`) ; s'applique partout
+  (chip de filtre, nom d'équipe, labels joueurs). Données live confirmées : 9 personnes,
+  clé normalisée `FR - DIGITAL IMPULSE`.
+
+**Pré-requis humains réglés cette session** (sinon l'auto ne tournait pas) :
+- Secret repo **`APP_PASSWORD` = `devoteam2026`** ajouté (Settings → Secrets and variables → Actions).
+- **Branche par défaut GitHub passée de `claude/affectionate-hamilton-4Gqpx` à `main`** :
+  les workflows `schedule` + `workflow_dispatch` ne se déclenchent QUE depuis la branche par
+  défaut — sans ça le cron n'aurait jamais tourné. Aligne aussi GitHub sur Vercel (prod = main).
+
+**TODO UI (après lundi, au 2ᵉ point de données)** : afficher les évolutions — ▲/▼ de rang
+vs semaine précédente (équipes & joueurs), « plus gros grimpeurs de la semaine », et plus tard
+mini-courbes. Lecture des fichiers `history/*.json` côté front (read-only).
 
 ### 2026-06-07 (suite) — Test grandeur nature : charge live + UX + Workspace confirmé
 Repasse UX **en live** (Chromium headless contre le backend déployé, screenshots dans

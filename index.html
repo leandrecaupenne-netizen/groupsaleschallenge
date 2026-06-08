@@ -2947,7 +2947,10 @@ function nicknameOverride(country) {
 // Display renames for whole entities. "ALPS" is the Devoteam Alps entity — shown
 // as Switzerland everywhere (filter chip, team name, player team labels). Note: it
 // stays ONE team — the Sheet has no per-country breakdown to decompose it further.
-const TEAM_ALIASES = { 'ALPS': 'Switzerland' };
+const TEAM_ALIASES = {
+  'ALPS': 'Switzerland',
+  'FR - DIGITAL IMPULSE': 'Impulse RainMakers', // team renamed after the Sheet was set up
+};
 function applyTeamAliases() {
   teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });
   people.forEach(p => { const a = TEAM_ALIASES[teamKey(p.team)]; if (a) p.team = a; });
