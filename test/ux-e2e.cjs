@@ -168,10 +168,17 @@ function mockData() {
           ctx.waitForEvent('page', { timeout: 4000 }).catch(() => null),
           page.click('.player-row[data-player]', { modifiers: ['Control'] }),
         ]);
+        // Real <a> ctrl-click navigates natively, so the popup URL commits a tick later.
+        if (popup) { await popup.waitForURL(/\?player=/, { timeout: 4000 }).catch(() => {}); }
         const url = popup ? popup.url() : '';
         log('Ctrl-click opens a new tab on the player deep link', /\?player=/.test(url), url.split('/').pop());
         log('Ctrl-click does NOT open the modal in the current tab', !(await page.has('#player-overlay')));
         if (popup) await popup.close();
+        // The right-click "Open in new tab" menu only appears on real <a href> links.
+        const rowIsLink = await page.$eval('.player-row[data-player]', el => el.tagName === 'A' && /\?player=/.test(el.getAttribute('href') || ''));
+        log('Player rows are real <a> links (enables right-click → open in new tab)', rowIsLink);
+        const tabIsLink = await page.$eval('.tab-btn[data-tab]', el => el.tagName === 'A' && (el.getAttribute('href') || '').includes('#'));
+        log('Tabs are real <a> links (enables right-click → open in new tab)', tabIsLink);
       }
       await ctx.close();
     }
