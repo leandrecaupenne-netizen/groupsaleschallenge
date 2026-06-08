@@ -2622,11 +2622,6 @@ img, table { max-width: 100%; }
   .contrib-avatar { width: 38px; height: 38px; font-size: 13px; }
 }
 </style>
-<!-- Vercel Web Analytics -->
-<script type="module">
-  import { inject } from 'https://cdn.jsdelivr.net/npm/@vercel/analytics@2/+esm';
-  inject();
-</script>
 </head>
 <body>
 
