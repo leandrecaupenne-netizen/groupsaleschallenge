@@ -85,6 +85,16 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 4) — Impulse RainMakers : surnom + vrai nom (au lieu du doublon)
+**Signalé** (Léandre) : la carte podium affichait « Impulse RainMakers » **deux fois**. Cause :
+un **alias** `TEAM_ALIASES['FR - DIGITAL IMPULSE'] → 'Impulse RainMakers'` **renommait l'entité**
+(écrasant le vrai nom), si bien que surnom = nom = « Impulse RainMakers ».
+**Fix** : on **retire l'alias** (l'entité garde son vrai nom **FR - Digital Impulse**) et on ajoute
+`'FR - Digital Impulse' → 'Impulse RainMakers'` dans `NICKNAME_OVERRIDES` (comme Sweden/Norway/
+Denmark). Résultat : **surnom « Impulse RainMakers » en grand + vrai nom « FR - Digital Impulse »
+en petit**, comme les autres équipes. Garde-fou défensif ajouté dans `teamNameHTML` /
+`playerTeamHTML` : si surnom == nom, on n'imprime qu'une ligne (anti-doublon). `ux` au vert.
+
 ### 2026-06-08 (suite 3) — Clic-droit « Ouvrir dans un nouvel onglet » (vrais liens `<a>`)
 **Demande** (Léandre) : sur le Web, le menu **clic-droit du navigateur** ne proposait pas
 « Ouvrir dans un nouvel onglet » (la limite assumée de la suite 2). Ce menu n'apparaît que
