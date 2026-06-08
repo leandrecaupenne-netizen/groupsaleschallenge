@@ -8310,6 +8310,15 @@ function isIOSDevice() {
   return /iPhone|iPad|iPod/.test(ua) ||
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS poses as Mac
 }
+// In-app browsers (links opened inside Teams, LinkedIn, WhatsApp, Instagram, Gmail…)
+// run a stripped WebView with NO "Install app / Add to Home screen" entry — the user
+// must reopen the page in a real browser first. Detect them so we say that, instead
+// of telling them to look for a menu item that isn't there.
+function isInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  return /FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Line\/|MicroMessenger|Twitter|WhatsApp|Snapchat|Pinterest|TikTok|musical_ly|GSA\/|Teams\//i.test(ua)
+      || /; wv[)]/i.test(ua); // generic Android WebView token
+}
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();        // suppress Chrome's default mini-infobar…
@@ -8489,11 +8498,23 @@ function onInstallClick() {
     }).catch(() => {});
     return;
   }
-  // No captured prompt: guide the user through the browser's own install entry.
-  if (isIOSDevice()) {
-    showToast("To install: tap Share ↑ then “Add to Home Screen”.");
+  // No captured prompt: guide the user through THIS browser's own install entry —
+  // the wording differs a lot between browsers, and some in-app browsers can't do it.
+  const ua = navigator.userAgent || '';
+  if (isInAppBrowser()) {
+    showToast("This in-app browser can't install apps. Open this page in Chrome first (menu ⋮ → “Open in browser / Chrome”), then tap Install.");
+  } else if (isIOSDevice()) {
+    if (/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)) {
+      showToast("On iPhone, only Safari can install apps. Open this page in Safari, then tap Share ↑ → “Add to Home Screen”.");
+    } else {
+      showToast("To install: tap Share ↑ then “Add to Home Screen”.");
+    }
+  } else if (/SamsungBrowser/i.test(ua)) {
+    showToast("To install on Samsung Internet: open the menu (☰) → “Add page to” → “Home screen”.");
+  } else if (/Firefox/i.test(ua)) {
+    showToast("To install on Firefox: open the menu (⋮) → “Install” (or “Add to Home screen”).");
   } else {
-    showToast("To install: open the browser menu (⋮) and tap “Install app” / “Add to Home screen”.");
+    showToast("To install: open the browser menu (⋮) → “Install app” / “Add to Home screen”. If it isn't there, open the page in Chrome and try again.");
   }
 }
 

@@ -85,6 +85,21 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 5) — Install PWA : instructions par navigateur + détection in-app
+**Signalé** (Léandre) : l'install marche sur **Chrome** mais pas sur « le navigateur Android » —
+en tapant 📲 Install, le message dit « menu ⋮ → Install app / Add to Home screen » mais
+l'option n'apparaît pas.
+**Analyse** : manifest + service worker remplissent bien les critères PWA (icônes 192/512 +
+maskable, handler `fetch`, HTTPS) → c'est **côté navigateur**. Causes probables : (a) un
+**navigateur in-app** (lien ouvert dans Teams/LinkedIn/WhatsApp/Gmail… = WebView **sans** option
+d'install), (b) **Samsung Internet** où l'option existe mais s'appelle « Ajouter la page à →
+Écran d'accueil », (c) Firefox (« Installer »), (d) iOS hors Safari.
+**Fix** (`index.html`, `onInstallClick`) : helper `isInAppBrowser()` + message **adapté au
+navigateur** quand aucun prompt natif n'est capturé : in-app → « ouvre d'abord dans Chrome » ;
+Samsung → chemin exact ; Firefox → « Installer » ; iOS non-Safari → « ouvre dans Safari » ;
+défaut → menu ⋮ + repli « sinon ouvre dans Chrome ». Pas de blocage d'installabilité côté code
+(rien à corriger sur le manifest/SW). `ux-smoke` au vert, 0 erreur JS.
+
 ### 2026-06-08 (suite 4) — Impulse RainMakers : surnom + vrai nom (au lieu du doublon)
 **Signalé** (Léandre) : la carte podium affichait « Impulse RainMakers » **deux fois**. Cause :
 un **alias** `TEAM_ALIASES['FR - DIGITAL IMPULSE'] → 'Impulse RainMakers'` **renommait l'entité**
