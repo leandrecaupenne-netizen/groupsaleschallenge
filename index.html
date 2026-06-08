@@ -2022,6 +2022,9 @@ img, table { max-width: 100%; }
   box-shadow: inset 0 0 0 2px rgba(255,255,255,0.3);
 }
 .tv-avatar-card { position: absolute; bottom: -3px; right: -4px; font-size: clamp(14px, 2vmin, 26px); line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+/* Yellow-card markers next to a player's name on the TV panels (hero + rows). */
+.tv-hero-name .ms-mini-badge { font-size: 0.6em; margin-left: 10px; vertical-align: 0.12em; }
+.tv-ms-name .ms-mini-badge, .tv-name .ms-mini-badge { font-size: 0.92em; margin-left: 6px; vertical-align: -0.05em; }
 /* break-word only breaks a word when it genuinely can't fit (it does NOT shrink
    the column to one character like overflow-wrap:anywhere did), so names stay on
    one line whenever there's room and never slide under the € value. */
@@ -7619,7 +7622,7 @@ function tvMatchSheet(items, opts) {
         <span class="tv-hero-flag">${flagBars(flag)}</span>
       </div>
       <div class="tv-hero-avatar${photoFor(top.name) ? ' tv-hero-avatar-photo' : ''}">${photoFor(top.name) ? `<img class="tv-hero-photo" src="${photoFor(top.name)}" alt="" loading="lazy" onerror="this.parentElement.classList.remove('tv-hero-avatar-photo');this.remove()" />` : (initials || '—')}</div>
-      <div class="tv-hero-name">${escapeHtml(top.name)}</div>
+      <div class="tv-hero-name">${escapeHtml(top.name)}${top.cards || ''}</div>
       ${top.team ? `<div class="tv-hero-team">${kind === 'player' ? tvTeamLabelHTML(top.team) : escapeHtml(top.team)}</div>` : ''}
       <div class="tv-hero-val">${top.val}</div>
       <div class="tv-hero-sub">${opts.valLabel || ''}</div>
@@ -7629,7 +7632,7 @@ function tvMatchSheet(items, opts) {
     <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? clkAttr(p) : ''}>
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
       ${kind === 'player' ? `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>` : ''}
-      <span class="tv-ms-name">${escapeHtml(p.name)}${p.team && p.team !== p.name ? ` <em>${kind === 'player' ? tvTeamLabelHTML(p.team) : escapeHtml(p.team)}</em>` : ''}</span>
+      <span class="tv-ms-name">${escapeHtml(p.name)}${p.cards || ''}${p.team && p.team !== p.name ? ` <em>${kind === 'player' ? tvTeamLabelHTML(p.team) : escapeHtml(p.team)}</em>` : ''}</span>
       <span class="tv-ms-figure">
         <span class="tv-ms-val">${p.val}</span>
         <span class="tv-ms-unit">${p.unit || opts.unit || ''}</span>
@@ -7648,7 +7651,7 @@ function tvPersonRow(i, p, val) {
   return `<div class="tv-row tv-clickable${i === 0 ? ' lead' : ''}" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">
     <span class="tv-pos">${medal}</span>
     <span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
-    <span class="tv-name">${escapeHtml(p.name)} <em>${tvTeamLabelHTML(p.team)}</em></span>
+    <span class="tv-name">${escapeHtml(p.name)}${cardMarkers(p)} <em>${tvTeamLabelHTML(p.team)}</em></span>
     <span class="tv-val">${val}</span>
   </div>`;
 }
@@ -7664,12 +7667,12 @@ function tvPanelHTML(kind) {
   }
   if (kind === 'golden') {
     const full = sortedGoldenBoot.filter(p => p.ps_nb > 0);
-    const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb) }));
+    const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: fmtMoney(p.ps_nb), cards: cardMarkers(p) }));
     return tvMatchSheet(items, { title: '🥇 GOLDEN BOOT — TOP SCORERS', sub: 'PS Bookings — New Business', badge: '⚽ TOP SCORER', valLabel: 'PS BOOKINGS · NEW BUSINESS', unit: 'PS NEW BUSINESS', clickable: true }) + tvMoreBtn(full.length);
   }
   if (kind === 'playmaker') {
     const full = sortedPlaymaker.filter(p => p.opps > 0);
-    const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0) }));
+    const items = tvLimit(full).map(p => ({ name: p.name, team: p.team, val: Number(p.opps).toFixed(0), cards: cardMarkers(p) }));
     return tvMatchSheet(items, { title: '🌱 PLAYMAKERS — MOST ASSISTS', sub: 'Opportunities created', badge: '🌱 THE PLAYMAKER', valLabel: 'OPPORTUNITIES CREATED', unit: 'OPPORTUNITIES', clickable: true }) + tvMoreBtn(full.length);
   }
   if (kind === 'var') {
@@ -7723,8 +7726,8 @@ function tvPanelHTML(kind) {
   if (!spots.length) return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", `<div class="tv-row"><span class="tv-name">No standouts yet.</span></div>`);
   const featured = spots[0];
   // Each standout has a different metric, so the unit is per-row.
-  const items = [{ name: featured.person.name, team: featured.person.team, val: spotStatText(featured), unit: featured.statLabel.toUpperCase() }]
-    .concat(spots.slice(1).map(s => ({ name: s.person.name, team: `${s.cat} · ${s.person.team}`, val: spotStatText(s), unit: s.statLabel.toUpperCase() })));
+  const items = [{ name: featured.person.name, team: featured.person.team, val: spotStatText(featured), unit: featured.statLabel.toUpperCase(), cards: cardMarkers(featured.person) }]
+    .concat(spots.slice(1).map(s => ({ name: s.person.name, team: `${s.cat} · ${s.person.team}`, val: spotStatText(s), unit: s.statLabel.toUpperCase(), cards: cardMarkers(s.person) })));
   return tvMatchSheet(items, { title: '⭐ PLAYERS OF THE MOMENT', sub: "This matchday's standout performances", badge: `${featured.icon} ${featured.cat}`, valLabel: featured.statLabel.toUpperCase(), clickable: true });
 }
 function renderTV() {
