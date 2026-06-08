@@ -85,6 +85,13 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 8) — Nettoyage du code mort signalé par ESLint
+Suppression des 8 warnings ESLint (code mort réel, −49 lignes dans `index.html`) : variable
+`DATA` (écrite mais jamais lue) + ses 2 assignations, helpers locaux inutilisés
+(`ini`, deux `initials`, `verdictBtns`), et deux fonctions jamais appelées (`renderIndivCard`,
+`scrollToMainContent`) + un en-tête de commentaire orphelin. **ESLint : 0 problème** ;
+`ux-smoke`/`ux-e2e` au vert.
+
 ### 2026-06-08 (suite 7) — Revue de code : correctifs + mise en place d'ESLint
 **Revue de code** (7 angles, recall élevé) → correctifs appliqués dans `index.html` :
 1. **A11y** : les lignes/cartes/onglets sont désormais de vrais `<a>` (activés par Entrée,

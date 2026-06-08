@@ -2803,7 +2803,6 @@ function avatarInner(name) {
 }
 
 // === DATA (populated live from the Apps Script API) ===
-let DATA = null;
 let teams = [], people = [], updated_at = null, period = '', challenge_dates = {}, specialAwards = {};
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
 // Competition-rank lookups (name -> rank, ties share) for the per-player ranks shown
@@ -3106,7 +3105,6 @@ async function _fetchDataImpl(fresh) {
     dataWarnings = data.warnings || [];
     if (dataWarnings.length) console.warn('⚠ Data warnings from backend:', dataWarnings);
 
-    DATA = data;
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name); // ignore empty rows
     applyTeamAliases(); // e.g. ALPS → Switzerland, before names/ranks are computed
@@ -3151,7 +3149,6 @@ function hydrateFromSnapshot() {
     if (!snap || !snap.data) return false;
     if (Date.now() - (snap.ts || 0) > CONFIG.SNAPSHOT_MAX_AGE_MS) return false;
     const data = snap.data;
-    DATA = data;
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name);
     applyTeamAliases(); // e.g. ALPS → Switzerland (same as the live fetch path)
@@ -4198,7 +4195,6 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount) {
   const rows = open ? rest.map((p, i) => {
     const rank = rkMap.get(p.name);
     const rc = colorForTeam(p.team);
-    const ini = String(p.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
     return `
       <div class="fr-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
         <span class="fr-rank">#${rank}</span>
@@ -4486,7 +4482,6 @@ function renderSpotlight() {
     </div>`;
 
   const rows = rest.map((s, i) => {
-    const initials = String(s.person.name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase();
     const fl = flagForTeam(s.person.team);
     return `
     <div class="ms-row${anim}" data-player="${escapeHtml(s.person.name)}" style="--c:${colorForTeam(s.person.team)}; --w:0%; animation-delay:${(i + 1) * 80}ms" title="View ${escapeHtml(s.person.name)}'s card">
@@ -4755,7 +4750,6 @@ function renderCoachRoom() {
   const metricTotal = ranked.reduce((a, p) => a + (Number(p[m.key]) || 0), 0);
   const TOPN = 15;
   const top = ranked.slice(0, TOPN);
-  const initials = (name) => String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
   const contribRows = top.map((p, i) => {
     const v = Number(p[m.key]) || 0;
     const share = metricTotal ? (v / metricTotal) * 100 : 0;
@@ -5039,11 +5033,6 @@ function renderVarTime() {
     ? (filtersActive ? 'No players match these filters.' : '✅ Nobody is breaking the rules right now — clean sheet!')
     : 'All reviewed — no pending cases. ✅';
 
-  const verdictBtns = (b) => Object.keys(VERDICT_META).map(k =>
-    `<button class="vt-verdict ${b.verdict === k ? 'on ' + k : ''}" data-name="${escapeHtml(b.p.name)}" data-verdict="${k}">${VERDICT_META[k].icon} ${VERDICT_META[k].label}</button>`
-  ).join('');
-
-  const initials = (name) => String(name).replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '—';
   // The referee-card visual that reflects the current verdict (this is the
   // "card" the review is about). Pending shows a faint blank card.
   const refcard = (b) => {
@@ -5106,30 +5095,6 @@ function renderVarTime() {
         ? `<div class="vt-list">${list.map(card).join('')}</div>`
         : `<div class="no-result">${emptyMsg}</div>`}
     </div>`;
-}
-
-function renderIndivCard(person, rank, mainStat, mainLabel, secondaryStats, flashType) {
-  const color = colorForTeam(person.team);
-  const cards = [];
-  if (person.yellow_meetings) cards.push({icon: '🟨', tip: `Yellow Card · less than 5 meetings/week (${fmtNum(person.meetings)})`});
-  if (person.yellow_gm) cards.push({icon: '🟨', tip: `Yellow Card · New Business GM below 25% (${fmtPct(indivGm(person))})`});
-  const flashCls = (rank === 1 && flashType && isFlashing(flashType)) ? ' flash-gold' : '';
-
-  return `
-    <div class="indiv-card${flashCls}" style="--c: ${color}">
-      ${cards.length ? `<div class="indiv-cards">${cards.map(c => `<span class="card-badge" title="${escapeHtml(c.tip)}">${c.icon}</span>`).join('')}</div>` : ''}
-      <div class="indiv-card-top">
-        <div class="indiv-rank ${rank === 1 ? 'medal-1' : ''}">#${rank}${flashType ? movementBadge(flashType, person.name, rank) : ''}</div>
-        <div class="indiv-info">
-          <div class="indiv-name">${escapeHtml(person.name)}</div>
-          <div class="indiv-team">${playerTeamHTML(person.team, 'tnk-real-muted')}</div>
-        </div>
-      </div>
-      <div class="indiv-stat-main">${mainStat}</div>
-      <div class="indiv-stat-label">${mainLabel}</div>
-      <div class="indiv-meta">${secondaryStats.map(s => `<span>${s}</span>`).join('')}</div>
-    </div>
-  `;
 }
 
 // Render a jury-selected award (AI Play / Transformative Deal): shows the
@@ -7307,20 +7272,6 @@ function openRules() {
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#rules-close').addEventListener('click', close);
   document.addEventListener('keydown', onKey);
-}
-
-// === Global player search (with tenure / rookie filters) ===
-// Scroll so the current tab's content sits near the top of the viewport — used
-// after picking a player so the result is visible, not hidden under the hero
-// podium (users don't intuitively scroll down to find it).
-function scrollToMainContent(behavior) {
-  requestAnimationFrame(() => {
-    const section = document.querySelector('#app .section');
-    if (!section) { window.scrollTo(0, 0); return; }
-    const tb = document.querySelector('.tabs-wrap');
-    const y = section.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8);
-    window.scrollTo({ top: Math.max(0, y), behavior: behavior || 'smooth' });
-  });
 }
 
 // Back-to-top button: show it once the user has scrolled a screenful down, and
