@@ -2622,6 +2622,18 @@ img, table { max-width: 100%; }
   .contrib-avatar { width: 38px; height: 38px; font-size: 13px; }
 }
 </style>
+<!-- Vercel Web Analytics — production only, loaded after render so it never affects UX. -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  // Load the runtime only on the real (https) deployment — never on localhost/file:// or in
+  // tests (where /_vercel/insights/script.js would 404). Injected on `load`, deferred, so it
+  // can't block or slow the leaderboard; if it ever fails, the va() stub just no-ops.
+  if (location.protocol === 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    addEventListener('load', function () {
+      try { var s = document.createElement('script'); s.defer = true; s.src = '/_vercel/insights/script.js'; document.head.appendChild(s); } catch (e) {}
+    });
+  }
+</script>
 </head>
 <body>
 
