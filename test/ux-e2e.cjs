@@ -259,6 +259,29 @@ function mockData() {
     await ctx.close();
   }
 
+  // ---------- a11y + no-New-Business surfaces (review fixes) ----------
+  {
+    const { ctx, page } = await newPage();
+    await bootstrap(page, BASE);
+    await tab(page, 'teams'); await page.waitForTimeout(120);
+    if (await page.has('[data-view="players"]')) { await page.tap('[data-view="players"]'); await page.waitForTimeout(200); }
+    // Rows are real <a> now (Enter activates, Space doesn't) — we restore Space for kbd users.
+    if (await page.has('.player-row[data-player]')) {
+      await page.focus('.player-row[data-player]');
+      await page.keyboard.press('Space'); await page.waitForTimeout(250);
+      log('Space key opens a player card (a11y)', await page.has('#player-overlay'));
+      await esc(page); await page.waitForTimeout(150);
+    }
+    // A renewals-only rep (ps_nb=0, Sean Foster in the mock) gets a NEUTRAL GM line in My
+    // Position — not a green ✅ and not a red 🟨, and not a silently-missing line.
+    await tab(page, 'position'); await page.waitForTimeout(150);
+    if (await page.has('#position-search')) {
+      await page.fill('#position-search', 'Sean Foster'); await page.waitForTimeout(300);
+      log('No-New-Business rep gets a neutral GM line in My Position', await page.has('.status-neutral'));
+    }
+    await ctx.close();
+  }
+
   // ---------- XSS regression: sheet data is human-edited, so it must be escaped ----------
   // A name/team/nickname/period containing HTML must never execute or inject elements.
   {

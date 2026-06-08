@@ -85,6 +85,35 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 7) — Revue de code : correctifs + mise en place d'ESLint
+**Revue de code** (7 angles, recall élevé) → correctifs appliqués dans `index.html` :
+1. **A11y** : les lignes/cartes/onglets sont désormais de vrais `<a>` (activés par Entrée,
+   **pas** par Espace) → ajout d'un handler `keydown` Espace dans `bindNewTabGestures` pour
+   restaurer l'activation clavier (régression introduite par l'open-in-new-tab).
+2. **Coach Room** : la pastille 🟨 du deep-dive GM se basait sur `yellow_gm` (= GM New Business)
+   alors que la valeur affichée est le **GM Total** → flag recalculé sur `ps_total_gm < 0.25`
+   (cohérent avec le chiffre montré).
+3. **`teamShortLabel`** routé via `nicknameOverride` → le surnom est cohérent aussi dans les
+   listes compactes (sinon « FR - Digital Impulse » ici / « Impulse RainMakers » ailleurs).
+4. **My Position** : ligne GM neutre (`status-neutral`) pour les profils **sans New Business**
+   (au lieu d'aucune ligne), alignée sur la carte Panini.
+5. **Compare** : un profil sans New Business n'est plus noté « 0 % » / perdant (null = non
+   comparable au lieu de `||0`).
+6. **Perf** `upgradeClickablesToLinks` : `color`/`text-decoration` déplacés en CSS (`:where()`,
+   spécificité 0), `getComputedStyle` mis en cache **par classe** (au lieu de par élément).
+7. **Deep-link** `?team=` : résolu via `TEAM_ALIASES` + `teamKey` (un lien partagé avec un
+   surnom/ancien nom retrouve l'équipe renommée).
+
+**ESLint** (nouveau) : `eslint.config.mjs` (flat config) lint le `<script>` inline d'`index.html`
+(via `eslint-plugin-html`), le service worker et les runners de test. **Pas de `package.json`
+racine** (pour ne pas impacter le déploiement statique Vercel) : CI et hook pre-push installent
+ESLint à la volée (même pattern que Playwright). Règles ciblées « vrais bugs » en `error`
+(`no-undef`, `no-redeclare`, `no-dupe-keys`, `no-const-assign`…) + bruit utile en `warn`
+(`eqeqeq` smart, `no-unused-vars`). Résultat actuel : **0 erreur, 8 warnings** (code mort
+signalé pour nettoyage futur). Job `lint` ajouté à `ux-tests.yml` + étape dans `.githooks/pre-push`
+(skip gracieux si ESLint absent). Tests `ux-smoke`/`ux-e2e` au vert (+2 assertions : Espace
+clavier, ligne GM neutre).
+
 ### 2026-06-08 (suite 6) — Impulse Rainmakers : rattacher à la France (drapeau + consolidation)
 **Signalé** (Léandre) : dans **Nations Ranking**, « Impulse Rainmakers » apparaissait comme une
 **nation à part** (drapeau italien au hasard) au lieu d'être **consolidée dans la France**.
