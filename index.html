@@ -3419,10 +3419,15 @@ window.addEventListener('hashchange', () => {
 
 // === Open-in-new-tab support ===
 // The clickable cards/rows/tabs are <div>/<button>, so the browser can't natively
-// offer "open in new tab". We give each a shareable deep-link URL and open it in a
-// new tab on Ctrl/⌘-click or middle-click (the gestures people use for this). The
-// matching ?player=/?team=/?nation= params are read on load (see init) so the new
-// tab lands straight on that card/squad; tabs use the existing #hash.
+// offer "open in new tab". Two parts:
+//  1) deepLinkFor + upgradeClickablesToLinks turn each into a REAL <a href> after
+//     every render, so the browser's right-click menu offers "Open in new tab" and
+//     the URL is shareable. The matching ?player=/?team=/?nation= params are read on
+//     load (see init) so the new tab lands straight on that card/squad; tabs use the
+//     existing #hash.
+//  2) bindNewTabGestures keeps plain left-clicks in the app (the element's own
+//     handler opens the modal/tab), while Ctrl/⌘/Shift-click and middle-click open
+//     the deep link in a new tab/window.
 function deepLinkFor(el) {
   const base = location.origin + location.pathname;
   if (el.dataset.player) return base + '?player=' + encodeURIComponent(el.dataset.player);
@@ -3432,21 +3437,53 @@ function deepLinkFor(el) {
   if (el.classList.contains('tab-btn') && el.dataset.tab) return base + '#' + el.dataset.tab;
   return null;
 }
+const LINKIFY_SEL = '[data-player],.teams-table-row[data-team],.podium-card[data-team],.nation-row-click[data-nation],.nation-team-row[data-nteam],.tab-btn[data-tab]';
+// Convert the clickable cards/rows/tabs into real <a> links in place. Layout is kept
+// by copying the element's computed `display` (an <a> defaults to inline). Elements
+// that already hold their own button/link are skipped to avoid nesting interactive
+// content inside an anchor (invalid HTML).
+function upgradeClickablesToLinks() {
+  const els = [...document.querySelectorAll(LINKIFY_SEL)].filter(el =>
+    el.tagName !== 'A' &&
+    (el.tagName !== 'BUTTON' || el.classList.contains('tab-btn')) &&
+    !el.querySelector('a,button,input,select,textarea') &&
+    deepLinkFor(el));
+  if (!els.length) return;
+  const displays = els.map(el => getComputedStyle(el).display); // batch the reads (one reflow)
+  els.forEach((el, i) => {
+    const a = document.createElement('a');
+    for (const { name, value } of el.attributes) a.setAttribute(name, value);
+    a.setAttribute('href', deepLinkFor(el));
+    a.style.display = displays[i];
+    a.style.color = 'inherit';
+    a.style.textDecoration = 'none';
+    a.innerHTML = el.innerHTML;
+    el.replaceWith(a);
+  });
+}
 let newTabGesturesBound = false;
 function bindNewTabGestures() {
   if (newTabGesturesBound) return;
   newTabGesturesBound = true;
   const SEL = '[data-player],[data-team],[data-nteam],[data-nation],.tab-btn[data-tab]';
   const openNew = el => { const href = deepLinkFor(el); if (href) window.open(href, '_blank', 'noopener'); };
-  // Capture phase so we run before the element's own in-place handler and can skip it.
+  // Capture phase so we run before the element's own in-place handler and can pre-empt it.
   document.addEventListener('click', e => {
-    if (!(e.ctrlKey || e.metaKey)) return; // plain click stays in-app
     const el = e.target.closest(SEL); if (!el) return;
-    e.preventDefault(); e.stopImmediatePropagation(); openNew(el);
+    const link = el.tagName === 'A';
+    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+      // New tab / window. Real links: let the browser do it natively; just stop the
+      // in-place modal from also opening here. Non-links: synthesize window.open.
+      e.stopImmediatePropagation();
+      if (!link) { e.preventDefault(); openNew(el); }
+      return;
+    }
+    if (link) e.preventDefault(); // plain click on a real link → keep it in-app
   }, true);
   document.addEventListener('auxclick', e => {
     if (e.button !== 1) return; // middle button only
     const el = e.target.closest(SEL); if (!el) return;
+    if (el.tagName === 'A') return; // real links open a new tab natively on middle-click
     e.preventDefault(); e.stopImmediatePropagation(); openNew(el);
   }, true);
 }
@@ -6224,6 +6261,10 @@ function render() {
     ${renderPlayerModal()}
     ${renderVarReviewModal()}
   `;
+
+  // Turn the clickable cards/rows/tabs into real <a> links so the browser's
+  // right-click menu offers "Open in new tab" (must run before handlers bind).
+  upgradeClickablesToLinks();
 
   // Keep the hardware/browser Back button in sync with open overlays so it
   // closes the current modal instead of leaving the app (mobile-friendly).

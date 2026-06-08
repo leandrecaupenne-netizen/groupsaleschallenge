@@ -85,6 +85,26 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 3) — Clic-droit « Ouvrir dans un nouvel onglet » (vrais liens `<a>`)
+**Demande** (Léandre) : sur le Web, le menu **clic-droit du navigateur** ne proposait pas
+« Ouvrir dans un nouvel onglet » (la limite assumée de la suite 2). Ce menu n'apparaît que
+sur de **vrais liens** `<a href>`.
+
+**Implémentation** (`index.html`) :
+- `upgradeClickablesToLinks()` appelée après chaque rendu : convertit en place les cartes
+  joueur, lignes équipe (`teams-table-row`, `podium-card`), nations, lignes nation-équipe et
+  **onglets** (`tab-btn`) en vrais `<a href="…">` (deep-link `?player=`/`?team=`/`?nation=` ou
+  `#onglet`). La **mise en page est préservée** en recopiant le `display` calculé (un `<a>` est
+  inline par défaut) ; les éléments contenant déjà un bouton/lien sont **ignorés** (pas de
+  contenu interactif imbriqué = HTML invalide).
+- `bindNewTabGestures()` ajusté : clic gauche normal sur un lien → `preventDefault` (reste
+  in-app, le handler ouvre le modal) ; **Ctrl/⌘/Maj-clic** et **clic-molette** → onglet/fenêtre
+  géré **nativement** par le navigateur (on coupe juste l'ouverture du modal dans l'onglet
+  courant). → Le **clic-droit → « Ouvrir dans un nouvel onglet »** fonctionne désormais.
+- Tests : `ux-e2e` étendu (les lignes joueur **et** les onglets sont de vrais `<a>` ; Ctrl-clic
+  ouvre un onglet sur le deep-link sans ouvrir le modal courant). `ux-smoke` + `ux-e2e` **au
+  vert, 0 erreur JS**. La limite « clic-droit non supporté » de la suite 2 est **levée**.
+
 ### 2026-06-08 (suite 2) — Ouvrir cartes / équipes / onglets dans un nouvel onglet
 **Demande** (Léandre) : sur navigateur web, pouvoir ouvrir des cartes (joueur), des équipes
 et des « pages » (onglets) dans un **nouvel onglet**.
