@@ -39,7 +39,7 @@ export default [
   {
     files: ['index.html'],
     plugins: { html },
-    languageOptions: { ecmaVersion: 2022, sourceType: 'script', globals: { ...globals.browser } },
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
     rules: jsRules,
   },
   {
