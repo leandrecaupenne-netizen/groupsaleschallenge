@@ -48,6 +48,8 @@ function mockData() {
     ctx.setDefaultTimeout(6000);
     await ctx.addInitScript(() => { try { localStorage.setItem('devoteam_wc_tour_v1', '1'); localStorage.setItem('devoteam_wc_intro_seen_v1', '1'); } catch (e) {} });
     await ctx.route('**script.google.com**', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockData()) }));
+    // Vercel Speed Insights (/_vercel/…) is served only on Vercel — no-op it off-platform.
+    await ctx.route('**/_vercel/**', r => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
     page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });

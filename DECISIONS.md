@@ -85,6 +85,19 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-09 — Vercel Speed Insights (version first-party, durcie)
+L'agent Vercel (PR draft #29) avait branché Speed Insights via un **import ES module depuis le
+CDN tiers jsdelivr** + élargissement CSP `script-src … cdn.jsdelivr.net` (et passage ESLint en
+`sourceType: module`). Risque supply-chain (un paquet jsdelivr compromis pourrait lire le
+localStorage = code d'accès), juste après le durcissement de la suite 9. **Refait en first-party**
+(branche `claude/…`, PR à la place de #29) : snippet officiel Vercel « no framework » →
+`<script defer src="/_vercel/speed-insights/script.js">` (même origine), donc **pas de CDN tiers,
+pas de jsdelivr en CSP, pas de `type=module`** (ESLint reste en `script`). CSP : on ajoute juste
+`https://vitals.vercel-insights.com` à `connect-src`. Service worker bump v35→v36. Tests : route
+no-op `**/_vercel/**` ajoutée (sinon 404 → erreur console en local). `lint` + `ux` au vert.
+**Action humaine** : activer Speed Insights dans Vercel (Project Settings → Speed Insights), puis
+fermer la PR bot #29 au profit de celle-ci.
+
 ### 2026-06-08 (suite 9) — Audit sécurité + sortir le site des moteurs de recherche
 **Demande** (Léandre) : trafic US surprenant dans Vercel Analytics + crainte de scrapers/bots.
 **Audit** : le site est **statique sur le CDN Vercel** (ne peut pas « crasher » sous des scrapers) ;
