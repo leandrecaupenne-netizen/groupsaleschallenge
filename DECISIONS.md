@@ -85,6 +85,21 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-08 (suite 9) — Audit sécurité + sortir le site des moteurs de recherche
+**Demande** (Léandre) : trafic US surprenant dans Vercel Analytics + crainte de scrapers/bots.
+**Audit** : le site est **statique sur le CDN Vercel** (ne peut pas « crasher » sous des scrapers) ;
+les **données sont protégées par mot de passe côté serveur** (`apps_script_backend.gs` → `passwordOk`,
+POST-only) ; le mot de passe **n'est pas dans le code public** (tapé par l'utilisateur, stocké en
+localStorage). Le trafic US = **bots/crawlers/unfurlers**, pas de vrais accès aux données. Déjà bon :
+CSP stricte, cache serveur 60 s (anti-DoS), polling 2 min jitté, échappement HTML + test XSS.
+Risques résiduels mineurs : mot de passe faible/partagé (`devoteam2026`), quota Apps Script si
+flood délibéré (atténué par le cache), bande passante. **Action appliquée** : sortir le site des
+moteurs de recherche → `robots.txt` (Disallow: /), `<meta name="robots" content="noindex,nofollow">`
++ `googlebot`, en-tête `X-Robots-Tag: noindex, nofollow` (vercel.json). Réduit le bruit de bots ;
+les bots d'aperçu de lien (Teams/WhatsApp) ignorent ces directives → **les previews de partage
+continuent de marcher**. À faire côté Léandre (hors repo, optionnel) : Vercel Firewall/Attack
+Challenge Mode, code d'accès moins devinable, Deployment Protection si verrou plus dur souhaité.
+
 ### 2026-06-08 (suite 8) — Nettoyage du code mort signalé par ESLint
 Suppression des 8 warnings ESLint (code mort réel, −49 lignes dans `index.html`) : variable
 `DATA` (écrite mais jamais lue) + ses 2 assignations, helpers locaux inutilisés
