@@ -1,0 +1,6 @@
+# Internal Devoteam tool — not for public search engines.
+# (Well-behaved crawlers obey this; the noindex meta + X-Robots-Tag header
+#  enforce it for the rest. Link-preview/unfurl bots ignore robots.txt, so
+#  shared-link previews in Teams/WhatsApp/Slack keep working.)
+User-agent: *
+Disallow: /
