@@ -77,6 +77,10 @@ function mockData() {
   ctx.setDefaultTimeout(5000);
   await ctx.route('**script.google.com**', route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockData()) }));
+  // Vercel Speed Insights script is served only on Vercel (/_vercel/…) — no-op it here
+  // so it doesn't 404 and log a console error off-platform.
+  await ctx.route('**/_vercel/**', route =>
+    route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });
