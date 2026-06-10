@@ -114,6 +114,17 @@ function mockData() {
     }
     // Teams view shows a per-team yellow-card tally (the mock has yellow-carded players).
     log('Team ranking shows a yellow-card tally 🟨 (N)', await page.has('.tt-cards'));
+    // Tapping the tally opens the split popover (mobile, no hover) without opening the squad modal.
+    if (await page.has('.tt-cards')) {
+      await page.tap('.tt-cards'); await page.waitForTimeout(200);
+      const popOpen = await page.$eval('#cards-pop', el => !el.hidden).catch(() => false);
+      const popText = (await page.textContent('#cards-pop').catch(() => '')) || '';
+      log('Tap tally → split popover opens', popOpen && /Low Activity/.test(popText) && /Low Margin/.test(popText));
+      log('Tap tally does not open the squad modal', !(await page.has('#modal-overlay')));
+      // Tap elsewhere closes it.
+      await page.tap('body'); await page.waitForTimeout(150);
+      log('Tap outside closes the split popover', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
+    }
 
     await tab(page, 'golden'); await page.waitForTimeout(150);
     if (await page.has('[data-fullrank]')) { const before = (await page.$$('.fr-row')).length; await page.tap('[data-fullrank]'); await page.waitForTimeout(200);
