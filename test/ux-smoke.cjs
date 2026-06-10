@@ -159,6 +159,40 @@ function mockData() {
       const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       log(`No horizontal overflow @ ${w}px`, o <= 1, `overflow=${o}px`);
     }
+
+    // Deeper than document overflow: catch content clipped INSIDE a box that has
+    // overflow:hidden — the podium-tally bug (a 🟨 (N) cut off at the card edge),
+    // which scrollWidth-of-document can't see. Scan every tab at a phone width.
+    // Allowlist boxes that are *meant* to be wider than their frame: the scrolling
+    // ticker marquee, circular cover-cropped avatars, and the hero's decorative bg.
+    {
+      const ALLOW = ['ticker', 'has-photo', 'hero', 'marquee', 'sr-only'];
+      const scan = (allow) => {
+        const bad = [];
+        document.querySelectorAll('body *').forEach(el => {
+          const s = getComputedStyle(el);
+          if (s.overflowX !== 'hidden' && s.overflowX !== 'clip') return;
+          if (s.display === 'none' || s.visibility === 'hidden') return;
+          if (el.clientWidth <= 0) return;
+          const over = el.scrollWidth - el.clientWidth;
+          if (over <= 4) return;
+          const r = el.getBoundingClientRect(); if (r.height < 6) return;
+          const cls = typeof el.className === 'string' ? el.className : '';
+          if (allow.some(a => cls.includes(a) || (el.id && el.id.includes(a)))) return;
+          bad.push((el.id ? '#' + el.id : '.' + (cls.trim().split(/\s+/)[0] || el.tagName.toLowerCase())) + ' +' + over + 'px');
+        });
+        return [...new Set(bad)];
+      };
+      await page.setViewportSize({ width: 360, height: 800 }); await page.waitForTimeout(150);
+      const allClipped = [];
+      for (const t of await page.$$eval('.tab-btn', els => els.map(e => e.dataset.tab))) {
+        await page.click(`.tab-btn[data-tab="${t}"]`).catch(() => {});
+        await page.waitForTimeout(150);
+        const bad = await page.evaluate(scan, ALLOW);
+        if (bad.length) allClipped.push(`${t}: ${bad.join(', ')}`);
+      }
+      log('No content clipped inside a box on mobile (360px, all tabs)', allClipped.length === 0, allClipped.slice(0, 4).join(' | '));
+    }
   } catch (e) {
     errors.push('HARNESS: ' + e.message);
   } finally {

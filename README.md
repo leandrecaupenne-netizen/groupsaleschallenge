@@ -107,6 +107,37 @@ device, clear the `devoteam_wc_session_v1` localStorage key.
 
 ---
 
+## Mobile & touch
+
+The platform is used at least as much on phones as on desktop, so two rules apply to every
+surface (podium, team/nation rankings, Golden Boot, Playmaker, Special Awards, My Position,
+team/player modals, TV mode):
+
+1. **Nothing important is hover-only.** Touch devices have no hover, so any information a
+   tooltip would reveal must also be reachable by a tap.
+   - The per-group **yellow-card tally `🟨 (N)`** (podium, team ranking, nation ranking):
+     hovering shows the split on desktop; **tapping the badge** opens a small popover with
+     `🏃 X Low Activity` (< 5 meetings/wk) · `🥅 Y Low Margin` (NB GM < 25%). One delegated,
+     capture-phase handler shows the popover and stops the tap from also opening the squad
+     modal the badge sits inside; tapping elsewhere (or a real scroll) closes it.
+   - A **single player's** yellow-card reason: tap the player → their card shows the
+     discipline badge → tap it to reveal the same split (`.pc-discipline` is tap-to-reveal).
+   - On the **TV / projection** surface there is no pointer, so the tally is a glanceable
+     `🟨 (N)` indicator only — by design.
+
+2. **Nothing is clipped inside a card.** Cards use `overflow:hidden`, so content that's
+   wider than its box gets *silently cut off* (this is invisible to a document-level
+   overflow check). The fix pattern is to let tight meta rows **wrap** (`flex-wrap`) rather
+   than overflow — e.g. the podium card's `👥 / 📊 / 🟨` meta row wraps the tally to a new
+   line on narrow screens instead of clipping it.
+
+Both rules are regression-guarded by the UX tests below (`No content clipped inside a box on
+mobile`, and the tap-tally / tap-outside-closes assertions). The only boxes intentionally
+wider than their frame — and therefore allowlisted — are the scrolling ticker marquee,
+circular cover-cropped avatars, and the hero's decorative background.
+
+---
+
 ## Security model
 
 This is a **light internal gate, not real access control** — size the trust accordingly:
@@ -168,9 +199,11 @@ Apps Script login/data, so no network to Google is needed.
 
 ```bash
 node test/ux-smoke.cjs   # fast: login, tabs, "Find your position" CTA, modals,
-                         #       search + fuzzy search, responsive overflow @320/375/768
+                         #       search + fuzzy search, responsive overflow @320/375/768,
+                         #       and no content clipped inside a card on mobile (all tabs)
 node test/ux-e2e.cjs     # deep: admin (VAR TIME / Coach Room / VAR review), TV mode,
-                         #       card share, clickable ticker, compare, sub-views, dark mode
+                         #       card share, clickable ticker, compare, sub-views, dark mode,
+                         #       tap-the-tally split popover (mobile, no hover)
 ```
 Exit code `0` = all green, `1` = a check failed or a JS error was thrown.
 
