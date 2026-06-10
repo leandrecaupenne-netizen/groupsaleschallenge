@@ -85,6 +85,29 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-09 — Quick wins suite aux questions de Sebastien (split en deux PR)
+**PR « sûre » (1/3/4)** — indépendants du débat sur les cartons, mergés :
+1. **Carte joueur** : ajout du **volume PS NB (€)** dans les stats de tête (PS RANK · PS NB ·
+   NB GM · MTG/WK), gap resserré à 15px.
+3. **Règles** : retrait du 3ᵉ bullet (Opportunities Stage 2 / €50K) du chapitre cartons (c'est une
+   définition Playmaker, déjà listée dans les classements).
+4. **Coach Room** : **recherche par nom** (`#coach-search`) → PS Total + **GM total** ET PS NB +
+   NB GM côte à côte (cas Marc, sans drill nation→équipe→joueur).
+
+**PR « rouge » (2/5)** — EN ATTENTE de l'alignement Léandre/Jose/Sebastien sur le modèle de
+carton rouge :
+2. Carton **rouge** auto quand 2 règles cassées (badge + label).
+5. Tally cartons par équipe/nation (`🟨 (X) 🟥 (Y)`).
+**Désaccord identifié** (thread Teams) : Léandre = « 2 jaunes = 1 rouge » (live) ; Jose (data
+owner) = jaune = avertissement, **rouge décidé À LA FIN par le VAR** (manuel), car la métrique
+meetings est bruitée (planned+done/5 sem). **Proposition de Léandre (endossée)** : modèle rugby
+= « 2 jaunes = rouge » **mais le rouge passe en revue VAR TIME** (le comité confirme/annule), +
+sanction à définir (suspension/amende €). Note technique : les verdicts VAR sont aujourd'hui
+**locaux (localStorage admin)**, non publiés → pour afficher la décision finale à tous il faudrait
+les persister (colonne Sheet). Dès validation du modèle rugby : reformuler le rouge en
+« 🟥 sous revue VAR » et livrer 2/5.
+
+
 ### 2026-06-09 — Vercel Speed Insights (version first-party, durcie)
 L'agent Vercel (PR draft #29) avait branché Speed Insights via un **import ES module depuis le
 CDN tiers jsdelivr** + élargissement CSP `script-src … cdn.jsdelivr.net` (et passage ESLint en
