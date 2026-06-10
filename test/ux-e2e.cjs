@@ -121,7 +121,16 @@ function mockData() {
       const popText = (await page.textContent('#cards-pop').catch(() => '')) || '';
       log('Tap tally → split popover opens', popOpen && /Low Activity/.test(popText) && /Low Margin/.test(popText));
       log('Tap tally does not open the squad modal', !(await page.has('#modal-overlay')));
-      // Tap elsewhere closes it.
+      // While the popover is open, clicking the card/row underneath (to dismiss it) must
+      // ONLY close the popover — not also open the team modal. Re-open, then click the
+      // tally's own [data-team] card and assert: popover closed AND no modal opened.
+      if (!(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false))) { await page.tap('.tt-cards'); await page.waitForTimeout(150); }
+      await page.evaluate(() => { const b = document.querySelector('.tt-cards'); const card = b && b.closest('[data-team]'); if (card) card.click(); });
+      await page.waitForTimeout(200);
+      const dismissedClean = !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)) && !(await page.has('#modal-overlay'));
+      log('Click the card while open dismisses the popover without opening the modal', dismissedClean);
+      // Plain tap elsewhere also closes it.
+      if (!(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false))) { await page.tap('.tt-cards'); await page.waitForTimeout(150); }
       await page.tap('body'); await page.waitForTimeout(150);
       log('Tap outside closes the split popover', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
     }
