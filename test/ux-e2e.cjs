@@ -126,6 +126,18 @@ function mockData() {
       log('Tap outside closes the split popover', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
     }
 
+    // A single player's yellow card (in a list) is itself tappable → reveals its one
+    // reason, without opening the player card it sits inside.
+    await tab(page, 'golden'); await page.waitForTimeout(200);
+    if (await page.has('.tt-card1')) {
+      await page.tap('.tt-card1'); await page.waitForTimeout(200);
+      const popOpen = await page.$eval('#cards-pop', el => !el.hidden).catch(() => false);
+      const popText = (await page.textContent('#cards-pop').catch(() => '')) || '';
+      log('Tap a single yellow card → reason popover', popOpen && /Low (Activity|Margin)/.test(popText));
+      log('Tap a single card does not open the player card', !(await page.has('#player-overlay')));
+      await page.tap('.tt-card1'); await page.waitForTimeout(120); // toggle it closed (no stray taps)
+    }
+
     await tab(page, 'golden'); await page.waitForTimeout(150);
     if (await page.has('[data-fullrank]')) { const before = (await page.$$('.fr-row')).length; await page.tap('[data-fullrank]'); await page.waitForTimeout(200);
       log('Full ranking expands', (await page.$$('.fr-row')).length > before); }

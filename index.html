@@ -1420,7 +1420,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   font-weight: 700;
 }
 .member-cards { display: flex; gap: 4px; }
-.member-cards .badge { font-size: 14px; cursor: help; }
+.member-cards .badge { font-size: 14px; }
+/* Individual yellow card: tappable (reveals its single reason) wherever it appears. */
+.tt-card1 { cursor: pointer; }
 
 @media (max-width: 800px) {
   .members-table-header,
@@ -3070,7 +3072,17 @@ function yellowCardsBadge(list, cls) {
   if (!total) return '';
   const title = `🏃 ${act} Low Activity · 🥅 ${mar} Low Margin · ${total} yellow card${total === 1 ? '' : 's'}`;
   // Hover shows the split on desktop; tap opens the same split in a popover on touch.
-  return `<span class="tt-cards${cls ? ' ' + cls : ''}" role="button" aria-label="${title}" title="${title}" data-act="${act}" data-mar="${mar}">🟨 (${total})</span>`;
+  // Spaces inside the ( ) so the digits don't hug the brackets at small sizes (e.g. TV).
+  return `<span class="tt-cards${cls ? ' ' + cls : ''}" role="button" aria-label="${title}" title="${title}" data-act="${act}" data-mar="${mar}">🟨 ( ${total} )</span>`;
+}
+
+// A single individual yellow card 🟨 (one per broken rule). Hover shows the reason;
+// tap reveals it in a popover, since touch has no hover. type: 'act' = Low Activity
+// (meetings), 'mar' = Low Margin (New Business GM). `detail` is the measured value.
+function cardBadge(type, detail, cls) {
+  const isAct = type === 'act';
+  const title = `🟨 Yellow Card · ${isAct ? '🏃 Low Activity — under 5 meetings/week' : '🥅 Low Margin — New Business GM below 25%'} (${detail})`;
+  return `<span class="tt-card1${cls ? ' ' + cls : ''}" role="button" aria-label="${title}" title="${title}" data-c1="${type}" data-c1d="${escapeHtml(String(detail))}">🟨</span>`;
 }
 
 // Tap/click a 🟨 (N) tally → floating popover with the split, for touch devices where
@@ -3086,13 +3098,10 @@ function cardsPopNode() {
   return cardsPopEl;
 }
 function hideCardsPop() { if (cardsPopEl) cardsPopEl.hidden = true; cardsPopBadge = null; }
-function showCardsPop(badge) {
-  const act = +badge.dataset.act || 0, mar = +badge.dataset.mar || 0, total = act + mar;
+// Place the (already-filled) popover under its badge — flip above if it would spill
+// past the viewport bottom, clamp horizontally.
+function positionCardsPop(badge) {
   const pop = cardsPopNode();
-  pop.innerHTML =
-    `<div class="cards-pop-h">🟨 ${total} yellow card${total === 1 ? '' : 's'}</div>` +
-    `<div class="cards-pop-row">🏃 <b>${act}</b> Low Activity<span class="cards-pop-sub">&lt;5 meetings/wk</span></div>` +
-    `<div class="cards-pop-row">🥅 <b>${mar}</b> Low Margin<span class="cards-pop-sub">NB GM &lt;25%</span></div>`;
   pop.hidden = false;
   cardsPopBadge = badge;
   cardsPopAt = Date.now();
@@ -3104,17 +3113,38 @@ function showCardsPop(badge) {
   pop.style.left = left + 'px';
   pop.style.top = Math.max(8, top) + 'px';
 }
+// Group tally → the full split (how many of each type).
+function showCardsPop(badge) {
+  const act = +badge.dataset.act || 0, mar = +badge.dataset.mar || 0, total = act + mar;
+  cardsPopNode().innerHTML =
+    `<div class="cards-pop-h">🟨 ${total} yellow card${total === 1 ? '' : 's'}</div>` +
+    `<div class="cards-pop-row">🏃 <b>${act}</b> Low Activity<span class="cards-pop-sub">&lt;5 meetings/wk</span></div>` +
+    `<div class="cards-pop-row">🥅 <b>${mar}</b> Low Margin<span class="cards-pop-sub">NB GM &lt;25%</span></div>`;
+  positionCardsPop(badge);
+}
+// One individual card → its single reason.
+function showCard1Pop(badge) {
+  const isAct = badge.dataset.c1 === 'act';
+  const detail = badge.dataset.c1d || '';
+  cardsPopNode().innerHTML =
+    `<div class="cards-pop-h">🟨 Yellow card</div>` +
+    `<div class="cards-pop-row">${isAct ? '🏃' : '🥅'} <b>${isAct ? 'Low Activity' : 'Low Margin'}</b>` +
+      `<span class="cards-pop-sub">${isAct ? 'under 5 meetings/wk' : 'NB GM below 25%'}${detail ? ' · ' + escapeHtml(detail) : ''}</span></div>`;
+  positionCardsPop(badge);
+}
 let cardsTallyBound = false;
 function bindCardsTallyPopover() {
   if (cardsTallyBound) return;
   cardsTallyBound = true;
   // Capture phase so we pre-empt the card/row link that this badge sits inside.
+  // Handles both the group tally (.tt-cards) and a single player's card (.tt-card1).
   document.addEventListener('click', e => {
-    const badge = e.target.closest('.tt-cards');
+    const badge = e.target.closest('.tt-cards, .tt-card1');
     if (badge) {
       e.preventDefault(); e.stopImmediatePropagation();
       if (cardsPopBadge === badge && cardsPopEl && !cardsPopEl.hidden) hideCardsPop();
-      else showCardsPop(badge);
+      else if (badge.classList.contains('tt-cards')) showCardsPop(badge);
+      else showCard1Pop(badge);
       return;
     }
     if (!e.target.closest('#cards-pop')) hideCardsPop();
@@ -4148,8 +4178,8 @@ function renderTeamRanking() {
           ${shown.map(p => {
             const rank = rankMap.get(p.name);
             const cards = [];
-            if (p.yellow_meetings) cards.push(`<span class="badge" title="🟨 Yellow Card · 🏃 Low Activity — under 5 meetings/week (${fmtNum(p.meetings)})">🟨</span>`);
-            if (p.yellow_gm) cards.push(`<span class="badge" title="🟨 Yellow Card · 🥅 Low Margin — New Business GM below 25% (${fmtPct(indivGm(p))})">🟨</span>`);
+            if (p.yellow_meetings) cards.push(cardBadge('act', fmtNum(p.meetings), 'badge'));
+            if (p.yellow_gm) cards.push(cardBadge('mar', fmtPct(indivGm(p)), 'badge'));
             return `
               <div class="members-table-row player-row" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
                 <div class="member-rank ${rank === 1 ? 'top' : ''}">#${rank}</div>
@@ -4250,8 +4280,8 @@ function renderTeamRanking() {
 // Match-sheet card markers (yellow cards) for a person.
 function cardMarkers(person) {
   const c = [];
-  if (person.yellow_meetings) c.push(`<span class="ms-mini-badge" title="🟨 Yellow Card · 🏃 Low Activity — less than 5 meetings/week (${fmtNum(person.meetings)})">🟨</span>`);
-  if (person.yellow_gm) c.push(`<span class="ms-mini-badge" title="🟨 Yellow Card · 🥅 Low Margin — New Business GM below 25% (${fmtPct(indivGm(person))})">🟨</span>`);
+  if (person.yellow_meetings) c.push(cardBadge('act', fmtNum(person.meetings), 'ms-mini-badge'));
+  if (person.yellow_gm) c.push(cardBadge('mar', fmtPct(indivGm(person)), 'ms-mini-badge'));
   return c.join('');
 }
 
@@ -6137,8 +6167,8 @@ function renderTeamModal() {
             </div>
             ${members.map((m, idx) => {
               const cards = [];
-              if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
-              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · New Business GM below 25% (${fmtPct(indivGm(m))})">🟨</span>`);
+              if (m.yellow_meetings) cards.push(cardBadge('act', fmtNum(m.meetings), 'badge'));
+              if (m.yellow_gm) cards.push(cardBadge('mar', fmtPct(indivGm(m)), 'badge'));
               const tenureLabel = m.is_rookie ? '🎓 Rookie' : (m.tenure || '');
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-team="1" title="View ${escapeHtml(m.name)}'s card">
@@ -6253,8 +6283,8 @@ function renderNationModal() {
             </div>
             ${topPeople.map((m, i) => {
               const cards = [];
-              if (m.yellow_meetings) cards.push(`<span class="badge" title="Yellow Card · less than 5 meetings/week (${fmtNum(m.meetings)})">🟨</span>`);
-              if (m.yellow_gm) cards.push(`<span class="badge" title="Yellow Card · New Business GM below 25% (${fmtPct(indivGm(m))})">🟨</span>`);
+              if (m.yellow_meetings) cards.push(cardBadge('act', fmtNum(m.meetings), 'badge'));
+              if (m.yellow_gm) cards.push(cardBadge('mar', fmtPct(indivGm(m)), 'badge'));
               return `
                 <div class="members-table-row member-row-click" data-player="${escapeHtml(m.name)}" data-from-nation="1" title="View ${escapeHtml(m.name)}'s card">
                   <div class="member-rank ${i === 0 ? 'top' : ''}">#${i + 1}</div>

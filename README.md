@@ -120,10 +120,14 @@ team/player modals, TV mode):
      `🏃 X Low Activity` (< 5 meetings/wk) · `🥅 Y Low Margin` (NB GM < 25%). One delegated,
      capture-phase handler shows the popover and stops the tap from also opening the squad
      modal the badge sits inside; tapping elsewhere (or a real scroll) closes it.
-   - A **single player's** yellow-card reason: tap the player → their card shows the
-     discipline badge → tap it to reveal the same split (`.pc-discipline` is tap-to-reveal).
+   - A **single player's** yellow card (in any list): the `🟨` is itself tappable —
+     it reveals that one card's reason (`🏃 Low Activity` or `🥅 Low Margin`, with the
+     measured value) without opening the player card it sits inside. The player card's
+     `.pc-discipline` badge is also tap-to-reveal.
+   - Small bracketed counts (e.g. the tally `🟨 ( N )`) keep a space inside the brackets
+     so the digits stay legible at small sizes (TV, dense rows).
    - On the **TV / projection** surface there is no pointer, so the tally is a glanceable
-     `🟨 (N)` indicator only — by design.
+     `🟨 ( N )` indicator only — by design.
 
 2. **Nothing is clipped inside a card.** Cards use `overflow:hidden`, so content that's
    wider than its box gets *silently cut off* (this is invisible to a document-level
