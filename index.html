@@ -1252,7 +1252,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .pc-rule { display: block; font-size: 12px; line-height: 1.5; font-family: ui-monospace, monospace; }
 .pc-rule.ok { color: #b9f6ca; }
 .pc-rule.bad { color: #ffe7a3; }
-.pc-rating-row { display: flex; justify-content: center; gap: 22px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.22); }
+.pc-rating-row { display: flex; justify-content: center; gap: 15px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.22); }
+.pc-rating b { white-space: nowrap; }
 .pc-rating { display: flex; flex-direction: column; }
 .pc-rating b { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1; }
 .pc-rating span { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.75); margin-top: 4px; }
@@ -2401,6 +2402,32 @@ img, table { max-width: 100%; }
 .coach-metrics { margin: 0 0 8px; }
 .coach-contrib-sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; font-family: ui-monospace, monospace; }
 .coach-contrib-sub b { color: var(--ink); }
+/* Coach Room player search */
+.coach-search { margin-top: 12px; }
+.coach-search-results { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.coach-srow {
+  display: grid; grid-template-columns: 44px minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) auto;
+  align-items: center; gap: 10px; padding: 9px 12px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer; transition: background 0.12s, transform 0.12s, border-color 0.12s;
+}
+.coach-srow:hover { background: var(--cream); transform: translateX(2px); border-color: var(--ink-2); }
+.coach-srow .coach-avatar { width: 44px; height: 44px; font-size: 15px; }
+.coach-srow-id { display: flex; flex-direction: column; min-width: 0; }
+.coach-srow-id b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.coach-srow-id em { font-size: 10.5px; color: var(--muted); font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.coach-srow-fig { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.coach-srow-fig > span { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-family: ui-monospace, monospace; }
+.coach-srow-fig b { font-size: 13px; }
+.coach-srow-fig small { font-size: 10px; color: var(--muted); }
+.coach-srow-card { font-size: 18px; text-align: center; }
+@media (max-width: 640px) {
+  .coach-srow { grid-template-columns: 40px minmax(0, 1fr) auto; row-gap: 6px; }
+  .coach-srow .coach-avatar { width: 40px; height: 40px; }
+  .coach-srow-fig { grid-column: 2 / 4; flex-direction: row; gap: 6px; align-items: baseline; }
+  .coach-srow-fig > span::after { content: ':'; }
+  .coach-srow-card { grid-row: 1; grid-column: 3; }
+}
 .coach-rows { display: flex; flex-direction: column; gap: 6px; }
 .coach-row {
   display: grid; grid-template-columns: 32px 54px minmax(0, 1.5fr) minmax(60px, 2fr) auto;
@@ -2879,6 +2906,7 @@ let vartimeSearch = '';    // VAR TIME player name search
 let coachRegion = 'all';   // COACH ROOM country/region filter
 let coachTeam = 'all';     // COACH ROOM entity (team) filter
 let coachMetric = 'ps_total'; // COACH ROOM contributor metric
+let coachSearch = '';      // COACH ROOM player name search
 let coachDive = null;      // open deep-dive: { metric } | null
 let coachDiveRegion = null; // drill-down: region opened inside the deep-dive (null = nations level)
 let fullRankOpen = {}; // { golden: bool, playmaker: bool } — show the full ranking under a board
@@ -4778,6 +4806,31 @@ function renderCoachRoom() {
     `<button class="search-chip coach-metric ${coachMetric === x.key ? 'on' : ''}" data-metric="${x.key}">${x.label}</button>`
   ).join('');
 
+  // Player name search — finds anyone across the whole roster (ignores the region/
+  // team filters) and shows Total GM next to New-Business GM, the breakdown that's
+  // otherwise only reachable by drilling nation → team → player.
+  const cs = coachSearch.trim().toLowerCase();
+  const matches = cs
+    ? [...people].filter(p => p.name.toLowerCase().includes(cs) || String(p.team).toLowerCase().includes(cs))
+        .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0)).slice(0, 30)
+    : [];
+  const srowFig = (label, val, sub) => `<span class="coach-srow-fig"><span>${label}</span><b>${val}</b><small>${sub}</small></span>`;
+  const searchResults = cs ? `
+      <div class="coach-search-results">
+        ${matches.length ? matches.map(p => {
+          const card = (p.yellow_meetings && p.yellow_gm) ? '🟥' : (p.yellow_meetings || p.yellow_gm) ? '🟨' : '✅';
+          return `
+          <div class="coach-srow" data-player="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
+            <span class="coach-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
+            <span class="coach-srow-id"><b>${escapeHtml(p.name)}</b><em>${playerTeamHTML(p.team, 'tnk-real-muted')}</em></span>
+            ${srowFig('PS Total', fmtMoney(p.ps_total), 'GM ' + fmtPct(p.ps_total_gm))}
+            ${srowFig('PS NB', fmtMoney(p.ps_nb), 'NB GM ' + fmtPct(indivGm(p)))}
+            ${srowFig('Meetings', fmtNum(p.meetings), '/wk')}
+            <span class="coach-srow-card" title="${card === '🟥' ? 'Red card (both rules)' : card === '🟨' ? 'Yellow card' : 'Playing by the rules'}">${card}</span>
+          </div>`;
+        }).join('') : `<div class="no-result">No player matches "${escapeHtml(coachSearch.trim())}".</div>`}
+      </div>` : '';
+
   return `
     <div class="section">
       <div class="section-header">
@@ -4796,6 +4849,11 @@ function renderCoachRoom() {
         </select>
         ${filtersActive ? `<button id="coach-clear" class="vt-reset" title="Clear filters">↺ Clear</button>` : ''}
       </div>
+
+      <div class="coach-search">
+        <input type="text" id="coach-search" class="search-input" placeholder="🔎 Find a player by name — shows Total GM vs New-Business GM" value="${escapeHtml(coachSearch)}" aria-label="Search a player by name" />
+      </div>
+      ${searchResults}
 
       <div class="coach-kpis">${kpis}</div>
 
@@ -5880,6 +5938,7 @@ function paniniCardInner(p) {
       ${disciplineBadge}
       <div class="pc-rating-row">
         <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
+        <div class="pc-rating"><b>${fmtMoney(p.ps_nb)}</b><span>PS NB</span></div>
         <div class="pc-rating"><b>${fmtPct(indivGm(p))}</b><span>NB GM</span></div>
         <div class="pc-rating"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
       </div>
@@ -6465,6 +6524,15 @@ function render() {
     if (cRegion) cRegion.addEventListener('change', e => { coachRegion = e.target.value; coachTeam = 'all'; reRender(); });
     const cTeam = document.getElementById('coach-team');
     if (cTeam) cTeam.addEventListener('change', e => { coachTeam = e.target.value; reRender(); });
+    const cSearch = document.getElementById('coach-search');
+    if (cSearch) {
+      const apply = debounce(() => {
+        const y = window.scrollY; render(); window.scrollTo(0, y);
+        const ni = document.getElementById('coach-search');
+        if (ni) { ni.focus(); ni.setSelectionRange(coachSearch.length, coachSearch.length); }
+      }, 120);
+      cSearch.addEventListener('input', e => { coachSearch = e.target.value; apply(); });
+    }
     const cClear = document.getElementById('coach-clear');
     if (cClear) cClear.addEventListener('click', () => { coachRegion = 'all'; coachTeam = 'all'; reRender(); });
     document.querySelectorAll('.coach-metric').forEach(btn => btn.addEventListener('click', () => { coachMetric = btn.dataset.metric; reRender(); }));
@@ -7269,7 +7337,6 @@ function openRules() {
         <ul class="rules-list">
           <li><b>5 meetings per week</b> (average). <i>You need to be able to run 5km during a match 🏃</i></li>
           <li><b>Gross Margin ≥ 25%</b> (average). <i>We're not just kicking the ball, we're aiming for the goal 🥅</i></li>
-          <li><b>Opportunities</b> count from <b>Stage 2</b> onwards, excluding deals under <b>€50K</b>.</li>
         </ul>
         <div class="rules-foot">🟥 Monitored weekly by the VAR · Challenge 1 June → 3 July 2026 · Final in Paris, 9 July.</div>
       </div>

@@ -92,6 +92,13 @@ function mockData() {
     log('GM KPI is clickable (deep-dive enabled)', await page.has('[data-kpi="ps_total_gm"]'));
     if (await page.has('[data-kpi="ps_total_gm"]')) { await page.tap('[data-kpi="ps_total_gm"]'); await page.waitForTimeout(300);
       log('GM deep-dive opens', await page.has('#cd-overlay')); await esc(page); await page.waitForTimeout(150); }
+    // Coach Room player search: find a player and see their Total GM vs NB GM.
+    if (await page.has('#coach-search')) {
+      await page.fill('#coach-search', 'Claus'); await page.waitForTimeout(300);
+      log('Coach Room search finds a player', await page.has('.coach-srow[data-player]'));
+      const figs = await page.evaluate(() => (document.querySelector('.coach-search-results') || {}).innerText || '');
+      log('Coach search shows Total GM and NB GM', /GM/.test(figs) && /NB GM/.test(figs), figs.replace(/\s+/g, ' ').slice(0, 60));
+    }
     await page.screenshot({ path: '/tmp/shots/admin-coach.png' }).catch(() => {});
     await ctx.close();
   }
