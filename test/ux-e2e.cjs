@@ -160,6 +160,18 @@ function mockData() {
 
     if (await page.has('#tv-btn')) { await page.tap('#tv-btn'); await page.waitForTimeout(350);
       log('TV mode opens', await page.has('#tv-overlay'));
+      // Expanding the list must keep the #1 hero floating in view (sticky), not let it
+      // scroll away into a tall empty box. Expand, scroll the list, check the hero.
+      if (await page.has('[data-tvmore]')) {
+        await page.tap('[data-tvmore]'); await page.waitForTimeout(250);
+        await page.evaluate(() => { const b = document.querySelector('.tv-body'); if (b) b.scrollTop = Math.round(b.scrollHeight * 0.5); });
+        await page.waitForTimeout(200);
+        const stuck = await page.evaluate(() => { const h = document.querySelector('.tv-hero'); if (!h) return false;
+          const r = h.getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight * 0.4 && r.bottom > r.top; });
+        log('TV: #1 hero stays in view when the list is scrolled', stuck);
+        await page.evaluate(() => { const b = document.querySelector('.tv-body'); if (b) b.scrollTop = 0; });
+        if (await page.has('[data-tvmore]')) { await page.tap('[data-tvmore]').catch(() => {}); await page.waitForTimeout(200); }
+      }
       if (await page.has('#tv-next')) { await page.tap('#tv-next'); await page.waitForTimeout(250); log('TV next panel (no crash)', true); }
       if (await page.has('[data-tvplayer]')) { await page.tap('[data-tvplayer]'); await page.waitForTimeout(300); log('TV player card over projection', await page.has('#tv-player-overlay')); await esc(page); await page.waitForTimeout(150); }
       await page.screenshot({ path: '/tmp/shots/tv-mode.png' }).catch(() => {});

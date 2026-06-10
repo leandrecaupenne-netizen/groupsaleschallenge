@@ -2084,7 +2084,12 @@ img, table { max-width: 100%; }
 /* === TV "Panini" match-sheet: featured hero card + chasing pack === */
 .tv-matchsheet { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 2.5vw; align-items: stretch; max-width: 1200px; width: 100%; margin: 0 auto; }
 .tv-hero {
-  position: relative; overflow: hidden; border-radius: 2vmin; padding: 2.4vmin 2vmin;
+  /* Natural height (not stretched to the list) + sticky, so when the list is
+     expanded the #1 card stays compact and floats in view instead of being a tall
+     mostly-empty box whose content sits below the fold. Sticks within .tv-body.
+     (position:sticky also anchors the ::before stripes and z-indexed children.) */
+  align-self: start; position: sticky; top: 1.5vmin;
+  overflow: hidden; border-radius: 2vmin; padding: 2.4vmin 2vmin;
   display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center;
   color: #fff; border: 2px solid var(--gold);
   background:
@@ -2129,6 +2134,9 @@ img, table { max-width: 100%; }
 .tv-ms-unit { font-family: ui-monospace, monospace; font-size: clamp(8px, 1.2vmin, 12px); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.62); margin-top: 0.4vmin; white-space: nowrap; }
 @media (max-width: 640px) {
   .tv-matchsheet { grid-template-columns: 1fr; gap: 2vmin; }
+  /* Single column: the hero stacks above the list, so don't pin it (it would eat
+     most of a phone screen). Back to normal flow. */
+  .tv-hero { position: static; align-self: auto; }
   .tv-ms-row { flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px; }
   .tv-ms-name { font-size: clamp(14px, 4.4vw, 22px); overflow-wrap: anywhere; }
   .tv-ms-val { font-size: clamp(15px, 4.4vw, 24px); }
