@@ -85,6 +85,16 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-10 — Décision cartons : statu quo (rouge/tally en attente)
+Après l'échange Léandre / Jose / Sebastien sur le modèle de carton rouge (« 2 jaunes = rouge »
+live vs « rouge décidé à la fin par le VAR »), **décision : rester en l'état**. On garde le
+comportement actuel (carton **jaune** uniquement côté carte, pas de rouge auto, pas de tally par
+équipe/nation). **« On verra si ça change pour la suite. »** La **PR #33 (carton rouge « rugby » +
+tally) est fermée** mais le code reste sur la branche `claude/red-card-var-review` (réouvrable en
+1 commande). Pour rappel, restent ouverts si le sujet revient : la sanction d'un rouge confirmé
+(suspension / amende € / rien d'auto) et la **persistance des verdicts VAR** (aujourd'hui en
+localStorage admin, non publiés → colonne Sheet à voir avec Jose pour les rendre visibles à tous).
+
 ### 2026-06-09 — Quick wins suite aux questions de Sebastien (split en deux PR)
 **PR « sûre » (1/3/4)** — indépendants du débat sur les cartons, mergés :
 1. **Carte joueur** : ajout du **volume PS NB (€)** dans les stats de tête (PS RANK · PS NB ·
