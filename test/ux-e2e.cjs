@@ -112,6 +112,8 @@ function mockData() {
     for (const v of ['nations', 'players', 'teams']) {
       if (await page.has(`[data-view="${v}"]`)) { await page.tap(`[data-view="${v}"]`); await page.waitForTimeout(200); log(`Team sub-view "${v}"`, await page.has(`[data-view="${v}"].on`)); }
     }
+    // Teams view shows a per-team card tally (the mock has carded players, incl. a red).
+    log('Team ranking shows a card tally (🟨/🟥)', await page.has('.tt-cards'));
 
     await tab(page, 'golden'); await page.waitForTimeout(150);
     if (await page.has('[data-fullrank]')) { const before = (await page.$$('.fr-row')).length; await page.tap('[data-fullrank]'); await page.waitForTimeout(200);
@@ -225,13 +227,13 @@ function mockData() {
     await bootstrap(page, BASE); // cold path: first fetch, no snapshot
     const coldBreaker = await discFor('Claus Thorsager');
     const coldClean = await discFor('Thomas Vinther');
-    log('Cold load: rule-breaker shows a yellow card', coldBreaker.includes('🟨'), coldBreaker);
+    log('Cold load: rule-breaker shows a card (breaks both rules → red under review)', /🟥|🟨/.test(coldBreaker), coldBreaker);
     log('Cold load: compliant player shows clean', /playing by the rules/i.test(coldClean), coldClean);
     // Reload → instant-paint snapshot hydrate path must derive identical flags.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.tab-btn', { timeout: 10000 }).catch(() => {});
     const warmBreaker = await discFor('Claus Thorsager');
-    log('Reload (snapshot hydrate): rule-breaker still shows a yellow card', warmBreaker.includes('🟨'), warmBreaker);
+    log('Reload (snapshot hydrate): rule-breaker still shows a card', /🟥|🟨/.test(warmBreaker), warmBreaker);
     await ctx.close();
   }
 

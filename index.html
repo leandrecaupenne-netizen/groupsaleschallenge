@@ -478,6 +478,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .tnk-real-light { font-size: 0.84em; color: rgba(255,255,255,0.6); }
 .tnk-real-muted { font-size: 0.84em; color: var(--muted); }
 .tt-realname { font-size: 11px; color: var(--muted); }
+.tt-cards { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
 .podium-team-real { font-size: clamp(9px, 1.5vw, 11px); color: rgba(255,255,255,0.82); margin-top: 3px; }
 .modal-title-real { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 3px; }
 .tt-members {
@@ -1238,6 +1239,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .pc-discipline:hover { filter: brightness(1.1); }
 .pc-discipline.ok { background: rgba(34,197,94,0.22); color: #b9f6ca; border: 1px solid rgba(34,197,94,0.5); }
 .pc-discipline.warn { background: rgba(242,199,92,0.18); color: #ffe7a3; border: 1px solid rgba(242,199,92,0.5); }
+.pc-discipline.red { background: rgba(200,16,46,0.22); color: #ffc9d2; border: 1px solid rgba(200,16,46,0.6); }
 .pc-disc-i { font-size: 11px; opacity: 0.8; }
 /* Tap-to-reveal explanation of the discipline status (VAR rules + this player's
    actual values) — works on touch where the hover title is useless. */
@@ -3039,6 +3041,19 @@ function teamShortLabel(teamName) {
   return escapeHtml(nick || teamName);
 }
 
+// Card tally for a group of people: a player breaking ONE rule is on a yellow, a
+// player breaking BOTH (meetings AND GM) is on a (provisional) red. Renders a small
+// "🟨 (X) 🟥 (Y)" badge for a team/nation row; empty when the group is clean.
+function cardsBadge(list) {
+  let y = 0, r = 0;
+  list.forEach(p => { const a = !!p.yellow_meetings, b = !!p.yellow_gm; if (a && b) r++; else if (a || b) y++; });
+  if (!y && !r) return '';
+  const parts = [];
+  if (y) parts.push(`🟨 (${y})`);
+  if (r) parts.push(`🟥 (${r})`);
+  return `<span class="tt-cards" title="${y} on a yellow card · ${r} on a red (under VAR review)">${parts.join(' ')}</span>`;
+}
+
 // Same idea from a PLAYER's team string: look up the team to get its nickname and
 // show it big with the official entity small underneath (optional trailing suffix,
 // e.g. a rookie tag, stays on the nickname line). No nickname -> just the entity,
@@ -3955,7 +3970,7 @@ function renderNationsTable() {
         return `
         <div class="nation-row nation-row-click ${topCls}" data-nation="${escapeHtml(n.region)}">
           <div class="tt-rank ${topCls}">${['🥇', '🥈', '🥉'][rank - 1] || ('#' + rank)}</div>
-          <div class="nt-name">${chipFlagHtml(n.region)}${regionParts(n.region).name}<div class="click-hint">${clickHint}</div></div>
+          <div class="nt-name">${chipFlagHtml(n.region)}${regionParts(n.region).name}${cardsBadge(people.filter(p => regionOf(p.team) === n.region))}<div class="click-hint">${clickHint}</div></div>
           <div class="tt-stat nt-col-teams">${n.teams}</div>
           <div class="tt-stat nt-col-ppl">${n.people}</div>
           <div class="tt-money tt-money-main">${animNum('nt:' + n.region, n.avg_ps, 'money')}</div>
@@ -4140,6 +4155,7 @@ function renderTeamRanking() {
               <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${teamNameHTML(t, 'tt-realname')}
+                ${cardsBadge(people.filter(p => sameTeam(p.team, t.country)))}
                 <div class="click-hint">${clickHint}</div>
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>
@@ -5902,11 +5918,19 @@ function paniniCardInner(p) {
     `<span class="pc-rule ${meetOk ? 'ok' : 'bad'}">${meetOk ? '✅' : '🟨'} Meetings: ${fmtNum(p.meetings)}/week ${meetOk ? '(target 5+)' : '(below 5 — yellow card)'}</span>`,
     gmLine
   ].join('');
-  const explainHint = cards.length
-    ? 'Two yellows make a red. Here\'s why:'
+  // Two yellows (both rules broken) = a red — but, rugby-style, the red is provisional:
+  // it goes to the VAR committee (VAR TIME) to confirm, downgrade or clear.
+  const isRed = cards.length >= 2;
+  const explainHint = isRed
+    ? 'Two yellows = a red — reviewed by the VAR. Here\'s why:'
+    : cards.length
+    ? 'On a yellow card. Here\'s why:'
     : 'Fully by the rules — both VAR checks passed:';
+  const discLabel = clean ? '✅ Playing by the rules'
+    : isRed ? '🟥 Red · under VAR review'
+    : cards.join('') + ' On a yellow card';
   const disciplineBadge = (cards.length || clean)
-    ? `<button class="pc-discipline ${cards.length ? 'warn' : 'ok'}" data-discipline aria-expanded="false">${cards.length ? cards.join('') + ' On a yellow card' : '✅ Playing by the rules'}<span class="pc-disc-i">ⓘ</span></button>
+    ? `<button class="pc-discipline ${clean ? 'ok' : isRed ? 'red' : 'warn'}" data-discipline aria-expanded="false">${discLabel}<span class="pc-disc-i">ⓘ</span></button>
        <div class="pc-discipline-pop" hidden><div class="pc-disc-head">${explainHint}</div>${explainLines}</div>`
     : '';
   // Collectible "honours" — Panini-style achievement badges earned from the
@@ -5932,7 +5956,7 @@ function paniniCardInner(p) {
         <span class="pc-flag">${flagBars(flag)}</span>
       </div>
       <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
-      <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
+      <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${isRed ? '🟥' : cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-team">${playerTeamHTML(p.team, 'tnk-real-light', p.is_rookie ? ' · 🎓 ROOKIE' : '')}</div>
       ${disciplineBadge}
