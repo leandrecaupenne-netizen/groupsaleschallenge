@@ -3126,8 +3126,8 @@ function showCardsPop(badge) {
   const act = +badge.dataset.act || 0, mar = +badge.dataset.mar || 0, total = act + mar;
   cardsPopNode().innerHTML =
     `<div class="cards-pop-h">🟨 ${total} yellow card${total === 1 ? '' : 's'}</div>` +
-    `<div class="cards-pop-row">🏃 <b>${act}</b> Low Activity<span class="cards-pop-sub">&lt;5 meetings/wk</span></div>` +
-    `<div class="cards-pop-row">🥅 <b>${mar}</b> Low Margin<span class="cards-pop-sub">NB GM &lt;25%</span></div>`;
+    `<div class="cards-pop-row">🏃 <b>${act}</b> Low Activity<span class="cards-pop-sub">under 5 meetings/wk</span></div>` +
+    `<div class="cards-pop-row">🥅 <b>${mar}</b> Low Margin<span class="cards-pop-sub">NB GM below 25%</span></div>`;
   positionCardsPop(badge);
 }
 // One individual card → its single reason.
@@ -3166,6 +3166,11 @@ function bindCardsTallyPopover() {
   // causes (the badge sits inside an <a> that grabs focus and may scroll into view).
   window.addEventListener('scroll', () => { if (Date.now() - cardsPopAt > 350) hideCardsPop(); }, true);
   window.addEventListener('resize', hideCardsPop);
+  // Escape closes the popover (keyboard parity with the click-away dismiss). Capture
+  // phase + stop, so it doesn't also bubble to a modal's own Esc-to-close handler.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && cardsPopEl && !cardsPopEl.hidden) { e.stopImmediatePropagation(); hideCardsPop(); }
+  }, true);
 }
 
 // Same idea from a PLAYER's team string: look up the team to get its nickname and

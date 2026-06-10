@@ -133,6 +133,10 @@ function mockData() {
       if (!(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false))) { await page.tap('.tt-cards'); await page.waitForTimeout(150); }
       await page.tap('body'); await page.waitForTimeout(150);
       log('Tap outside closes the split popover', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
+      // Escape closes it too (keyboard parity).
+      await page.tap('.tt-cards'); await page.waitForTimeout(150);
+      await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+      log('Escape closes the split popover', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
     }
 
     // A single player's yellow card (in a list) is itself tappable → reveals its one
