@@ -101,6 +101,13 @@ jaunes = somme des infractions ; un joueur cassant les 2 règles compte 2). **Ja
 (pas de rouge live — cohérent avec « rouge = verdict de fin de challenge »). Le tally rouge reste
 gelé sur `claude/red-card-var-review`.
 
+**MAJ 2026-06-10 (2)** : tally étendu au **podium** et au **mode TV** (en plus des classements
+équipes/nations). Sur demande de Léandre, on **garde le logo 🟨** (pas de remplacement par
+🏃/🥅) : le badge affiche **🟨 (N)** et c'est **au survol** que l'infobulle donne le **split**
+« 🏃 X Low Activity · 🥅 Y Low Margin · N total ». Idem sur les badges joueur : le 🟨 reste, et
+l'infobulle précise le type (🏃 Low Activity / 🥅 Low Margin). (Intégrer l'emoji *dans* le carton
+jaune rend mal — emoji multicolore dans un carré jaune — d'où la solution survol.)
+
 ### 2026-06-09 — Quick wins suite aux questions de Sebastien (split en deux PR)
 **PR « sûre » (1/3/4)** — indépendants du débat sur les cartons, mergés :
 1. **Carte joueur** : ajout du **volume PS NB (€)** dans les stats de tête (PS RANK · PS NB ·
