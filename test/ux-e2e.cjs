@@ -264,6 +264,21 @@ function mockData() {
     const coldClean = await discFor('Thomas Vinther');
     log('Cold load: rule-breaker shows a yellow card', coldBreaker.includes('🟨'), coldBreaker);
     log('Cold load: compliant player shows clean', /playing by the rules/i.test(coldClean), coldClean);
+    // Panini card: the floating 🟨 is tappable (reveals its reason), and the "On a
+    // yellow card" explanation carries the matching 🏃/🥅 emojis — coherent with the
+    // lists' tap popover and the Rules card. Claus breaks both rules → both emojis.
+    await tab(page, 'position'); await page.fill('#position-search', 'Claus Thorsager').catch(() => {}); await page.waitForTimeout(350);
+    if (await page.$('.pc-cards .tt-card1')) {
+      await page.tap('.pc-cards .tt-card1'); await page.waitForTimeout(200);
+      const cpop = (await page.textContent('#cards-pop').catch(() => '')) || '';
+      log('Panini: floating 🟨 is tappable → reason popover', /Low (Activity|Margin)/.test(cpop), cpop.trim().slice(0, 30));
+      await page.tap('.pc-cards .tt-card1').catch(() => {}); await page.waitForTimeout(120); // toggle closed
+    }
+    if (await page.$('.pc-discipline')) {
+      await page.tap('.pc-discipline'); await page.waitForTimeout(200);
+      const expl = (await page.textContent('.pc-discipline-pop').catch(() => '')) || '';
+      log('Panini: "On a yellow card" explanation has 🏃 + 🥅 emojis', expl.includes('🏃') && expl.includes('🥅'));
+    }
     // Reload → instant-paint snapshot hydrate path must derive identical flags.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.tab-btn', { timeout: 10000 }).catch(() => {});
