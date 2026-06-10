@@ -3155,7 +3155,12 @@ function bindCardsTallyPopover() {
       else showCard1Pop(badge);
       return;
     }
-    if (!e.target.closest('#cards-pop')) hideCardsPop();
+    // Popover open + clicked outside it → the click only dismisses the popover; it must
+    // NOT also fire whatever sits under it (e.g. open the podium/team modal). Swallow it.
+    if (cardsPopEl && !cardsPopEl.hidden && !e.target.closest('#cards-pop')) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      hideCardsPop();
+    }
   }, true);
   // Close on a real user scroll — but ignore the focus-scroll the opening click itself
   // causes (the badge sits inside an <a> that grabs focus and may scroll into view).
