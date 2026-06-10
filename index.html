@@ -6432,7 +6432,6 @@ function renderFindMeCTA() {
 
 // === RENDER ===
 function render() {
-  hideCardsPop(); // a re-render (poll, tab switch…) replaces the badge nodes — drop any open card popover so it can't float, stale, over the new DOM
   lastRenderedUpdate = updated_at; // mark this payload as painted (poll skips no-op renders)
   let content = '';
   switch(currentTab) {
