@@ -593,3 +593,19 @@ Ajouté à `main` :
 - **DECISIONS.md** : ce journal, pour la mémoire inter-sessions.
 
 Non ré-appliqué (déjà présent sur `main`, en mieux) : nicknames, timestamp Drive, cache 60s.
+
+
+### 2026-06-10 — Cartons jaunes cliquables (split au tap) + lisibilité crochets
+Suite mobile (pas de survol) + retours Léandre :
+- **Tally par groupe `🟨 ( N )`** : déjà tap-to-reveal (podium, classements équipes/nations,
+  PR #37/#38). Corrigé le **débordement mobile** (la ligne meta du podium `flex-wrap`, PR #38).
+- **Cartons individuels cliquables** : chaque `🟨` d'un joueur (Golden Boot, Players of the
+  Moment, modales équipe/nation) est désormais **tappable** → popover avec sa raison unique
+  (`🏃 Low Activity` <5 mtg/sem, ou `🥅 Low Margin` NB GM <25%, + la valeur). Helper unique
+  `cardBadge(type, detail, cls)` ; même popover délégué que le tally (`.tt-card1`),
+  capture-phase + `stopImmediatePropagation` pour ne pas ouvrir la fiche joueur en dessous.
+  La pastille `.pc-discipline` de la fiche joueur reste tap-to-reveal aussi.
+- **Lisibilité des nombres entre crochets** : espace ajouté dans les parenthèses du tally
+  (`🟨 ( N )`) pour que les chiffres ne collent pas aux crochets aux petites tailles (TV).
+- **Tests** : `ux-e2e` — tap d'un carton individuel → popover, sans ouvrir la fiche.
+  `ux-smoke` — garde anti-coupure intra-carte (toutes tabs @360px) toujours vert.
