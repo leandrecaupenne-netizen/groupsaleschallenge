@@ -6013,21 +6013,29 @@ function paniniCardInner(p) {
   const cards = [];
   if (p.yellow_meetings) cards.push('🟨');
   if (p.yellow_gm) cards.push('🟨');
+  // Tappable versions for the floating corner badge: tap a 🟨 to reveal its reason
+  // (🏃 Low Activity / 🥅 Low Margin) — the same popover used across the lists.
+  const cardChips = [];
+  if (p.yellow_meetings) cardChips.push(cardBadge('act', fmtNum(p.meetings)));
+  if (p.yellow_gm) cardChips.push(cardBadge('mar', fmtPct(indivGm(p))));
   // Discipline badge: yellow card(s) if breaking a rule, or a green ✅ "Clean
   // Sheet" when the player is playing fully by the rules (and has real data).
   const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
   const clean = !p.yellow_meetings && !p.yellow_gm && hasData;
-  // Build a precise, per-player explanation (tap to reveal — works on touch,
-  // where the hover title is useless).
+  // Per-player explanation (tap to reveal). Each broken rule shows its type emoji —
+  // 🏃 Low Activity (meetings) / 🥅 Low Margin (NB GM) — so the wording matches the
+  // 🟨 tap popover and the Rules card.
   const meetOk = !p.yellow_meetings;
   const gmOk = !p.yellow_gm;
   const gmLine = (p.ps_nb || 0) > 0
-    ? `<span class="pc-rule ${gmOk ? 'ok' : 'bad'}">${gmOk ? '✅' : '🟨'} New Business GM: ${fmtPct(indivGm(p))} ${gmOk ? '(target ≥ 25%)' : '(below 25% — yellow card)'}</span>`
+    ? (gmOk
+      ? `<span class="pc-rule ok">✅ New Business GM: ${fmtPct(indivGm(p))} (target ≥ 25%)</span>`
+      : `<span class="pc-rule bad">🟨 🥅 Low Margin — New Business GM ${fmtPct(indivGm(p))} (below 25%)</span>`)
     : `<span class="pc-rule">▫️ New Business GM: — (no New Business yet)</span>`;
-  const explainLines = [
-    `<span class="pc-rule ${meetOk ? 'ok' : 'bad'}">${meetOk ? '✅' : '🟨'} Meetings: ${fmtNum(p.meetings)}/week ${meetOk ? '(target 5+)' : '(below 5 — yellow card)'}</span>`,
-    gmLine
-  ].join('');
+  const meetLine = meetOk
+    ? `<span class="pc-rule ok">✅ Meetings: ${fmtNum(p.meetings)}/week (target 5+)</span>`
+    : `<span class="pc-rule bad">🟨 🏃 Low Activity — ${fmtNum(p.meetings)} meetings/week (below 5)</span>`;
+  const explainLines = [meetLine, gmLine].join('');
   const explainHint = cards.length
     ? 'Two yellows make a red. Here\'s why:'
     : 'Fully by the rules — both VAR checks passed:';
@@ -6058,7 +6066,7 @@ function paniniCardInner(p) {
         <span class="pc-flag">${flagBars(flag)}</span>
       </div>
       <div class="pc-period-line">${period ? escapeHtml(period) : 'SALES CHALLENGE 2026'}</div>
-      <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cards.length ? `<span class="pc-cards">${cards.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
+      <div class="pc-avatar${photoFor(p.name) ? ' pc-avatar-photo' : ''}">${photoFor(p.name) ? `<img class="pc-photo" src="${photoFor(p.name)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.parentElement.classList.remove('pc-avatar-photo');this.remove()" /><span class="pc-photo-fallback">${escapeHtml(initials)}</span>` : `<span>${escapeHtml(initials)}</span>`}${cardChips.length ? `<span class="pc-cards">${cardChips.join('')}</span>` : clean ? `<span class="pc-cards pc-clean">✅</span>` : ''}</div>
       <div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-team">${playerTeamHTML(p.team, 'tnk-real-light', p.is_rookie ? ' · 🎓 ROOKIE' : '')}</div>
       ${disciplineBadge}
