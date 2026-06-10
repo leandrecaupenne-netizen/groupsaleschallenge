@@ -2287,6 +2287,8 @@ img, table { max-width: 100%; }
 .rules-list { margin: 0; padding-left: 20px; }
 .rules-list li { margin: 7px 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
 .rules-foot { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+.rules-subh { font-weight: 800; font-size: 14.5px; color: var(--ink); margin: 16px 0 6px; letter-spacing: 0.01em; }
+.rules-note { display: inline-block; margin-top: 2px; font-size: 13px; color: var(--muted); }
 
 /* === Sortable team-table headers === */
 .th-sort, .th-psort, .th-nsort { cursor: pointer; user-select: none; transition: color 0.15s; white-space: nowrap; }
@@ -7332,11 +7334,19 @@ function openRules() {
           <li><b>🤖 AI Play</b> — most impactful AI deal, picked by the AI Agency.</li>
           <li><b>⚡ Transformative Deal</b> — selected by Group Sales for strategic impact.</li>
         </ul>
-        <h3 class="rules-h">🟨 The rules — monitored weekly by the VAR</h3>
-        <p class="rules-p">Every <b>Friday</b>, the VAR reviews who's playing by the rules. Break one and you pick up a <b>yellow card</b> — two yellows make a <b>red</b>.</p>
+        <h3 class="rules-h">⚽ The Rules of the Game</h3>
+        <p class="rules-p">Every week, our "VAR" reviews the stats to ensure everyone is playing at their best. Break a rule, and you'll pick up a yellow card.</p>
+        <h4 class="rules-subh">👤 For the individuals</h4>
+        <p class="rules-p">Weekly infractions result in a <b>Yellow Card</b>. If those metrics don't improve by the deadline, they turn into a <b>Red Card</b>.</p>
         <ul class="rules-list">
-          <li><b>5 meetings per week</b> (average). <i>You need to be able to run 5km during a match 🏃</i></li>
-          <li><b>Gross Margin ≥ 25%</b> (average). <i>We're not just kicking the ball, we're aiming for the goal 🥅</i></li>
+          <li>🟨 <b>Yellow Card (Low Activity):</b> Averaging <b>fewer than 5 meetings per week.</b><br><i class="rules-note">Stamina check: You need the fitness to run 5km during a match! 🏃</i></li>
+          <li>🟨 <b>Yellow Card (Low Margin):</b> Averaging a <b>New Business Gross Margin below 25%.</b><br><i class="rules-note">Finishing check: We're not just passing the ball; we're aiming for the goal! 🥅</i></li>
+          <li>🟥 <b>Red Card (The Final Verdict):</b> Issued at the <b>end of the challenge</b> if your yellow-carded KPIs failed to recover to the expected targets.</li>
+        </ul>
+        <h4 class="rules-subh">💼 For the opportunities</h4>
+        <ul class="rules-list">
+          <li><b>The Stage:</b> Must be at <b>Stage 2 or beyond.</b></li>
+          <li><b>The Deal Size:</b> Must be <b>€50K or higher</b> (any deals under €50K are strictly excluded).</li>
         </ul>
         <div class="rules-foot">🟥 Monitored weekly by the VAR · Challenge 1 June → 3 July 2026 · Final in Paris, 9 July.</div>
       </div>
