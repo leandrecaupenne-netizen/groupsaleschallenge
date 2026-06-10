@@ -478,6 +478,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .tnk-real-light { font-size: 0.84em; color: rgba(255,255,255,0.6); }
 .tnk-real-muted { font-size: 0.84em; color: var(--muted); }
 .tt-realname { font-size: 11px; color: var(--muted); }
+.tt-cards { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
 .podium-team-real { font-size: clamp(9px, 1.5vw, 11px); color: rgba(255,255,255,0.82); margin-top: 3px; }
 .modal-title-real { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 3px; }
 .tt-members {
@@ -3041,6 +3042,15 @@ function teamShortLabel(teamName) {
   return escapeHtml(nick || teamName);
 }
 
+// Total YELLOW cards for a group of people. Each broken rule (meetings AND/OR margin)
+// is one yellow card, so a player failing both counts as 2. Reds are the end-of-
+// challenge VAR verdict, not shown live — so this is yellow-only. Empty when none.
+function yellowCardsBadge(list) {
+  let y = 0;
+  list.forEach(p => { if (p.yellow_meetings) y++; if (p.yellow_gm) y++; });
+  return y ? `<span class="tt-cards" title="${y} yellow card${y === 1 ? '' : 's'} this week">🟨 (${y})</span>` : '';
+}
+
 // Same idea from a PLAYER's team string: look up the team to get its nickname and
 // show it big with the official entity small underneath (optional trailing suffix,
 // e.g. a rookie tag, stays on the nickname line). No nickname -> just the entity,
@@ -3957,7 +3967,7 @@ function renderNationsTable() {
         return `
         <div class="nation-row nation-row-click ${topCls}" data-nation="${escapeHtml(n.region)}">
           <div class="tt-rank ${topCls}">${['🥇', '🥈', '🥉'][rank - 1] || ('#' + rank)}</div>
-          <div class="nt-name">${chipFlagHtml(n.region)}${regionParts(n.region).name}<div class="click-hint">${clickHint}</div></div>
+          <div class="nt-name">${chipFlagHtml(n.region)}${regionParts(n.region).name}${yellowCardsBadge(people.filter(p => regionOf(p.team) === n.region))}<div class="click-hint">${clickHint}</div></div>
           <div class="tt-stat nt-col-teams">${n.teams}</div>
           <div class="tt-stat nt-col-ppl">${n.people}</div>
           <div class="tt-money tt-money-main">${animNum('nt:' + n.region, n.avg_ps, 'money')}</div>
@@ -4142,6 +4152,7 @@ function renderTeamRanking() {
               <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${teamNameHTML(t, 'tt-realname')}
+                ${yellowCardsBadge(people.filter(p => sameTeam(p.team, t.country)))}
                 <div class="click-hint">${clickHint}</div>
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>

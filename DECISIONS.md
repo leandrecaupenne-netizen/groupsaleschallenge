@@ -95,6 +95,12 @@ tally) est fermée** mais le code reste sur la branche `claude/red-card-var-revi
 (suspension / amende € / rien d'auto) et la **persistance des verdicts VAR** (aujourd'hui en
 localStorage admin, non publiés → colonne Sheet à voir avec Jose pour les rendre visibles à tous).
 
+**MAJ 2026-06-10** : Léandre veut quand même le **total des cartons jaunes par équipe**. Ajouté
+(`yellowCardsBadge`) : badge **🟨 (N)** sous chaque équipe **et** nation (N = total de cartons
+jaunes = somme des infractions ; un joueur cassant les 2 règles compte 2). **Jaunes seulement**
+(pas de rouge live — cohérent avec « rouge = verdict de fin de challenge »). Le tally rouge reste
+gelé sur `claude/red-card-var-review`.
+
 ### 2026-06-09 — Quick wins suite aux questions de Sebastien (split en deux PR)
 **PR « sûre » (1/3/4)** — indépendants du débat sur les cartons, mergés :
 1. **Carte joueur** : ajout du **volume PS NB (€)** dans les stats de tête (PS RANK · PS NB ·
