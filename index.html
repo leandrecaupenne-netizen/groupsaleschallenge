@@ -392,7 +392,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .podium-card.first .podium-team-name { color: var(--gold); font-size: clamp(15px, 2.6vw, 23px); }
 .podium-stat-main { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vw, 28px); color: #fff; margin-top: auto; font-variant-numeric: tabular-nums; }
 .podium-stat-label { font-size: 8.5px; letter-spacing: 0.12em; color: rgba(255,255,255,0.65); text-transform: uppercase; margin-top: 3px; }
-.podium-stat-meta { display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.78); font-family: ui-monospace, monospace; }
+.podium-stat-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; margin-top: 10px; padding-bottom: 8px; font-size: 10px; color: rgba(255,255,255,0.78); font-family: ui-monospace, monospace; }
 
 /* === SEARCH === */
 .search-row {
@@ -478,10 +478,23 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .tnk-real-light { font-size: 0.84em; color: rgba(255,255,255,0.6); }
 .tnk-real-muted { font-size: 0.84em; color: var(--muted); }
 .tt-realname { font-size: 11px; color: var(--muted); }
-.tt-cards { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+.tt-cards { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; cursor: pointer; }
 /* Same badge inside the podium meta row (light-on-dark) and on the TV projection. */
 .tt-cards-inline { margin-top: 0; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.85); }
 .tt-cards-tv { font-size: 0.5em; font-weight: 700; margin-left: 0.45em; opacity: 0.92; vertical-align: middle; white-space: nowrap; }
+/* Tap/click the tally → split popover (works where hover doesn't, e.g. mobile). */
+#cards-pop {
+  position: fixed; z-index: 9000; max-width: 240px;
+  background: var(--navy-2, #2D3550); color: #fff;
+  border: 1px solid rgba(255,255,255,0.16); border-radius: 11px;
+  padding: 10px 13px; box-shadow: 0 10px 34px rgba(0,0,0,0.4);
+  font-size: 12px; line-height: 1.5; animation: discPop 0.18s ease both;
+}
+#cards-pop[hidden] { display: none; }
+.cards-pop-h { font-weight: 800; letter-spacing: 0.02em; margin-bottom: 6px; }
+.cards-pop-row { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.cards-pop-row b { font-weight: 800; }
+.cards-pop-sub { color: rgba(255,255,255,0.6); font-size: 10.5px; margin-left: auto; padding-left: 8px; }
 .podium-team-real { font-size: clamp(9px, 1.5vw, 11px); color: rgba(255,255,255,0.82); margin-top: 3px; }
 .modal-title-real { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 3px; }
 .tt-members {
@@ -3056,7 +3069,60 @@ function yellowCardsBadge(list, cls) {
   const total = act + mar;
   if (!total) return '';
   const title = `🏃 ${act} Low Activity · 🥅 ${mar} Low Margin · ${total} yellow card${total === 1 ? '' : 's'}`;
-  return `<span class="tt-cards${cls ? ' ' + cls : ''}" title="${title}">🟨 (${total})</span>`;
+  // Hover shows the split on desktop; tap opens the same split in a popover on touch.
+  return `<span class="tt-cards${cls ? ' ' + cls : ''}" role="button" aria-label="${title}" title="${title}" data-act="${act}" data-mar="${mar}">🟨 (${total})</span>`;
+}
+
+// Tap/click a 🟨 (N) tally → floating popover with the split, for touch devices where
+// there's no hover. One delegated handler, bound once; survives re-renders.
+let cardsPopEl = null, cardsPopBadge = null, cardsPopAt = 0;
+function cardsPopNode() {
+  if (!cardsPopEl) {
+    cardsPopEl = document.createElement('div');
+    cardsPopEl.id = 'cards-pop';
+    cardsPopEl.hidden = true;
+    document.body.appendChild(cardsPopEl);
+  }
+  return cardsPopEl;
+}
+function hideCardsPop() { if (cardsPopEl) cardsPopEl.hidden = true; cardsPopBadge = null; }
+function showCardsPop(badge) {
+  const act = +badge.dataset.act || 0, mar = +badge.dataset.mar || 0, total = act + mar;
+  const pop = cardsPopNode();
+  pop.innerHTML =
+    `<div class="cards-pop-h">🟨 ${total} yellow card${total === 1 ? '' : 's'}</div>` +
+    `<div class="cards-pop-row">🏃 <b>${act}</b> Low Activity<span class="cards-pop-sub">&lt;5 meetings/wk</span></div>` +
+    `<div class="cards-pop-row">🥅 <b>${mar}</b> Low Margin<span class="cards-pop-sub">NB GM &lt;25%</span></div>`;
+  pop.hidden = false;
+  cardsPopBadge = badge;
+  cardsPopAt = Date.now();
+  const r = badge.getBoundingClientRect();
+  let left = r.left + r.width / 2 - pop.offsetWidth / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - pop.offsetWidth - 8));
+  let top = r.bottom + 8;
+  if (top + pop.offsetHeight > window.innerHeight - 8) top = r.top - pop.offsetHeight - 8;
+  pop.style.left = left + 'px';
+  pop.style.top = Math.max(8, top) + 'px';
+}
+let cardsTallyBound = false;
+function bindCardsTallyPopover() {
+  if (cardsTallyBound) return;
+  cardsTallyBound = true;
+  // Capture phase so we pre-empt the card/row link that this badge sits inside.
+  document.addEventListener('click', e => {
+    const badge = e.target.closest('.tt-cards');
+    if (badge) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (cardsPopBadge === badge && cardsPopEl && !cardsPopEl.hidden) hideCardsPop();
+      else showCardsPop(badge);
+      return;
+    }
+    if (!e.target.closest('#cards-pop')) hideCardsPop();
+  }, true);
+  // Close on a real user scroll — but ignore the focus-scroll the opening click itself
+  // causes (the badge sits inside an <a> that grabs focus and may scroll into view).
+  window.addEventListener('scroll', () => { if (Date.now() - cardsPopAt > 350) hideCardsPop(); }, true);
+  window.addEventListener('resize', hideCardsPop);
 }
 
 // Same idea from a PLAYER's team string: look up the team to get its nickname and
@@ -8367,6 +8433,7 @@ async function init() {
   } catch (e) {}
 
   bindNewTabGestures(); // Ctrl/⌘-click & middle-click → open the card/squad/tab in a new tab
+  bindCardsTallyPopover(); // tap a 🟨 (N) tally → split popover (mobile-friendly)
 }
 
 // Read the admin activation param before anything else renders.
