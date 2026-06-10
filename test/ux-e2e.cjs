@@ -112,6 +112,8 @@ function mockData() {
     for (const v of ['nations', 'players', 'teams']) {
       if (await page.has(`[data-view="${v}"]`)) { await page.tap(`[data-view="${v}"]`); await page.waitForTimeout(200); log(`Team sub-view "${v}"`, await page.has(`[data-view="${v}"].on`)); }
     }
+    // Teams view shows a per-team yellow-card tally (the mock has yellow-carded players).
+    log('Team ranking shows a yellow-card tally 🟨 (N)', await page.has('.tt-cards'));
 
     await tab(page, 'golden'); await page.waitForTimeout(150);
     if (await page.has('[data-fullrank]')) { const before = (await page.$$('.fr-row')).length; await page.tap('[data-fullrank]'); await page.waitForTimeout(200);
