@@ -1290,8 +1290,17 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .pc-rating-row { display: flex; justify-content: center; gap: 15px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.22); }
 .pc-rating b { white-space: nowrap; }
 .pc-rating { display: flex; flex-direction: column; }
-.pc-rating b { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1; }
+.pc-rating b { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 6vw, 26px); color: var(--gold); line-height: 1; }
 .pc-rating span { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.75); margin-top: 4px; }
+/* Tiny phones (≤360px): the 4-up hero row is tight (esp. with a big € value), so
+   trim the gap, shrink the value a touch, and drop the per-stat ⓘ — the
+   "Tap any stat" hint still signals they're interactive. Placed after the base
+   rules so it actually wins. */
+@media (max-width: 360px) {
+  .pc-rating-row { gap: 5px; }
+  .pc-rating span { letter-spacing: 0.03em; font-size: 8.5px; }
+  .pc-rating.pc-explain span::after { content: none; }
+}
 .pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pc-stat { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
 .pc-stat-link { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
@@ -3182,6 +3191,16 @@ function showStatPop(el) {
     (x.goto ? `<button class="cards-pop-go" data-statgoto="${x.goto}">View full ranking →</button>` : '');
   positionCardsPop(el);
 }
+// Scroll a freshly-switched tab's content up under the sticky tab bar, so you land on
+// the ranking instead of being stranded at the top on the hero/podium. Shared by a
+// normal tab tap and the card's "View full ranking →".
+function snapSectionUnderTabs() {
+  const sec = document.querySelector('#app .section');
+  if (!sec) return;
+  const tb = document.querySelector('.tabs-wrap');
+  const y = Math.max(0, sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8));
+  if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
+}
 // Jump to a ranking tab from the popover's "View full ranking →" (closes any open card).
 function statGoto(tab) {
   hideCardsPop();
@@ -3189,6 +3208,9 @@ function statGoto(tab) {
   document.body.style.overflow = '';
   currentTab = tab; if (tab === 'teams') teamView = 'teams';
   setTabUrl(tab); render();
+  // Same as a normal tab tap: drop the view onto the ranking, not the hero/podium
+  // above it (rAF so the post-render layout — incl. a just-closed modal — has settled).
+  requestAnimationFrame(snapSectionUnderTabs);
 }
 let cardsTallyBound = false;
 function bindCardsTallyPopover() {
@@ -6810,14 +6832,10 @@ function render() {
         // higher up (still on the team podium hero) or lower down (stranded at the
         // bottom of the previous list). Without this, tapping a tab from the top left
         // you staring at the hero with the content ~790px below — friction on mobile.
+        snapSectionUnderTabs();
         const sec = document.querySelector('#app .section');
-        if (sec) {
-          const tb = document.querySelector('.tabs-wrap');
-          const y = Math.max(0, sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8));
-          if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
-          if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-            sec.classList.remove('tab-enter'); void sec.offsetWidth; sec.classList.add('tab-enter');
-          }
+        if (sec && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+          sec.classList.remove('tab-enter'); void sec.offsetWidth; sec.classList.add('tab-enter');
         }
       }
     });
