@@ -609,3 +609,22 @@ Suite mobile (pas de survol) + retours Léandre :
   (`🟨 ( N )`) pour que les chiffres ne collent pas aux crochets aux petites tailles (TV).
 - **Tests** : `ux-e2e` — tap d'un carton individuel → popover, sans ouvrir la fiche.
   `ux-smoke` — garde anti-coupure intra-carte (toutes tabs @360px) toujours vert.
+
+
+### 2026-06-11 — Carte joueur : KPI individuel = New Business + stats cliquables
+Consensus chat (Léandre / Sebastien CHEVREL / Jose) : **le challenge individuel se joue
+sur le New Business** (Golden Boot, Rookie) ; **le classement des équipes reste sur le
+Total (PS + NB)** — c'est voulu, pas une incohérence.
+
+Carte joueur (Panini) — appliqué :
+- **Rang héros = New Business** (Golden Boot) au lieu de l'ancien « PS RANK » (qui était le
+  rang sur le Total). Libellé « NB RANK ».
+- **PS Total rétrogradé** en petite ligne discrète sous les tuiles
+  (« PS Total €X · #N overall · counts toward your team's ranking »), comme demandé par
+  Sebastien (« very small somewhere »). Le classement équipes ne bouge pas.
+- **Stats cliquables** : chaque stat (héros + tuiles + note PS Total) ouvre une **popover
+  d'explication** (ce que mesure le classement + la règle), même comportement que les
+  cartons (toggle, clic-à-côté absorbé, Échap). Les tuiles de classement proposent
+  « View full ranking → » dans la popover (la navigation directe au tap est remplacée).
+  Une seule popover ouverte à la fois (coordonnée avec honneurs/discipline).
+- Affordance : ⓘ sur les stats + un seul hint « Tap any stat or badge ».
