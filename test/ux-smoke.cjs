@@ -193,6 +193,24 @@ function mockData() {
       }
       log('No content clipped inside a box on mobile (360px, all tabs)', allClipped.length === 0, allClipped.slice(0, 4).join(' | '));
     }
+
+    // Player card at the smallest phone width (320px): the 4-up hero stat row must
+    // fit (no overflow), and tapping a stat must open an explainer that stays on
+    // screen. Guards the responsive regression from adding the ⓘ affordances.
+    {
+      await page.setViewportSize({ width: 320, height: 640 }); await page.waitForTimeout(150);
+      await page.click('.tab-btn[data-tab="position"]').catch(() => {});
+      await page.fill('#position-search', 'thorsager').catch(() => {});
+      await page.waitForTimeout(300);
+      const heroOver = await page.evaluate(() => { const r = document.querySelector('.pc-rating-row'); return r ? r.scrollWidth - r.clientWidth : 0; });
+      log('Player card hero stat row fits at 320px', heroOver <= 1, `over=${heroOver}px`);
+      const st = await page.$('[data-explain="nb_rank"]');
+      if (st) {
+        await st.click(); await page.waitForTimeout(150);
+        const fits = await page.evaluate(() => { const p = document.getElementById('cards-pop'); if (!p || p.hidden) return false; const r = p.getBoundingClientRect(); return r.left >= -1 && r.top >= -1 && r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1; });
+        log('Stat explainer popover stays on screen at 320px', fits);
+      }
+    }
   } catch (e) {
     errors.push('HARNESS: ' + e.message);
   } finally {

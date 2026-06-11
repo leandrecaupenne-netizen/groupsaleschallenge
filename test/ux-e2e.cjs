@@ -304,9 +304,12 @@ function mockData() {
       const hasGo = !!(await page.$('#cards-pop .cards-pop-go'));
       log('Stat popover offers "View full ranking →"', hasGo);
       if (hasGo) {
-        await page.tap('#cards-pop .cards-pop-go'); await page.waitForTimeout(250);
+        await page.tap('#cards-pop .cards-pop-go'); await page.waitForTimeout(600);
         const activeTab = await page.$eval('.tab-btn.active', e => e.dataset.tab).catch(() => null);
         log('"View full ranking →" navigates to the board', activeTab === 'golden', `tab=${activeTab}`);
+        // ...and lands ON the ranking, not stranded at the top on the hero/podium.
+        const onContent = await page.evaluate(() => { const s = document.querySelector('#app .section'); if (!s) return null; return Math.round(s.getBoundingClientRect().top); });
+        log('"View full ranking →" scrolls to the ranking (not the hero)', onContent !== null && onContent < 200, `sectionTop=${onContent}`);
       }
     }
     // Reload → instant-paint snapshot hydrate path must derive identical flags.
