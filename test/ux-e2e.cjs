@@ -292,6 +292,23 @@ function mockData() {
       const expl = (await page.textContent('.pc-discipline-pop').catch(() => '')) || '';
       log('Panini: "On a yellow card" explanation has 🏃 + 🥅 emojis', expl.includes('🏃') && expl.includes('🥅'));
     }
+    // Tappable stats: tap a stat → explanation popover; it can navigate to the board.
+    if (await page.$('[data-explain="nb_rank"]')) {
+      await page.tap('[data-explain="nb_rank"]'); await page.waitForTimeout(200);
+      const sp = (await page.textContent('#cards-pop').catch(() => '')) || '';
+      log('Tap a stat → explanation popover opens', /New Business/i.test(sp));
+      await page.tap('[data-explain="nb_rank"]').catch(() => {}); await page.waitForTimeout(120); // toggle closed
+    }
+    if (await page.$('[data-explain="golden"]')) {
+      await page.tap('[data-explain="golden"]'); await page.waitForTimeout(200);
+      const hasGo = !!(await page.$('#cards-pop .cards-pop-go'));
+      log('Stat popover offers "View full ranking →"', hasGo);
+      if (hasGo) {
+        await page.tap('#cards-pop .cards-pop-go'); await page.waitForTimeout(250);
+        const activeTab = await page.$eval('.tab-btn.active', e => e.dataset.tab).catch(() => null);
+        log('"View full ranking →" navigates to the board', activeTab === 'golden', `tab=${activeTab}`);
+      }
+    }
     // Reload → instant-paint snapshot hydrate path must derive identical flags.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.tab-btn', { timeout: 10000 }).catch(() => {});
@@ -441,7 +458,7 @@ function mockData() {
     await tab(page, 'position'); await page.waitForTimeout(150);
     await page.fill('#position-search', 'Cy Charlie').catch(() => {});
     await page.waitForTimeout(300);
-    const cardRank = await page.evaluate(() => { const t = document.querySelector('[data-goto="playmaker"]'); const m = t && t.textContent.match(/#(\d+)/); return m ? '#' + m[1] : null; });
+    const cardRank = await page.evaluate(() => { const t = document.querySelector('[data-explain="playmaker"]'); const m = t && t.textContent.match(/#(\d+)/); return m ? '#' + m[1] : null; });
     log('Player card playmaker rank matches the board (tie-aware)', cardRank === '#2', `card=${cardRank}`);
     await ctx.close();
   }

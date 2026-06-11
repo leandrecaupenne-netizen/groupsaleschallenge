@@ -495,6 +495,21 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .cards-pop-row { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .cards-pop-row b { font-weight: 800; }
 .cards-pop-sub { color: rgba(255,255,255,0.6); font-size: 10.5px; margin-left: auto; padding-left: 8px; }
+/* Stat explanation popover (tap a stat to learn what it measures + the rule). */
+.cards-pop-b { font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.92); }
+.cards-pop-b b { color: #fff; font-weight: 800; }
+.cards-pop-go { margin-top: 9px; display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.12); color: var(--gold, #F2C75C); border: 1px solid rgba(242,199,92,0.45); border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.03em; cursor: pointer; }
+.cards-pop-go:hover { background: rgba(255,255,255,0.2); }
+/* Tappable stats: a faint dotted underline cue + the ⓘ, so it reads as "tap me". */
+.pc-explain { cursor: pointer; }
+.pc-rating.pc-explain { position: relative; }
+.pc-rating.pc-explain span::after { content: ' ⓘ'; opacity: 0.5; font-size: 0.85em; }
+.pc-explain-hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 10px; letter-spacing: 0.02em; }
+/* PS Total demoted to a small, muted line (it feeds the team ranking, not the
+   individual challenge rank). Still tappable to explain. */
+.pc-total-note { text-align: center; font-size: 11px; color: var(--muted); margin-top: 12px; font-family: ui-monospace, monospace; cursor: pointer; }
+.pc-total-note b { color: var(--ink-2); }
+.pc-total-note::after { content: ' ⓘ'; opacity: 0.5; }
 .podium-team-real { font-size: clamp(9px, 1.5vw, 11px); color: rgba(255,255,255,0.82); margin-top: 3px; }
 .modal-title-real { font-size: 12px; color: rgba(255,255,255,0.72); margin-top: 3px; }
 .tt-members {
@@ -1183,7 +1198,10 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .pc-honours:has(.pc-honour.on) ~ .pc-honour-hint { display: none; }
 /* In My Position these sit on the green pitch, not the cream card, so the default
    grey text is near-invisible (light mode). Light them up for the grass backdrop. */
-.position-result .pc-honour-hint { color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.position-result .pc-honour-hint,
+.position-result .pc-explain-hint { color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.position-result .pc-total-note { color: rgba(255,255,255,0.7); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.position-result .pc-total-note b { color: #fff; }
 .position-result .pc-honour-pop {
   color: #fff;
   background: rgba(255,255,255,0.14);
@@ -3140,19 +3158,56 @@ function showCard1Pop(badge) {
       `<span class="cards-pop-sub">${isAct ? 'under 5 meetings/wk' : 'NB GM below 25%'}${detail ? ' · ' + escapeHtml(detail) : ''}</span></div>`;
   positionCardsPop(badge);
 }
+// What each player-card stat measures + the rule behind it. Tapping a stat opens
+// this in the popover (touch has no hover). `goto` adds a "View full ranking →"
+// button. Text is constant per metric, so it lives here, not baked per element.
+const STAT_EXPLAIN = {
+  nb_rank:   { t: '🥇 New Business rank', b: 'Your position on <b>New Business</b> bookings — this is the <b>individual challenge</b> metric (the Golden Boot). Climb it by booking net-new deals.', goto: 'golden' },
+  ps_nb:     { t: 'PS NB · New Business', b: 'PS Bookings, <b>New Business</b> only (net-new — renewals excluded). What the individual challenge is scored on.', goto: 'golden' },
+  nb_gm:     { t: 'NB GM · margin', b: 'Gross margin on your New Business. <b>Below 25%</b> picks up a 🥅 <b>Low Margin</b> yellow card.' },
+  meetings:  { t: 'Meetings / week', b: '<b>Fewer than 5</b> meetings per week picks up a 🏃 <b>Low Activity</b> yellow card.' },
+  golden:    { t: '🥇 Golden Boot', b: 'Ranks you by <b>New Business</b> bookings — the main individual challenge board.', goto: 'golden' },
+  playmaker: { t: '🌱 Playmaker', b: 'Ranks you by <b>opportunities created</b> (Stage 2+, ≥ €50K).', goto: 'playmaker' },
+  licence:   { t: '📜 Licence GM', b: 'Ranks you by the <b>Licence gross margin</b> you generate.', goto: 'licence' },
+  rookie:    { t: '🎓 Rookie Cup', b: 'New Business rank among reps with <b>under a year</b> at Devoteam.', goto: 'rookies' },
+  ps_total:  { t: '💰 PS Total', b: 'Your <b>total bookings</b> (New Business + renewals). This is <b>not</b> your individual challenge rank — it feeds your <b>team\'s</b> World Cup ranking (teams are ranked on total).' }
+};
+// Stat → explanation popover (its own toggle, same dismiss/Esc behaviour as the cards).
+function showStatPop(el) {
+  const x = STAT_EXPLAIN[el.dataset.explain];
+  if (!x) return;
+  cardsPopNode().innerHTML =
+    `<div class="cards-pop-h">${x.t}</div>` +
+    `<div class="cards-pop-b">${x.b}</div>` +
+    (x.goto ? `<button class="cards-pop-go" data-statgoto="${x.goto}">View full ranking →</button>` : '');
+  positionCardsPop(el);
+}
+// Jump to a ranking tab from the popover's "View full ranking →" (closes any open card).
+function statGoto(tab) {
+  hideCardsPop();
+  openPlayerModal = null; openTeamModal = null; openNationModal = null;
+  document.body.style.overflow = '';
+  currentTab = tab; if (tab === 'teams') teamView = 'teams';
+  setTabUrl(tab); render();
+}
 let cardsTallyBound = false;
 function bindCardsTallyPopover() {
   if (cardsTallyBound) return;
   cardsTallyBound = true;
-  // Capture phase so we pre-empt the card/row link that this badge sits inside.
-  // Handles both the group tally (.tt-cards) and a single player's card (.tt-card1).
+  // Capture phase so we pre-empt the card/row/tile the trigger sits inside.
+  // Handles the group tally (.tt-cards), a single card (.tt-card1) and stats (.pc-explain).
   document.addEventListener('click', e => {
-    const badge = e.target.closest('.tt-cards, .tt-card1');
+    // 0) "View full ranking →" inside the popover.
+    const go = e.target.closest('.cards-pop-go');
+    if (go) { e.preventDefault(); e.stopImmediatePropagation(); statGoto(go.dataset.statgoto); return; }
+    const badge = e.target.closest('.tt-cards, .tt-card1, .pc-explain');
     if (badge) {
       e.preventDefault(); e.stopImmediatePropagation();
+      closeCardPopovers(); // keep one explainer at a time (honour/discipline use a separate system)
       if (cardsPopBadge === badge && cardsPopEl && !cardsPopEl.hidden) hideCardsPop();
       else if (badge.classList.contains('tt-cards')) showCardsPop(badge);
-      else showCard1Pop(badge);
+      else if (badge.classList.contains('tt-card1')) showCard1Pop(badge);
+      else showStatPop(badge);
       return;
     }
     // Popover open + clicked outside it → the click only dismisses the popover; it must
@@ -6063,8 +6118,8 @@ function paniniCardInner(p) {
     : bestRank <= 10 ? { label: 'RARE', cls: 'rare' }
     : bestRank <= 50 ? { label: 'LIMITED', cls: 'limited' }
     : { label: 'CLASSIC', cls: 'classic' };
-  const stat = (label, value, sub, tab) => `
-    <div class="pc-stat${tab ? ' pc-stat-link' : ''}"${tab ? ` data-goto="${tab}"` : ''}>
+  const stat = (label, value, sub, ek) => `
+    <div class="pc-stat pc-stat-link pc-explain" data-explain="${ek}">
       <div class="pc-stat-val">${value}</div>
       <div class="pc-stat-label">${label}</div>
       ${sub ? `<div class="pc-stat-sub">${sub}</div>` : ''}
@@ -6081,20 +6136,21 @@ function paniniCardInner(p) {
       <div class="pc-team">${playerTeamHTML(p.team, 'tnk-real-light', p.is_rookie ? ' · 🎓 ROOKIE' : '')}</div>
       ${disciplineBadge}
       <div class="pc-rating-row">
-        <div class="pc-rating"><b>${totalRank ? '#' + totalRank : '—'}</b><span>PS RANK</span></div>
-        <div class="pc-rating"><b>${fmtMoney(p.ps_nb)}</b><span>PS NB</span></div>
-        <div class="pc-rating"><b>${fmtPct(indivGm(p))}</b><span>NB GM</span></div>
-        <div class="pc-rating"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
+        <div class="pc-rating pc-explain" data-explain="nb_rank"><b>${goldenRank ? '#' + goldenRank : '—'}</b><span>NB RANK</span></div>
+        <div class="pc-rating pc-explain" data-explain="ps_nb"><b>${fmtMoney(p.ps_nb)}</b><span>PS NB</span></div>
+        <div class="pc-rating pc-explain" data-explain="nb_gm"><b>${fmtPct(indivGm(p))}</b><span>NB GM</span></div>
+        <div class="pc-rating pc-explain" data-explain="meetings"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
       </div>
     </div>
     <div class="pc-stats">
       ${stat('🥇 Golden Boot', goldenRank ? '#' + goldenRank : '—', fmtMoney(p.ps_nb) + ' NB', 'golden')}
       ${stat('🌱 Playmaker', playmakerRank ? '#' + playmakerRank : '—', Number(p.opps || 0).toFixed(0) + ' opps created', 'playmaker')}
-      ${stat('💰 PS Total', fmtMoney(p.ps_total), totalRank ? '#' + totalRank + ' overall' : '—')}
       ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'licence') : ''}
-      ${p.is_rookie ? stat('🎓 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookies') : ''}
+      ${p.is_rookie ? stat('🎓 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookie') : ''}
     </div>
-    ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div><div class="pc-honour-hint">👆 Tap a badge to see what it means</div>` : ''}`;
+    <div class="pc-total-note pc-explain" data-explain="ps_total">PS Total <b>${fmtMoney(p.ps_total)}</b>${totalRank ? ` · #${totalRank} overall` : ''} · counts toward your team's ranking</div>
+    ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div>` : ''}
+    <div class="pc-explain-hint">👆 Tap any stat${honours.length ? ' or badge' : ''} to see what it means</div>`;
 }
 
 // Collectible honours from a player's standings — small, motivating milestones.
@@ -6585,13 +6641,9 @@ function render() {
     generatePlayerCard(person, 'share');
     setTimeout(() => { pShare.textContent = orig; }, 2200);
   }));
-  // Stat boxes deep-link to that ranking tab (Golden Boot, Playmaker, Awards).
-  document.querySelectorAll('.pc-stat-link[data-goto]').forEach(box => box.addEventListener('click', () => {
-    const tab = box.dataset.goto;
-    openPlayerModal = null; document.body.style.overflow = '';
-    currentTab = tab; if (tab === 'teams') teamView = 'teams';
-    setTabUrl(tab); render();
-  }));
+  // (Stat tiles now open an explanation popover on tap — handled by the global
+  // capture handler in bindCardsTallyPopover; navigation lives in its "View full
+  // ranking →" button. No direct deep-link binding needed here anymore.)
   // Holographic tilt on the player-modal card.
   attachHolo(document.querySelector('#player-overlay .pc-card'));
   bindDisciplineToggles(); // discipline badge → tap to reveal the VAR explanation
@@ -6974,6 +7026,7 @@ function bindDisciplineToggles(root) {
     btn.addEventListener('click', () => {
       const pop = btn.parentElement.querySelector('.pc-discipline-pop');
       if (!pop) return;
+      if (typeof hideCardsPop === 'function') hideCardsPop(); // one explainer at a time
       const open = pop.hidden;
       pop.hidden = !open;
       btn.setAttribute('aria-expanded', String(open));
@@ -6989,6 +7042,7 @@ function bindHonourToggles(root) {
     if (btn.dataset.bound) return;
     btn.dataset.bound = '1';
     btn.addEventListener('click', () => {
+      if (typeof hideCardsPop === 'function') hideCardsPop(); // one explainer at a time
       const row = btn.parentElement;
       const pop = row.parentElement.querySelector('.pc-honour-pop');
       if (!pop) return;
