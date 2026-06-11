@@ -304,12 +304,17 @@ function mockData() {
       const hasGo = !!(await page.$('#cards-pop .cards-pop-go'));
       log('Stat popover offers "View full ranking →"', hasGo);
       if (hasGo) {
-        await page.tap('#cards-pop .cards-pop-go'); await page.waitForTimeout(600);
+        await page.tap('#cards-pop .cards-pop-go');
+        // Simulate a real-phone layout shift after the jump (photos/podium reveal
+        // growing the hero above the ranking) — the robust re-snap must still recover.
+        await page.waitForTimeout(90);
+        await page.evaluate(() => { const a = document.getElementById('app'); const d = document.createElement('div'); d.style.height = '400px'; a.insertBefore(d, a.firstChild); });
+        await page.waitForTimeout(800);
         const activeTab = await page.$eval('.tab-btn.active', e => e.dataset.tab).catch(() => null);
         log('"View full ranking →" navigates to the board', activeTab === 'golden', `tab=${activeTab}`);
-        // ...and lands ON the ranking, not stranded at the top on the hero/podium.
+        // ...and lands ON the ranking even after a late layout shift, not the hero/podium.
         const onContent = await page.evaluate(() => { const s = document.querySelector('#app .section'); if (!s) return null; return Math.round(s.getBoundingClientRect().top); });
-        log('"View full ranking →" scrolls to the ranking (not the hero)', onContent !== null && onContent < 200, `sectionTop=${onContent}`);
+        log('"View full ranking →" lands on the ranking despite a layout shift', onContent !== null && onContent < 200, `sectionTop=${onContent}`);
       }
     }
     // Reload → instant-paint snapshot hydrate path must derive identical flags.

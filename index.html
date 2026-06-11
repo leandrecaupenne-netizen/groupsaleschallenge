@@ -3194,12 +3194,22 @@ function showStatPop(el) {
 // Scroll a freshly-switched tab's content up under the sticky tab bar, so you land on
 // the ranking instead of being stranded at the top on the hero/podium. Shared by a
 // normal tab tap and the card's "View full ranking →".
-function snapSectionUnderTabs() {
+function snapSectionUnderTabs(behavior) {
   const sec = document.querySelector('#app .section');
   if (!sec) return;
   const tb = document.querySelector('.tabs-wrap');
   const y = Math.max(0, sec.getBoundingClientRect().top + window.scrollY - ((tb ? tb.offsetHeight : 0) + 8));
-  if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: 'smooth' });
+  if (Math.abs(window.scrollY - y) > 4) window.scrollTo({ top: y, behavior: behavior || 'smooth' });
+}
+// Robust version: snap now, then re-correct after late layout shifts settle (player
+// photos loading, the podium reveal, a just-closed modal). On real phones a single
+// early scroll lands above the ranking because the hero above it grows afterwards —
+// the delayed re-snaps fix that without the user noticing.
+function snapSectionRobust() {
+  snapSectionUnderTabs('smooth');
+  requestAnimationFrame(() => snapSectionUnderTabs('smooth'));
+  setTimeout(() => snapSectionUnderTabs('auto'), 300);
+  setTimeout(() => snapSectionUnderTabs('auto'), 650);
 }
 // Jump to a ranking tab from the popover's "View full ranking →" (closes any open card).
 function statGoto(tab) {
@@ -3208,9 +3218,7 @@ function statGoto(tab) {
   document.body.style.overflow = '';
   currentTab = tab; if (tab === 'teams') teamView = 'teams';
   setTabUrl(tab); render();
-  // Same as a normal tab tap: drop the view onto the ranking, not the hero/podium
-  // above it (rAF so the post-render layout — incl. a just-closed modal — has settled).
-  requestAnimationFrame(snapSectionUnderTabs);
+  snapSectionRobust(); // land on the ranking, not the hero/podium (real-device safe)
 }
 let cardsTallyBound = false;
 function bindCardsTallyPopover() {
@@ -6832,7 +6840,7 @@ function render() {
         // higher up (still on the team podium hero) or lower down (stranded at the
         // bottom of the previous list). Without this, tapping a tab from the top left
         // you staring at the hero with the content ~790px below — friction on mobile.
-        snapSectionUnderTabs();
+        snapSectionRobust();
         const sec = document.querySelector('#app .section');
         if (sec && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
           sec.classList.remove('tab-enter'); void sec.offsetWidth; sec.classList.add('tab-enter');
