@@ -3996,7 +3996,72 @@ function animateCountUps() {
 
 // === RENDERERS ===
 
+// The hero podium adapts to the active tab: the individual ranking tabs
+// (Golden Boot, Playmaker, Rookie Cup, Licence) showcase their own top 3
+// players, every other tab keeps the team podium ("Who will lift the trophy?").
+// Returns null for the team default so renderHero falls back to sortedTeams.
+function heroSpec() {
+  switch (currentTab) {
+    case 'golden':
+      return { list: sortedGoldenBoot.filter(p => p.ps_nb > 0),
+        valueOf: p => p.ps_nb || 0, fmt: 'money', keyPrefix: 'hgb',
+        statLabel: 'PS Bookings — New Business', badge: '⚽ GOLDEN BOOT',
+        eyebrow: '🥇 GOLDEN BOOT · LIVE LEADERBOARD', title: 'Who will win the Golden Boot?',
+        desc: 'Top scorers across the challenge, ranked by PS Bookings New Business.' };
+    case 'playmaker':
+      return { list: sortedPlaymaker.filter(p => p.opps > 0),
+        valueOf: p => p.opps || 0, fmt: 'int', keyPrefix: 'hpm',
+        statLabel: 'Opportunities created', badge: '🌱 PLAYMAKER',
+        eyebrow: '🌱 PLAYMAKER · LIVE LEADERBOARD', title: 'Who pulls the strings?',
+        desc: 'Top assists — the salespeople creating the most New Business opportunities.' };
+    case 'rookies':
+      return { list: sortedRookies.filter(p => p.ps_nb > 0),
+        valueOf: p => p.ps_nb || 0, fmt: 'money', keyPrefix: 'hrk',
+        statLabel: 'PS Bookings — New Business', badge: '🎓 TOP ROOKIE',
+        eyebrow: '🎓 ROOKIE CUP · LIVE LEADERBOARD', title: 'Who is the breakout rookie?',
+        desc: 'The best newcomers — under a year at Devoteam, by PS Bookings New Business.' };
+    case 'licence':
+      return { list: sortedLicence.filter(p => p.licence_gm > 0),
+        valueOf: p => p.licence_gm || 0, fmt: 'money', keyPrefix: 'hlic',
+        statLabel: 'Licence GM Amount', badge: '📜 LICENCE LEADER',
+        eyebrow: '📜 LICENCE · LIVE LEADERBOARD', title: 'Who tops the licence charts?',
+        desc: 'The top licence sellers, ranked by Licence GM Amount.' };
+    default:
+      return null;
+  }
+}
+
 function renderHero() {
+  const spec = heroSpec();
+  // Individual ranking tabs → player podium (reflects the tab you're on).
+  if (spec) {
+    const top3 = spec.list.slice(0, 3);
+    if (top3.length < 3) {
+      return `
+      <div class="hero">
+        <div class="hero-inner" style="text-align:center">
+          <div class="hero-eyebrow">${spec.eyebrow}</div>
+          <h1 class="hero-title">🏆 Standings warming up</h1>
+          <p class="hero-desc">First results are landing — the podium appears as soon as the leaders emerge.</p>
+        </div>
+      </div>`;
+    }
+    return `
+      <div class="hero">
+        <div class="hero-inner">
+          <div class="hero-eyebrow">${spec.eyebrow}</div>
+          <h1 class="hero-title">${spec.title}</h1>
+          <p class="hero-desc">${spec.desc}</p>
+          <div class="podium-row${introCountup ? ' podium-reveal' : ''}">
+            ${renderPlayerPodiumCard(top3[1], 2, '🥈', 'second', spec)}
+            ${renderPlayerPodiumCard(top3[0], 1, '🏆', 'first', spec)}
+            ${renderPlayerPodiumCard(top3[2], 3, '🥉', 'third', spec)}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   const top3 = sortedTeams.slice(0,3);
   // Early in the challenge (fewer than 3 ranked teams) show a "warming up"
   // placeholder instead of an empty top-of-page that looks broken.
@@ -4048,6 +4113,32 @@ function renderPodiumCard(team, rank, medal, position) {
         <span>👥 ${team.members}</span>
         <span>📊 ${fmtPct(team.avg_gm)}</span>
         ${yellowCardsBadge(cardsByTeam.get(teamKey(team.country)), 'tt-cards-inline')}
+      </div>
+    </div>
+  `;
+}
+
+// Player variant of the podium card — used by the tab-aware hero on the
+// individual ranking tabs (Golden Boot, Playmaker, Rookie Cup, Licence).
+// Mirrors renderPodiumCard but keyed on a person + a hero spec, and opens the
+// player card on click (data-player), like every other player row in the app.
+function renderPlayerPodiumCard(p, rank, medal, position, spec) {
+  const cc = colorForTeam(p.team);
+  const colorVar = rank === 1 ? '' : `--cc:${cc};`;
+  const flag = flagForTeam(p.team);
+  return `
+    <div class="podium-card ${position}" data-player="${escapeHtml(p.name)}" style="${colorVar}" title="View ${escapeHtml(p.name)}'s card">
+      <div class="podium-card-top">
+        <span>${spec.badge}</span>
+        <span class="podium-flag">${flagBars(flag)}</span>
+      </div>
+      <div class="podium-medal">${medal}</div>
+      <div class="podium-rank">#${rank}</div>
+      <div class="podium-team-name">${escapeHtml(p.name)}${cardMarkers(p)}</div>
+      <div class="podium-stat-main">${animNum(spec.keyPrefix + ':' + p.name, spec.valueOf(p), spec.fmt)}</div>
+      <div class="podium-stat-label">${spec.statLabel}</div>
+      <div class="podium-stat-meta">
+        <span>${playerTeamHTML(p.team, 'tnk-real-light', p.is_rookie ? ' · 🎓' : '')}</span>
       </div>
     </div>
   `;

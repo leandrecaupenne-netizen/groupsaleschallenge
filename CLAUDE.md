@@ -15,11 +15,15 @@
 
 **Nature** : challenge commercial à l'échelle du Groupe Devoteam, sur le thème de la Coupe du Monde de football. Durée : du 1er juin au 3 juillet 2026 (5 semaines). Cérémonie de remise des prix à Paris, le 9 juillet, au Victoria Paris (l'Arc).
 
-**Périmètre** :
-- 35 équipes (32 actives, Serbia/Tunisia/Morocco exclus)
-- 377 commerciaux (Group Sales)
+**Périmètre** (chiffres **dynamiques**, lus depuis la Sheet de Jose — ceux ci-dessous
+reflètent l'état au 12 juin 2026, ils évoluent à chaque update) :
+- ~34 équipes actives (Serbia/Tunisia/Morocco exclus automatiquement par le backend)
+- ~388 commerciaux (Group Sales)
 - 3 classements principaux + 4 special awards
 - Règles VAR : Yellow Card / Red Card selon meetings et GM
+
+> ℹ️ Le front ne code aucun de ces totaux en dur : il affiche ce que renvoie l'API
+> (ex. « Ranked 1 of 34 »). Ne pas figer « 32 » / « 377 » dans le code.
 
 **Source de données** : Jose (Group Sales) maintient une Google Sheet à partir des reports OneBI. La plateforme doit lire cette Sheet (read-only depuis le front).
 
@@ -43,12 +47,16 @@ Un fichier HTML self-contained (`devoteam_world_cup_platform.html`, ~225 KB) qui
 
 **Structure visuelle** :
 - Header bleu marine FIFA avec logo + pastille LIVE + timestamp
-- Hero podium (Top 3 équipes, World Cup Winner mis en valeur en or)
-- 5 onglets sticky : Team Ranking / Golden Boot / Playmaker / Special Awards / My Position
+- Hero podium **adaptatif** : Top 3 équipes par défaut (World Cup Winner en or) ; sur les
+  onglets de classement individuel (Golden Boot, Playmaker, Rookie Cup, Licence) le podium
+  bascule sur le Top 3 joueurs de l'onglet, avec titre/eyebrow dédiés.
+- 9 onglets sticky : Team Ranking / Players of the Moment ⭐ / Golden Boot 🥇 / Playmaker 🌱 /
+  Rookie Cup 🎓 / Licence 📜 / Special Awards / VAR Room 🟨 / My Position 🔍
+  (+ onglets admin VAR TIME / Coach Room quand `?admin=` est actif)
 - Footer avec countdown et infos finale Paris
 
 **Fonctionnalités** :
-- Tableau des 32 équipes triées par avg PS Bookings, avec recherche
+- Tableau des équipes (≈34) triées par avg PS Bookings, avec recherche
 - Click sur une équipe → modal avec les membres triés par contribution PS Total, leurs stats, leurs yellow cards
 - Top 5 Golden Boot (PS Bookings NB) avec badges yellow card
 - Top 5 Playmaker (Opportunities créées)
@@ -151,7 +159,8 @@ Si Devoteam IT joue le jeu, possibilité d'ajouter un sous-domaine maison type `
 > ⚠️ **MISE À JOUR (mai 2026).** Après inspection du vrai fichier OneBI, on ne crée
 > **plus** d'onglets `Teams`/`People`. Le backend lit directement les onglets existants
 > `Team Ranking` (headers ligne 2) et `Challenge Ranking` (headers ligne 1), exclut
-> automatiquement Morocco/Serbia/Tunisia (→ 32 équipes, 377 personnes), et prend le mot
+> automatiquement Morocco/Serbia/Tunisia (≈34 équipes / 388 personnes au 12 juin 2026,
+> totaux dynamiques selon la Sheet), et prend le mot
 > de passe / période / dates dans les constantes du script (onglet `Config` optionnel).
 > **La spec à jour et faisant foi est dans le fichier [`SHEET_SPEC.md`](./SHEET_SPEC.md).**
 > La structure ci-dessous décrit le format "idéal standardisé" d'origine, conservée pour
