@@ -628,3 +628,29 @@ Carte joueur (Panini) — appliqué :
   « View full ranking → » dans la popover (la navigation directe au tap est remplacée).
   Une seule popover ouverte à la fois (coordonnée avec honneurs/discipline).
 - Affordance : ⓘ sur les stats + un seul hint « Tap any stat or badge ».
+
+
+### 2026-06-11 — Quality pass (suite à la revue de code haute densité)
+Corrigé les points concrets de la revue qualité (carte / popovers / système cartons) :
+- **A11y clavier** : les badges 🟨 (`.tt-cards`/`.tt-card1`) et les stats (`.pc-explain`)
+  sont `tabindex="0"` + activables au clavier (Entrée/Espace), pas seulement au clic/tap.
+- **Toggle robuste au re-render** : la fermeture « re-tap = ferme » se base désormais sur
+  une **clé de contenu** (`badgeKey`) et non sur l'identité du nœud DOM → survit à un poll
+  qui remplace le badge.
+- **Clic de fermeture** : un tap sur un vrai champ de formulaire (recherche…) n'est plus
+  absorbé → il focus le champ du 1ᵉʳ coup (le swallow ne vise que ce qui ouvrirait une
+  modale en dessous, cf. #43).
+- **Source unique des règles** : constante `RULES` (5 meetings, 25% NB GM, Stage 2+/€50K +
+  les libellés) — alimente le flag (`normalizePeople`) ET les popovers/cardBadge/
+  STAT_EXPLAIN/explainLines, pour qu'un changement de seuil ne désynchronise plus rien.
+- **Perf render** : split des cartons précalculé une fois par data load
+  (`cardsByTeam`/`cardsByRegion`) au lieu de re-filtrer 377 personnes par ligne
+  (~12k normalisations de chaîne par render éliminées).
+- **Dédup navigation** : `applyTabState()` partagé entre le clic d'onglet et `statGoto`
+  (qui purge maintenant aussi `currentSearch`/`positionQuery`).
+- **CSS** : retrait des règles mortes `.pc-honour-hint` et du `position:relative` inutile ;
+  les tuiles de stats affichent ⓘ (au lieu de ›) pour matcher le reste.
+Volontairement **non fait** : unification des 3 systèmes de popover (réécriture risquée sur
+prod pour un gain marginal ; la coordination actuelle tient en 3 appels) ; et le Ctrl+clic
+sur un badge (ouvre la ligne parente en nouvel onglet — acceptable). Sweep RULES des copies
+pré-existantes (i18n/coach/prose Rules) à planifier séparément.

@@ -137,6 +137,14 @@ function mockData() {
       await page.tap('.tt-cards'); await page.waitForTimeout(150);
       await page.keyboard.press('Escape'); await page.waitForTimeout(150);
       log('Escape closes the split popover', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
+      // Keyboard: focusing the tally and pressing Enter opens it (a11y parity).
+      await page.focus('.tt-cards'); await page.keyboard.press('Enter'); await page.waitForTimeout(150);
+      log('Enter on a focused tally opens the popover', await page.$eval('#cards-pop', el => !el.hidden).catch(() => false));
+      // Toggle survives a re-render (poll swaps the badge node): re-render, re-click same
+      // tally → it closes (content-key toggle, not node identity).
+      await page.evaluate(() => window.render && window.render()); await page.waitForTimeout(150);
+      await page.evaluate(() => { const b = document.querySelector('.tt-cards'); if (b) b.click(); }); await page.waitForTimeout(150);
+      log('Toggle-close survives a re-render', !(await page.$eval('#cards-pop', el => !el.hidden).catch(() => false)));
     }
 
     // A single player's yellow card (in a list) is itself tappable → reveals its one

@@ -502,7 +502,6 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .cards-pop-go:hover { background: rgba(255,255,255,0.2); }
 /* Tappable stats: a faint dotted underline cue + the ⓘ, so it reads as "tap me". */
 .pc-explain { cursor: pointer; }
-.pc-rating.pc-explain { position: relative; }
 .pc-rating.pc-explain span::after { content: ' ⓘ'; opacity: 0.5; font-size: 0.85em; }
 .pc-explain-hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 10px; letter-spacing: 0.02em; }
 /* PS Total demoted to a small, muted line (it feeds the team ranking, not the
@@ -1193,12 +1192,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   animation: discPop 0.2s ease both;
 }
 :root[data-theme="dark"] .pc-honour-pop { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); }
-.pc-honour-hint { text-align: center; font-size: 11px; color: var(--muted); margin-top: 8px; letter-spacing: 0.02em; }
-/* Once a badge is open, the explanation is showing — the hint is redundant. */
-.pc-honours:has(.pc-honour.on) ~ .pc-honour-hint { display: none; }
-/* In My Position these sit on the green pitch, not the cream card, so the default
-   grey text is near-invisible (light mode). Light them up for the grass backdrop. */
-.position-result .pc-honour-hint,
+/* In My Position the hint sits on the green pitch, not the cream card, so the default
+   grey text is near-invisible (light mode). Light it up for the grass backdrop. */
 .position-result .pc-explain-hint { color: rgba(255,255,255,0.82); text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
 .position-result .pc-total-note { color: rgba(255,255,255,0.7); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
 .position-result .pc-total-note b { color: #fff; }
@@ -1305,7 +1300,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .pc-stat { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; }
 .pc-stat-link { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
 .pc-stat-link:hover { border-color: var(--c, var(--usa-red)); transform: translateY(-2px); }
-.pc-stat-link .pc-stat-label::after { content: ' ›'; opacity: 0.5; }
+/* Stat tiles open an explainer (with a "View full ranking →" inside), so the cue is an
+   info ⓘ — same affordance as the hero stats — not a navigation chevron. */
+.pc-stat-link .pc-stat-label::after { content: ' ⓘ'; opacity: 0.5; }
 .pc-stat-val { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--ink); }
 .pc-stat-label { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-top: 3px; }
 .pc-stat-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 2px; }
@@ -2898,6 +2895,10 @@ function avatarInner(name) {
 // === DATA (populated live from the Apps Script API) ===
 let teams = [], people = [], updated_at = null, period = '', challenge_dates = {}, specialAwards = {};
 let sortedTeams = [], sortedGoldenBoot = [], sortedPlaymaker = [], sortedPSTotal = [], sortedLicence = [], sortedRookies = [];
+// Yellow-card split {act, mar} precomputed once per data load, keyed by team (teamKey)
+// and by nation (regionOf), so the podium / team table / nation table / TV don't each
+// re-filter all 377 people per row on every render.
+let cardsByTeam = new Map(), cardsByRegion = new Map();
 // Competition-rank lookups (name -> rank, ties share) for the per-player ranks shown
 // on the player card and My Position — kept in sync with the boards' tie-aware ranks.
 let rankGolden = {}, rankPlaymaker = {}, rankPSTotal = {}, rankLicence = {}, rankRookie = {};
@@ -3095,20 +3096,37 @@ function teamShortLabel(teamName) {
   return escapeHtml(nick || teamName);
 }
 
-// Total YELLOW cards for a group of people, shown as 🟨 (N). The hover tooltip splits
-// it by type: 🏃 = Low Activity (under 5 meetings/wk), 🥅 = Low Margin (New Business
-// GM < 25%). Each broken rule is one yellow, so a player failing both counts as 2.
-// Reds are the end-of-challenge VAR verdict, not shown live. Empty when clean.
-// `cls` lets a caller restyle it for the podium / TV.
-function yellowCardsBadge(list, cls) {
-  let act = 0, mar = 0;
-  list.forEach(p => { if (p.yellow_meetings) act++; if (p.yellow_gm) mar++; });
+// Single source of truth for the discipline thresholds + their friendly wording, so the
+// flag logic (normalizePeople), the 🟨 popovers, the stat explainers, the Rules card and
+// the VAR/Coach copy can never drift apart. Change a threshold here → it propagates.
+const RULES = {
+  MEETINGS_MIN: 5,            // < this many meetings/week → 🏃 Low Activity yellow
+  NB_GM_MIN: 0.25,           // New Business GM below this → 🥅 Low Margin yellow
+  OPP_STAGE_MIN: 2,          // opportunities count from this stage up
+  OPP_EUR_MIN: 50000         // …and at/above this deal size
+};
+RULES.GM_PCT = Math.round(RULES.NB_GM_MIN * 100);                 // 25
+RULES.actLabel = 'Low Activity';
+RULES.marLabel = 'Low Margin';
+RULES.actSub = `under ${RULES.MEETINGS_MIN} meetings/wk`;          // compact (popovers)
+RULES.marSub = `NB GM below ${RULES.GM_PCT}%`;
+RULES.actLong = `under ${RULES.MEETINGS_MIN} meetings/week`;       // full (tooltips/rules)
+RULES.marLong = `New Business GM below ${RULES.GM_PCT}%`;
+RULES.oppRule = `Stage ${RULES.OPP_STAGE_MIN}+, ≥ €${Math.round(RULES.OPP_EUR_MIN / 1000)}K`;
+
+// Total YELLOW cards for a group, shown as 🟨 (N). The hover tooltip / tap popover splits
+// it by type: 🏃 = Low Activity (meetings), 🥅 = Low Margin (New Business GM). Each broken
+// rule is one yellow, so a player failing both counts as 2. Reds are the end-of-challenge
+// VAR verdict, not shown live. Empty when clean. `counts` is the precomputed {act, mar}
+// for the group (see cardsByTeam / cardsByRegion); `cls` restyles it for the podium / TV.
+function yellowCardsBadge(counts, cls) {
+  const act = (counts && counts.act) || 0, mar = (counts && counts.mar) || 0;
   const total = act + mar;
   if (!total) return '';
   const title = `🏃 ${act} Low Activity · 🥅 ${mar} Low Margin · ${total} yellow card${total === 1 ? '' : 's'}`;
   // Hover shows the split on desktop; tap opens the same split in a popover on touch.
   // Spaces inside the ( ) so the digits don't hug the brackets at small sizes (e.g. TV).
-  return `<span class="tt-cards${cls ? ' ' + cls : ''}" role="button" aria-label="${title}" title="${title}" data-act="${act}" data-mar="${mar}">🟨 ( ${total} )</span>`;
+  return `<span class="tt-cards${cls ? ' ' + cls : ''}" role="button" tabindex="0" aria-label="${title}" title="${title}" data-act="${act}" data-mar="${mar}">🟨 ( ${total} )</span>`;
 }
 
 // A single individual yellow card 🟨 (one per broken rule). Hover shows the reason;
@@ -3116,13 +3134,13 @@ function yellowCardsBadge(list, cls) {
 // (meetings), 'mar' = Low Margin (New Business GM). `detail` is the measured value.
 function cardBadge(type, detail, cls) {
   const isAct = type === 'act';
-  const title = `🟨 Yellow Card · ${isAct ? '🏃 Low Activity — under 5 meetings/week' : '🥅 Low Margin — New Business GM below 25%'} (${detail})`;
-  return `<span class="tt-card1${cls ? ' ' + cls : ''}" role="button" aria-label="${title}" title="${title}" data-c1="${type}" data-c1d="${escapeHtml(String(detail))}">🟨</span>`;
+  const title = `🟨 Yellow Card · ${isAct ? '🏃 ' + RULES.actLabel + ' — ' + RULES.actLong : '🥅 ' + RULES.marLabel + ' — ' + RULES.marLong} (${detail})`;
+  return `<span class="tt-card1${cls ? ' ' + cls : ''}" role="button" tabindex="0" aria-label="${title}" title="${title}" data-c1="${type}" data-c1d="${escapeHtml(String(detail))}">🟨</span>`;
 }
 
 // Tap/click a 🟨 (N) tally → floating popover with the split, for touch devices where
 // there's no hover. One delegated handler, bound once; survives re-renders.
-let cardsPopEl = null, cardsPopBadge = null, cardsPopAt = 0;
+let cardsPopEl = null, cardsPopAt = 0, cardsPopKey = null;
 function cardsPopNode() {
   if (!cardsPopEl) {
     cardsPopEl = document.createElement('div');
@@ -3132,13 +3150,29 @@ function cardsPopNode() {
   }
   return cardsPopEl;
 }
-function hideCardsPop() { if (cardsPopEl) cardsPopEl.hidden = true; cardsPopBadge = null; }
+function hideCardsPop() { if (cardsPopEl) cardsPopEl.hidden = true; cardsPopKey = null; }
+// Content key for a trigger, so "tap again to close" survives a re-render that swaps the
+// badge node (node identity would break; identical content collides harmlessly).
+function badgeKey(b) {
+  if (b.classList.contains('tt-cards')) return 'c:' + b.dataset.act + ':' + b.dataset.mar;
+  if (b.classList.contains('tt-card1')) return '1:' + b.dataset.c1 + ':' + b.dataset.c1d;
+  return 's:' + (b.dataset.explain || '');
+}
+// Open (or toggle-close) the explainer for a trigger. Shared by click + keyboard.
+function activateBadge(badge) {
+  closeCardPopovers(); // one explainer at a time (honour/discipline use a separate system)
+  const key = badgeKey(badge);
+  if (cardsPopKey === key && cardsPopEl && !cardsPopEl.hidden) { hideCardsPop(); return; }
+  cardsPopKey = key;
+  if (badge.classList.contains('tt-cards')) showCardsPop(badge);
+  else if (badge.classList.contains('tt-card1')) showCard1Pop(badge);
+  else showStatPop(badge);
+}
 // Place the (already-filled) popover under its badge — flip above if it would spill
 // past the viewport bottom, clamp horizontally.
 function positionCardsPop(badge) {
   const pop = cardsPopNode();
   pop.hidden = false;
-  cardsPopBadge = badge;
   cardsPopAt = Date.now();
   const r = badge.getBoundingClientRect();
   let left = r.left + r.width / 2 - pop.offsetWidth / 2;
@@ -3153,8 +3187,8 @@ function showCardsPop(badge) {
   const act = +badge.dataset.act || 0, mar = +badge.dataset.mar || 0, total = act + mar;
   cardsPopNode().innerHTML =
     `<div class="cards-pop-h">🟨 ${total} yellow card${total === 1 ? '' : 's'}</div>` +
-    `<div class="cards-pop-row">🏃 <b>${act}</b> Low Activity<span class="cards-pop-sub">under 5 meetings/wk</span></div>` +
-    `<div class="cards-pop-row">🥅 <b>${mar}</b> Low Margin<span class="cards-pop-sub">NB GM below 25%</span></div>`;
+    `<div class="cards-pop-row">🏃 <b>${act}</b> ${RULES.actLabel}<span class="cards-pop-sub">${RULES.actSub}</span></div>` +
+    `<div class="cards-pop-row">🥅 <b>${mar}</b> ${RULES.marLabel}<span class="cards-pop-sub">${RULES.marSub}</span></div>`;
   positionCardsPop(badge);
 }
 // One individual card → its single reason.
@@ -3163,8 +3197,8 @@ function showCard1Pop(badge) {
   const detail = badge.dataset.c1d || '';
   cardsPopNode().innerHTML =
     `<div class="cards-pop-h">🟨 Yellow card</div>` +
-    `<div class="cards-pop-row">${isAct ? '🏃' : '🥅'} <b>${isAct ? 'Low Activity' : 'Low Margin'}</b>` +
-      `<span class="cards-pop-sub">${isAct ? 'under 5 meetings/wk' : 'NB GM below 25%'}${detail ? ' · ' + escapeHtml(detail) : ''}</span></div>`;
+    `<div class="cards-pop-row">${isAct ? '🏃' : '🥅'} <b>${isAct ? RULES.actLabel : RULES.marLabel}</b>` +
+      `<span class="cards-pop-sub">${isAct ? RULES.actSub : RULES.marSub}${detail ? ' · ' + escapeHtml(detail) : ''}</span></div>`;
   positionCardsPop(badge);
 }
 // What each player-card stat measures + the rule behind it. Tapping a stat opens
@@ -3173,10 +3207,10 @@ function showCard1Pop(badge) {
 const STAT_EXPLAIN = {
   nb_rank:   { t: '🥇 New Business rank', b: 'Your position on <b>New Business</b> bookings — this is the <b>individual challenge</b> metric (the Golden Boot). Climb it by booking net-new deals.', goto: 'golden' },
   ps_nb:     { t: 'PS NB · New Business', b: 'PS Bookings, <b>New Business</b> only (net-new — renewals excluded). What the individual challenge is scored on.', goto: 'golden' },
-  nb_gm:     { t: 'NB GM · margin', b: 'Gross margin on your New Business. <b>Below 25%</b> picks up a 🥅 <b>Low Margin</b> yellow card.' },
-  meetings:  { t: 'Meetings / week', b: '<b>Fewer than 5</b> meetings per week picks up a 🏃 <b>Low Activity</b> yellow card.' },
+  nb_gm:     { t: 'NB GM · margin', b: `Gross margin on your New Business. <b>Below ${RULES.GM_PCT}%</b> picks up a 🥅 <b>${RULES.marLabel}</b> yellow card.` },
+  meetings:  { t: 'Meetings / week', b: `<b>Fewer than ${RULES.MEETINGS_MIN}</b> meetings per week picks up a 🏃 <b>${RULES.actLabel}</b> yellow card.` },
   golden:    { t: '🥇 Golden Boot', b: 'Ranks you by <b>New Business</b> bookings — the main individual challenge board.', goto: 'golden' },
-  playmaker: { t: '🌱 Playmaker', b: 'Ranks you by <b>opportunities created</b> (Stage 2+, ≥ €50K).', goto: 'playmaker' },
+  playmaker: { t: '🌱 Playmaker', b: `Ranks you by <b>opportunities created</b> (${RULES.oppRule}).`, goto: 'playmaker' },
   licence:   { t: '📜 Licence GM', b: 'Ranks you by the <b>Licence gross margin</b> you generate.', goto: 'licence' },
   rookie:    { t: '🎓 Rookie Cup', b: 'New Business rank among reps with <b>under a year</b> at Devoteam.', goto: 'rookies' },
   ps_total:  { t: '💰 PS Total', b: 'Your <b>total bookings</b> (New Business + renewals). This is <b>not</b> your individual challenge rank — it feeds your <b>team\'s</b> World Cup ranking (teams are ranked on total).' }
@@ -3212,12 +3246,19 @@ function snapSectionRobust() {
   setTimeout(() => snapSectionUnderTabs('auto'), 650);
 }
 // Jump to a ranking tab from the popover's "View full ranking →" (closes any open card).
+// Switch tab + reset the per-tab transient state + sync the URL — shared by a normal
+// tab tap and the card's "View full ranking →" so they can't drift apart.
+function applyTabState(tab) {
+  currentTab = tab;
+  if (tab !== 'teams') currentSearch = '';
+  if (tab !== 'position') positionQuery = '';
+  setTabUrl(tab);
+}
 function statGoto(tab) {
   hideCardsPop();
   openPlayerModal = null; openTeamModal = null; openNationModal = null;
   document.body.style.overflow = '';
-  currentTab = tab; if (tab === 'teams') teamView = 'teams';
-  setTabUrl(tab); render();
+  applyTabState(tab); render();
   snapSectionRobust(); // land on the ranking, not the hero/podium (real-device safe)
 }
 let cardsTallyBound = false;
@@ -3233,28 +3274,32 @@ function bindCardsTallyPopover() {
     const badge = e.target.closest('.tt-cards, .tt-card1, .pc-explain');
     if (badge) {
       e.preventDefault(); e.stopImmediatePropagation();
-      closeCardPopovers(); // keep one explainer at a time (honour/discipline use a separate system)
-      if (cardsPopBadge === badge && cardsPopEl && !cardsPopEl.hidden) hideCardsPop();
-      else if (badge.classList.contains('tt-cards')) showCardsPop(badge);
-      else if (badge.classList.contains('tt-card1')) showCard1Pop(badge);
-      else showStatPop(badge);
+      activateBadge(badge);
       return;
     }
-    // Popover open + clicked outside it → the click only dismisses the popover; it must
-    // NOT also fire whatever sits under it (e.g. open the podium/team modal). Swallow it.
+    // Popover open + clicked outside it → dismiss it. Swallow the click so it does NOT
+    // also fire whatever sits under it (e.g. open the podium/team modal). Exception:
+    // genuine form controls — let a tap on the search box etc. focus it on the first try.
     if (cardsPopEl && !cardsPopEl.hidden && !e.target.closest('#cards-pop')) {
-      e.preventDefault(); e.stopImmediatePropagation();
       hideCardsPop();
+      if (!e.target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
+        e.preventDefault(); e.stopImmediatePropagation();
+      }
     }
   }, true);
   // Close on a real user scroll — but ignore the focus-scroll the opening click itself
   // causes (the badge sits inside an <a> that grabs focus and may scroll into view).
   window.addEventListener('scroll', () => { if (Date.now() - cardsPopAt > 350) hideCardsPop(); }, true);
   window.addEventListener('resize', hideCardsPop);
-  // Escape closes the popover (keyboard parity with the click-away dismiss). Capture
-  // phase + stop, so it doesn't also bubble to a modal's own Esc-to-close handler.
+  // Keyboard parity: Enter/Space on a focused badge opens its explainer (the badges are
+  // role="button" tabindex="0"); Escape closes the open popover. Capture + stop so neither
+  // bubbles to the host link/modal (navigate / Esc-to-close).
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && cardsPopEl && !cardsPopEl.hidden) { e.stopImmediatePropagation(); hideCardsPop(); }
+    if (e.key === 'Escape' && cardsPopEl && !cardsPopEl.hidden) { e.stopImmediatePropagation(); hideCardsPop(); return; }
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      const badge = e.target.closest && e.target.closest('.tt-cards, .tt-card1, .pc-explain');
+      if (badge) { e.preventDefault(); e.stopImmediatePropagation(); activateBadge(badge); }
+    }
   }, true);
 }
 
@@ -3298,10 +3343,10 @@ function normalizePeople() {
   // challenge start doesn't flag all 377 players, and so the snapshot path matches.
   people.forEach(p => {
     const hasData = (p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0 || (p.meetings || 0) > 0;
-    p.yellow_meetings = hasData && (p.meetings || 0) < 5;
+    p.yellow_meetings = hasData && (p.meetings || 0) < RULES.MEETINGS_MIN;
     // Low-margin card is judged on New Business GM (renewals excluded), and only for
     // people who actually have New Business — no NB means no margin to fall short.
-    p.yellow_gm = (p.ps_nb_gm || 0) < 0.25 && (p.ps_nb || 0) > 0;
+    p.yellow_gm = (p.ps_nb_gm || 0) < RULES.NB_GM_MIN && (p.ps_nb || 0) > 0;
   });
 }
 
@@ -3320,6 +3365,18 @@ function computeRankings() {
   rankPSTotal = rmap(sortedPSTotal, p => p.ps_total || 0);
   rankLicence = rmap(sortedLicence, p => p.licence_gm || 0);
   rankRookie = rmap(sortedRookies, p => p.ps_nb || 0);
+  // Precompute the yellow-card split per team and per nation in one O(people) pass,
+  // so badge rendering is an O(1) Map lookup instead of an O(people) filter per row.
+  cardsByTeam = new Map(); cardsByRegion = new Map();
+  const bump = (map, key, p) => {
+    let e = map.get(key); if (!e) map.set(key, e = { act: 0, mar: 0 });
+    if (p.yellow_meetings) e.act++; if (p.yellow_gm) e.mar++;
+  };
+  people.forEach(p => {
+    if (!p.yellow_meetings && !p.yellow_gm) return;
+    bump(cardsByTeam, teamKey(p.team), p);
+    bump(cardsByRegion, regionOf(p.team), p);
+  });
 }
 
 // === LIVE: data fetching ===
@@ -3990,7 +4047,7 @@ function renderPodiumCard(team, rank, medal, position) {
       <div class="podium-stat-meta">
         <span>👥 ${team.members}</span>
         <span>📊 ${fmtPct(team.avg_gm)}</span>
-        ${yellowCardsBadge(people.filter(p => sameTeam(p.team, team.country)), 'tt-cards-inline')}
+        ${yellowCardsBadge(cardsByTeam.get(teamKey(team.country)), 'tt-cards-inline')}
       </div>
     </div>
   `;
@@ -4175,7 +4232,7 @@ function renderNationsTable() {
         return `
         <div class="nation-row nation-row-click ${topCls}" data-nation="${escapeHtml(n.region)}">
           <div class="tt-rank ${topCls}">${['🥇', '🥈', '🥉'][rank - 1] || ('#' + rank)}</div>
-          <div class="nt-name">${chipFlagHtml(n.region)}${regionParts(n.region).name}${yellowCardsBadge(people.filter(p => regionOf(p.team) === n.region))}<div class="click-hint">${clickHint}</div></div>
+          <div class="nt-name">${chipFlagHtml(n.region)}${regionParts(n.region).name}${yellowCardsBadge(cardsByRegion.get(n.region))}<div class="click-hint">${clickHint}</div></div>
           <div class="tt-stat nt-col-teams">${n.teams}</div>
           <div class="tt-stat nt-col-ppl">${n.people}</div>
           <div class="tt-money tt-money-main">${animNum('nt:' + n.region, n.avg_ps, 'money')}</div>
@@ -4360,7 +4417,7 @@ function renderTeamRanking() {
               <div class="tt-rank ${topClass}">#${realRank}${movementBadge('teams', t.country, realRank)}</div>
               <div class="tt-team">
                 ${teamNameHTML(t, 'tt-realname')}
-                ${yellowCardsBadge(people.filter(p => sameTeam(p.team, t.country)))}
+                ${yellowCardsBadge(cardsByTeam.get(teamKey(t.country)))}
                 <div class="click-hint">${clickHint}</div>
               </div>
               <div class="tt-members tt-col-members">${t.members} people</div>
@@ -6124,12 +6181,12 @@ function paniniCardInner(p) {
   const gmOk = !p.yellow_gm;
   const gmLine = (p.ps_nb || 0) > 0
     ? (gmOk
-      ? `<span class="pc-rule ok">✅ New Business GM: ${fmtPct(indivGm(p))} (target ≥ 25%)</span>`
-      : `<span class="pc-rule bad">🟨 🥅 Low Margin — New Business GM ${fmtPct(indivGm(p))} (below 25%)</span>`)
+      ? `<span class="pc-rule ok">✅ New Business GM: ${fmtPct(indivGm(p))} (target ≥ ${RULES.GM_PCT}%)</span>`
+      : `<span class="pc-rule bad">🟨 🥅 ${RULES.marLabel} — New Business GM ${fmtPct(indivGm(p))} (below ${RULES.GM_PCT}%)</span>`)
     : `<span class="pc-rule">▫️ New Business GM: — (no New Business yet)</span>`;
   const meetLine = meetOk
-    ? `<span class="pc-rule ok">✅ Meetings: ${fmtNum(p.meetings)}/week (target 5+)</span>`
-    : `<span class="pc-rule bad">🟨 🏃 Low Activity — ${fmtNum(p.meetings)} meetings/week (below 5)</span>`;
+    ? `<span class="pc-rule ok">✅ Meetings: ${fmtNum(p.meetings)}/week (target ${RULES.MEETINGS_MIN}+)</span>`
+    : `<span class="pc-rule bad">🟨 🏃 ${RULES.actLabel} — ${fmtNum(p.meetings)} meetings/week (below ${RULES.MEETINGS_MIN})</span>`;
   const explainLines = [meetLine, gmLine].join('');
   const explainHint = cards.length
     ? 'Two yellows make a red. Here\'s why:'
@@ -6149,7 +6206,7 @@ function paniniCardInner(p) {
     : bestRank <= 50 ? { label: 'LIMITED', cls: 'limited' }
     : { label: 'CLASSIC', cls: 'classic' };
   const stat = (label, value, sub, ek) => `
-    <div class="pc-stat pc-stat-link pc-explain" data-explain="${ek}">
+    <div class="pc-stat pc-stat-link pc-explain" role="button" tabindex="0" data-explain="${ek}">
       <div class="pc-stat-val">${value}</div>
       <div class="pc-stat-label">${label}</div>
       ${sub ? `<div class="pc-stat-sub">${sub}</div>` : ''}
@@ -6166,10 +6223,10 @@ function paniniCardInner(p) {
       <div class="pc-team">${playerTeamHTML(p.team, 'tnk-real-light', p.is_rookie ? ' · 🎓 ROOKIE' : '')}</div>
       ${disciplineBadge}
       <div class="pc-rating-row">
-        <div class="pc-rating pc-explain" data-explain="nb_rank"><b>${goldenRank ? '#' + goldenRank : '—'}</b><span>NB RANK</span></div>
-        <div class="pc-rating pc-explain" data-explain="ps_nb"><b>${fmtMoney(p.ps_nb)}</b><span>PS NB</span></div>
-        <div class="pc-rating pc-explain" data-explain="nb_gm"><b>${fmtPct(indivGm(p))}</b><span>NB GM</span></div>
-        <div class="pc-rating pc-explain" data-explain="meetings"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
+        <div class="pc-rating pc-explain" role="button" tabindex="0" data-explain="nb_rank"><b>${goldenRank ? '#' + goldenRank : '—'}</b><span>NB RANK</span></div>
+        <div class="pc-rating pc-explain" role="button" tabindex="0" data-explain="ps_nb"><b>${fmtMoney(p.ps_nb)}</b><span>PS NB</span></div>
+        <div class="pc-rating pc-explain" role="button" tabindex="0" data-explain="nb_gm"><b>${fmtPct(indivGm(p))}</b><span>NB GM</span></div>
+        <div class="pc-rating pc-explain" role="button" tabindex="0" data-explain="meetings"><b>${fmtNum(p.meetings)}</b><span>MTG/WK</span></div>
       </div>
     </div>
     <div class="pc-stats">
@@ -6178,7 +6235,7 @@ function paniniCardInner(p) {
       ${p.licence_gm > 0 ? stat('📜 Licence GM', licenceRank ? '#' + licenceRank : '—', fmtMoney(p.licence_gm), 'licence') : ''}
       ${p.is_rookie ? stat('🎓 Rookie Cup', rookieRank ? '#' + rookieRank : '—', fmtMoney(p.ps_nb) + ' NB', 'rookie') : ''}
     </div>
-    <div class="pc-total-note pc-explain" data-explain="ps_total">PS Total <b>${fmtMoney(p.ps_total)}</b>${totalRank ? ` · #${totalRank} overall` : ''} · counts toward your team's ranking</div>
+    <div class="pc-total-note pc-explain" role="button" tabindex="0" data-explain="ps_total">PS Total <b>${fmtMoney(p.ps_total)}</b>${totalRank ? ` · #${totalRank} overall` : ''} · counts toward your team's ranking</div>
     ${honours.length ? `<div class="pc-honours">${honours.map(h => `<button class="pc-honour" data-honour="${escapeHtml(h.tip)}" aria-expanded="false">${h.icon} ${h.label}</button>`).join('')}</div><div class="pc-honour-pop" hidden></div>` : ''}
     <div class="pc-explain-hint">👆 Tap any stat${honours.length ? ' or badge' : ''} to see what it means</div>`;
 }
@@ -6830,10 +6887,7 @@ function render() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const changed = currentTab !== btn.dataset.tab;
-      currentTab = btn.dataset.tab;
-      if (currentTab !== 'teams') currentSearch = '';
-      if (currentTab !== 'position') positionQuery = '';
-      setTabUrl(currentTab);
+      applyTabState(btn.dataset.tab);
       render();
       if (changed) {
         // Snap the new tab's content under the sticky tab bar, whether the user was
@@ -8068,7 +8122,7 @@ function tvPanelHTML(kind) {
     const items = tvLimit(sortedTeams).map(t => {
       const nick = ((typeof t.nickname === 'string') ? t.nickname.trim() : '') || nicknameOverride(t.country);
       return { id: t.country, name: nick || t.country, team: nick ? t.country : '', val: fmtMoney(t.avg_ps),
-        cards: yellowCardsBadge(people.filter(p => sameTeam(p.team, t.country)), 'tt-cards-tv') };
+        cards: yellowCardsBadge(cardsByTeam.get(teamKey(t.country)), 'tt-cards-tv') };
     });
     return tvMatchSheet(items, { title: '🏆 WORLD CUP — TOP TEAMS', sub: 'Average PS Bookings per person', badge: '🏆 CURRENT FAVOURITE', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickTeam: true }) + tvMoreBtn(sortedTeams.length);
   }
