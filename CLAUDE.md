@@ -97,8 +97,8 @@ Transformer cette maquette en application production-ready, hébergée publiquem
 ┌──────────────────────────────────────┐
 │  Plateforme HTML (hébergée Vercel)   │
 │  - Auth par mot de passe             │
-│  - Polling toutes les 30 secondes    │
-│  - Bouton refresh manuel             │
+│  - Polling toutes les ~2 min (jitter)│
+│  - Refresh manuel (admin only)       │
 │  - Last updated timestamp visible    │
 └──────────┬───────────────────────────┘
            │ accédée par
@@ -130,9 +130,9 @@ Léandre crée le script (code prêt fourni dans ce brief, section 6), le déplo
 Claude Code se charge de :
 - Ajouter écran de login par mot de passe (simple, avec localStorage)
 - Remplacer le bloc JSON statique par un fetch vers `APPS_SCRIPT_URL`
-- Implémenter polling toutes les 30 secondes
+- Implémenter polling toutes les ~2 minutes (base 120 s, jitter ±25 %, pause après 15 min d'inactivité et en arrière-plan)
 - Connecter le timestamp `Last updated` au champ `updated_at` de l'API
-- Ajouter un bouton refresh manuel à côté du timestamp
+- Ajouter un bouton refresh manuel à côté du timestamp (réservé admin via `?admin=`)
 - Gérer les états : loading, error, retry
 - Garantir que l'UX reste fluide pendant les refresh (pas de flash, pas de scroll perdu)
 
@@ -269,7 +269,7 @@ Ajouter en tout début de la balise `<script>` (juste après `'use strict';`) :
 ```javascript
 const CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/REPLACE_ME/exec',
-  POLL_INTERVAL_MS: 30000,  // 30 secondes
+  POLL_INTERVAL_MS: 120000,  // 2 min base (jittered ±25%) — données ~hebdo, quota Apps Script confortable
   SESSION_KEY: 'devoteam_wc_session_v1'
 };
 ```
@@ -590,7 +590,7 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - [ ] La session persiste après refresh (localStorage)
 - [ ] Le timestamp `Last updated` affiche bien la valeur de la Sheet
 - [ ] Le bouton refresh manuel fonctionne et anime
-- [ ] Le polling automatique se déclenche toutes les 30 secondes (vérifier dans l'onglet Network du devtools)
+- [ ] Le polling automatique se déclenche toutes les ~2 minutes (vérifier dans l'onglet Network du devtools)
 - [ ] Le modal détail équipe s'ouvre et affiche les membres triés
 - [ ] La recherche My Position fonctionne avec des noms réels
 - [ ] La plateforme est responsive sur mobile (test sur iPhone et Android)
@@ -629,8 +629,9 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - Vérifier que `openTeamModal` est préservé pendant le re-render
 
 **Quota Apps Script dépassé** :
-- Apps Script gratuit autorise 20K requêtes/jour. Pour 400 personnes qui pollent toutes les 30 sec en moyenne 4h/jour = 192K requêtes/jour, on dépasse.
-- Solution : passer le polling à 60-120 secondes, ou implémenter du cache côté Apps Script (PropertiesService), ou passer aux SSE.
+- Apps Script gratuit autorise 20K requêtes/jour. Pour 400 personnes qui pollent toutes les 30 sec en moyenne 4h/jour = 192K requêtes/jour, on dépasserait.
+- C'est pourquoi le polling est réglé à **120 s** (avec jitter ±25 %, pause après 15 min d'inactivité et en arrière-plan) : ~400 users × 120 s × 4h ≈ 48K req/jour, encore au-dessus du quota brut, d'où le **cache chunké côté Apps Script** (voir `apps_script_backend.gs`) qui absorbe le reste.
+- Leviers supplémentaires si besoin : allonger encore le polling, renforcer le cache (PropertiesService), ou passer aux SSE.
 
 **Données qui ne se mettent pas à jour** :
 - Vérifier que Jose a bien updaté `last_update` dans Config (sinon le timestamp ne bouge pas même si les données changent)
