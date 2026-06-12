@@ -47,9 +47,8 @@ Un fichier HTML self-contained (`devoteam_world_cup_platform.html`, ~225 KB) qui
 
 **Structure visuelle** :
 - Header bleu marine FIFA avec logo + pastille LIVE + timestamp
-- Hero podium **adaptatif** : Top 3 équipes par défaut (World Cup Winner en or) ; sur les
-  onglets de classement individuel (Golden Boot, Playmaker, Rookie Cup, Licence) le podium
-  bascule sur le Top 3 joueurs de l'onglet, avec titre/eyebrow dédiés.
+- Hero podium (Top 3 équipes, World Cup Winner mis en valeur en or) — affiché sur tous les
+  onglets, c'est le « trophée global » du challenge.
 - 9 onglets sticky : Team Ranking / Players of the Moment ⭐ / Golden Boot 🥇 / Playmaker 🌱 /
   Rookie Cup 🎓 / Licence 📜 / Special Awards / VAR Room 🟨 / My Position 🔍
   (+ onglets admin VAR TIME / Coach Room quand `?admin=` est actif)
