@@ -80,10 +80,73 @@
   UI d'évolution à construire après le 2ᵉ point (lundi suivant).
 - **Renames d'équipe** (`TEAM_ALIASES`, index.html) : `ALPS → Switzerland`,
   `FR - Digital Impulse → Impulse RainMakers`.
+- **Sémantique classements (validée Sebastien/Jose, 06-11)** : individus = **New Business**
+  (Golden Boot, Rookie) ; équipes = **Total (NB + renouvellements)**. Voulu. La carte joueur
+  met NB en avant, PS Total = ligne discrète « métrique de l'équipe ».
+- **Discipline** : seuils centralisés dans la constante `RULES` (5 meetings/sem, 25% NB GM,
+  Stage 2+/50K€) → alimente le flag (`normalizePeople`) ET tous les affichages, donc aucun
+  risque de désync règle ↔ flag. 🏃 Low Activity (meetings), 🥅 Low Margin (NB GM).
+- **Cartons jaunes** : tally par groupe `🟨 ( N )` (podium/équipes/nations/TV) + cartons
+  individuels tappables ; **popover flottant unique `#cards-pop`** (tap/Entrée → split, toggle,
+  clic-à-côté absorbé sauf champs de formulaire, Échap) ; split précalculé par render
+  (`cardsByTeam`/`cardsByRegion`). Carte joueur : **stats cliquables** → explication + règle.
+- **A11y** : badges 🟨 et stats de la carte = `role="button" tabindex="0"`, activables clavier.
 
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-12 — RÉCAP de session : système cartons → carte joueur → responsive → quality pass (PRs #36–#48)
+Vue d'ensemble de tout ce qui a été livré dans cette session (les entrées détaillées juste
+en dessous gardent le détail PR par PR ; ce récap comble les trous et fixe la décision produit).
+
+**🎯 Décision produit — fait foi (validée en chat avec Sebastien CHEVREL & Jose) :**
+- **Challenge individuel = New Business** (Golden Boot, Rookie Cup).
+- **Classement des équipes** (World Cup : podium / home / mode TV) = **Total PS Bookings**
+  (New Business **+** renouvellements). C'est **voulu**, ce n'est pas une incohérence.
+- Carte joueur : **NB en rang héros** ; **PS Total** = simple ligne discrète « compte pour le
+  classement de l'équipe » (le « very small somewhere » de Sebastien).
+- Seuils discipline (centralisés dans la constante `RULES`) : **< 5 meetings/sem → 🏃 Low
+  Activity** · **NB GM < 25% → 🥅 Low Margin** · opportunités **Stage 2+ & ≥ 50K€**.
+
+**🟨 Système cartons jaunes (#36–#44) :** tally par groupe `🟨 ( N )` sur podium +
+classements équipes/nations + mode TV (survol = split, **tap/Entrée = popover**) ; cartons
+individuels `🟨` tappables partout (listes + carte Panini) via `cardBadge` + popover flottant
+délégué unique `#cards-pop` ; cohérence emojis 🏃/🥅 popover ↔ « On a yellow card » ↔ carte
+des règles ; comportement popover = toggle, **clic-à-côté absorbé** (n'ouvre pas le podium
+en dessous), Échap, une seule à la fois ; débordement mobile du tally corrigé (flex-wrap).
+
+**🃏 Carte joueur / Panini (#45) :** rang héros = NB, PS Total rétrogradé, **stats
+cliquables → explication du classement + la règle** (+ bouton « View full ranking → »).
+
+**📺 Mode TV (#41) :** la carte #1 reste **flottante (sticky)** quand la liste est dépliée,
+au lieu de devenir une grande boîte verte vide avec le #1 sous la ligne de flottaison.
+
+**📱 Responsive + scroll (#46–#47) :** carte joueur propre **320 → 1680px** (valeur des stats
+en `clamp`, ⓘ masquée ≤360px) ; **« View full ranking → » scrolle bien sur le classement**
+(plus sur le podium), y compris sur **vrai smartphone** (re-snap après stabilisation de la
+mise en page : images/photos qui chargent, reveal du podium).
+
+**🧹 Quality pass (#48, suite revue de code 7 angles) :** a11y clavier (badges + stats
+`tabindex=0`, Entrée/Espace) ; toggle robuste au re-render (clé de contenu, pas l'identité du
+nœud) ; clic de fermeture qui **respecte les champs de formulaire** ; **`RULES` = source
+unique** des seuils/libellés ; **perf render** (split précalculé `cardsByTeam`/`cardsByRegion`,
+~12k normalisations de chaîne/render éliminées) ; dédup navigation (`applyTabState`) ; CSS
+mort retiré.
+
+**📄 Doc (#39) :** section « Mobile & touch » dans le README + garde-fou de test anti-coupure
+intra-carte (toutes tabs @360px).
+
+**⏸️ Différé volontairement (jugement) :** unification des 3 systèmes de popover (réécriture
+risquée sur prod, gain marginal) ; Ctrl+clic sur un badge (ouvre la ligne en nouvel onglet —
+acceptable) ; sweep `RULES` des copies pré-existantes (i18n / Coach Room / prose de la carte
+Rules) — refactor séparé.
+
+**✅ Tests :** ESLint 0 · `ux-smoke` + `ux-e2e` (assertions ajoutées : tap/Entrée → popover,
+dismiss sans ouvrir de modale, scroll post-navigation + résistance au layout-shift, carte qui
+tient à 320px, toggle qui survit au re-render) · `backend-contract` · **audit responsive 9
+devices « ALL DEVICES CLEAN »**. CI GitHub (lint + ux) verte avant chaque merge.
+
 
 ### 2026-06-10 — Décision cartons : statu quo (rouge/tally en attente)
 Après l'échange Léandre / Jose / Sebastien sur le modèle de carton rouge (« 2 jaunes = rouge »
