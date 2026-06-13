@@ -24,6 +24,14 @@
       Les ~290 échecs « Script function not found » venaient d'une **ancienne version du
       script** (sans `keepWarm`) collée dans l'éditeur ; depuis le re-collage de la version à
       jour, le trigger time-driven (toutes les 5 min) s'exécute correctement.
+- [ ] **Donnée amont `#N/A`** (Jose / OneBI, repéré 13-06) : 3 personnes ont `TEAM = #N/A`
+      dans `Challenge Ranking` → nation fantôme `#N/A` (1 team / 3 people). Absentes ou mal
+      orthographiées dans le roster maître (`People List` / `TEAMS`). Vraies équipes (via OneBI) :
+      **Majdouline GUEDIRI → `FR - Initiatives Platforms`** (roster = « Madjouline » → mismatch de
+      nom), **Maria de Fátima Santos → `PT - Business Support`** (WID 219560), **Marta Godinho →
+      `PT - Innovative Tech`** (WID 115708). Action Jose : les ajouter au roster avec la bonne
+      équipe PORTUGAL 1/2/3 (non dérivable de l'OU) + corriger l'orthographe Majdouline. Reco
+      durable : clé le lookup `TEAM` sur le **Workday ID** plutôt que sur le nom.
 - [ ] **Donnée amont `UK`** (Jose / OneBI) : 14 personnes ont `TEAM = UK`, mais `UK` n'a
       **aucune ligne dans `Team Ranking`** → pas de drill-down d'équipe pour elles. Depuis
       le 07-06 elles sont classées individuellement **et** apparaissent dans la vue Nations
@@ -95,6 +103,68 @@
 ---
 
 ## Journal (le plus récent en premier)
+
+### 2026-06-13 — Classements complets partout + UX modals + flags Alps/Nordics + repasse globale
+Session pilotée par Léandre en chat (itérations rapides à partir de captures). Tout développé
+sur `claude/clever-cori-vs8s31` puis **fast-forward sur `main`** (avec accord explicite à chaque
+fois → prod redéployée). 16 commits, `main` à `fe37713`.
+
+**📊 « Voir le classement complet » partout (demande clé de Léandre).** Plusieurs vues
+plafonnaient à un Top N sans moyen de tout voir :
+- **Modal nation → Top contributors** : plafonné au top 15 / 181. Ajout d'un toggle
+  **« Show all N »** (état `nationContribExpanded`), avec une **pastille dans le header**
+  (visible direct) **et** un bouton pleine largeur en bas (classe partagée
+  `nation-contrib-toggle`).
+- **Coach Room** : toggle « Show all » sur les **deep-dives par nation** (`coachContribExpanded`)
+  **et** sur le **panneau principal** de contributeurs (`coachPanelExpanded`).
+- **Special Awards** : « ▼ Show full ranking » sous les cartes **Licence** (clé `licence_aw`)
+  et **Rookie of the Year** (clé `rookies_aw`) — clés distinctes de l'onglet Licence / Rookie Cup
+  pour ne pas partager l'état d'expansion. Les boards Golden Boot/Playmaker/Rookie l'avaient déjà.
+- **Modal équipe** : affichait **déjà** tout le squad (pas de cap) — rien à changer.
+- AI Play / Transformative Deal restent **Top 1** (prix jury à lauréat unique) — voulu.
+
+**🏔️ Flags & labels.**
+- **ALPS → « Alps »** : l'alias `TEAM_ALIASES['ALPS']` passait l'entité Devoteam Alps en
+  « Switzerland » (drapeau suisse). Léandre l'a trouvé trop proche Autriche/Indonésie. Renommé
+  en **`Alps`** + **drapeau SVG dédié `.flag-alps`** (montagnes enneigées sur ciel bleu, via
+  `flagImg`, comme UK/PT) → reconnaissable, non confondable. Label sans emoji (le SVG porte la
+  montagne). `applyTeamAliases` renomme aussi `people[].team` → jointures OK.
+- **« Nordics G Cloud »** : tombait sur `FLAG_STRIPES.OTHER` (rouge/blanc/vert ≈ Italie).
+  `flagForTeam` renvoie maintenant le **bleu/or nordique** pour tout nom contenant `NORDIC`
+  (check **après** la correspondance exacte de pays → aucun vrai pays nordique impacté).
+
+**🪟 UX des modals longs.**
+- **Scroll préservé au toggle** : `render()` reconstruisait le DOM → le modal (scroll interne,
+  header sticky) remontait en haut. Helper **`renderKeepModalScroll(overlayId)`** : capture/restaure
+  le `scrollTop` du `.modal`. Utilisé par les toggles nation + coach-dive.
+- **Flèches flottantes haut/bas** (`modalScrollNav()` / `.modal-scrollnav` / `.msn-btn`) :
+  bouton rond navy+doré en bas à droite, **scroll fluide** vers le haut/bas, **auto-masqué**
+  si le contenu n'est pas assez long (>120px). Sur nation, équipe, coach-dive. Helper
+  **`bindModalScrollNav(root)`** appelé sur `#app` (pour ne pas double-binder pendant le polling)
+  **et** dans `openTVTeamCard` (overlay TV ajouté hors `render()`).
+- **Boutons toggle relookés** : style « médaille » doré plein + texte navy (contraste OK clair/sombre).
+- **Header contributeurs responsive** : titre + pastille sur une ligne flexible (`min-width:0`),
+  et **sur ≤600px** la pastille passe **pleine largeur sous le titre**. **Espacement** : ajout
+  `margin-top:28px` car la pastille (plus haute qu'une ligne) débordait sur le tableau du dessus.
+
+**🔎 Repasse globale (revue par sous-agent + vérif).** Aucun bug haute sévérité. 3 nits corrigés :
+clé `licence_aw` (état d'expansion qui bavait entre onglet Licence et carte award), scope du
+binding scroll-nav à `#app` (évite double smooth-scroll si polling pendant un overlay TV ouvert),
+commentaires obsolètes « ALPS → Switzerland » rafraîchis. + correctif mode TV (flèches non câblées
+dans `openTVTeamCard`).
+
+**📄 Doc** : `CLAUDE.md` corrigé — la fréquence de polling réelle est **~2 min** (base 120 s,
+jitter ±25 %, pause inactivité/arrière-plan), pas 30 s. `DECISIONS.md` était déjà à jour là-dessus.
+
+**🧩 Donnée amont — 3 personnes `TEAM = #N/A`** (creusé via le `.xlsx` fourni par Léandre).
+Dans `Challenge Ranking`, 3 lignes ont `TEAM = #N/A` → la plateforme les met dans une nation
+fantôme `#N/A` (1 team / 3 people). **Cause** : absentes/mal orthographiées dans le roster maître
+(`People List` / `TEAMS`), qui sert de lookup. Vraies équipes retrouvées via OneBI :
+**Majdouline GUEDIRI → `FR - Initiatives Platforms`** (orthographiée « Madjouline » dans le roster
+→ mismatch) ; **Maria de Fátima Santos → `PT - Business Support`** (WID 219560, absente du roster) ;
+**Marta Godinho → `PT - Innovative Tech`** (WID 115708, absente). Le numéro exact PORTUGAL 1/2/3
+n'est **pas** dérivable de l'OU (affectation manuelle Jose). **→ correctif côté Jose** (voir Actions
+en attente). Reco : clé le lookup sur le **Workday ID** plutôt que sur le nom.
 
 ### 2026-06-12 — RÉCAP de session : système cartons → carte joueur → responsive → quality pass (PRs #36–#48)
 Vue d'ensemble de tout ce qui a été livré dans cette session (les entrées détaillées juste
