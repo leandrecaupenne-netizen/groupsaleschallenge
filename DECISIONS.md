@@ -25,13 +25,15 @@
       script** (sans `keepWarm`) collée dans l'éditeur ; depuis le re-collage de la version à
       jour, le trigger time-driven (toutes les 5 min) s'exécute correctement.
 - [ ] **Donnée amont `#N/A`** (Jose / OneBI, repéré 13-06) : 3 personnes ont `TEAM = #N/A`
-      dans `Challenge Ranking` → nation fantôme `#N/A` (1 team / 3 people). Absentes ou mal
-      orthographiées dans le roster maître (`People List` / `TEAMS`). Vraies équipes (via OneBI) :
-      **Majdouline GUEDIRI → `FR - Initiatives Platforms`** (roster = « Madjouline » → mismatch de
-      nom), **Maria de Fátima Santos → `PT - Business Support`** (WID 219560), **Marta Godinho →
-      `PT - Innovative Tech`** (WID 115708). Action Jose : les ajouter au roster avec la bonne
-      équipe PORTUGAL 1/2/3 (non dérivable de l'OU) + corriger l'orthographe Majdouline. Reco
-      durable : clé le lookup `TEAM` sur le **Workday ID** plutôt que sur le nom.
+      dans `Challenge Ranking` (absentes/mal orthographiées dans `People List`/`TEAMS`).
+      **Stopgap appliqué côté app le 13-06** (`PEOPLE_TEAM_OVERRIDES` dans `index.html`, clé =
+      nom normalisé) → **Majdouline GUEDIRI = `FR - Initiatives Platforms`** (confirmé Léandre) ;
+      **Maria de Fátima Santos** et **Marta Godinho = `PORTUGAL`** (niveau nation, **provisoire** —
+      squad PORTUGAL 1/2/3 exact non confirmé, à ajuster). La nation fantôme `#N/A` disparaît.
+      **Reste à faire côté Jose** : corriger la source (ajouter au roster avec la bonne équipe
+      PORTUGAL 1/2/3, corriger l'orthographe « Madjouline »→« Majdouline »), puis on pourra
+      retirer l'override. Reco durable : clé le lookup `TEAM` sur le **Workday ID** (WID Maria
+      219560, Marta 115708) plutôt que sur le nom.
 - [ ] **Donnée amont `UK`** (Jose / OneBI) : 14 personnes ont `TEAM = UK`, mais `UK` n'a
       **aucune ligne dans `Team Ranking`** → pas de drill-down d'équipe pour elles. Depuis
       le 07-06 elles sont classées individuellement **et** apparaissent dans la vue Nations
