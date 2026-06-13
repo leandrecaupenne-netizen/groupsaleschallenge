@@ -1408,6 +1408,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   transition: background 0.15s, border-color 0.15s;
 }
 .contrib-toggle-btn:hover { background: var(--line); border-color: var(--gold); }
+.nat-contrib-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.contrib-toggle-mini { width: auto; margin-top: 0; padding: 7px 14px; font-size: 12px; border-radius: 999px; white-space: nowrap; }
 .members-table-header,
 .members-table-row {
   display: grid;
@@ -3076,10 +3078,10 @@ function nicknameOverride(country) {
 }
 
 // Display renames for whole entities. "ALPS" is the Devoteam Alps entity — shown
-// as Switzerland everywhere (filter chip, team name, player team labels). Note: it
+// as "Alps" everywhere (filter chip, team name, player team labels). Note: it
 // stays ONE team — the Sheet has no per-country breakdown to decompose it further.
 const TEAM_ALIASES = {
-  'ALPS': 'Switzerland',
+  'ALPS': 'Alps',
   // The Sheet carries this team under its nickname "Impulse Rainmakers", which has no
   // "FR" prefix so it was ranking as its own one-team nation (with a hashed/wrong flag).
   // Map it back to its real Devoteam entity, the French "FR - Digital Impulse", so it
@@ -5927,6 +5929,7 @@ const COUNTRY_FLAGS = {
   GERMANY: ['#2A2A2A', '#DD0000', '#FFCE00'],
   ITALY: ['#008C45', '#FFFFFF', '#CD212A'],
   SWITZERLAND: ['#D52B1E', '#FFFFFF', '#D52B1E'],
+  ALPS: ['#D52B1E', '#FFFFFF', '#D52B1E'], // Devoteam Alps entity — Swiss red/white/red (clearly not Italy)
   AUSTRIA: ['#ED2939', '#FFFFFF', '#ED2939'],
   POLAND: ['#FFFFFF', '#DC143C', '#FFFFFF'],
   HUNGARY: ['#CD2A3E', '#FFFFFF', '#436F4D'],
@@ -5975,6 +5978,10 @@ function flagForTeam(team) {
       return COUNTRY_FLAGS[country];
     }
   }
+  // Nordic entities (e.g. "Nordics G Cloud") have no country match and would fall to
+  // the brand default (red/white/green → reads like Italy). Give them the Nordic
+  // blue/gold instead so they're visually distinct.
+  if (u.includes('NORDIC')) return FLAG_STRIPES.NORDICS;
   return FLAG_STRIPES[regionOf(team)] || FLAG_STRIPES.OTHER;
 }
 // Some flags can't be drawn as plain vertical stripes — they carry a crest or a
@@ -6466,7 +6473,10 @@ function renderNationModal() {
             ${natTeams.length ? '' : `<div class="no-result">No team-level breakdown yet — this nation has no Team Ranking row (its people still rank individually below).</div>`}
           </div>
 
-          <h3 class="modal-section-title">⚽ ${showAll ? 'All contributors' : 'Top contributors'}${natPeople.length > TOPN ? (showAll ? ` · all ${natPeople.length}` : ` · top ${TOPN} of ${natPeople.length}`) : ''}</h3>
+          <div class="modal-section-title nat-contrib-head">
+            <span>⚽ ${showAll ? 'All contributors' : 'Top contributors'}${natPeople.length > TOPN ? (showAll ? ` · all ${natPeople.length}` : ` · top ${TOPN} of ${natPeople.length}`) : ''}</span>
+            ${natPeople.length > TOPN ? `<button type="button" class="nation-contrib-toggle contrib-toggle-mini">${showAll ? 'Show top 15' : `Show all ${natPeople.length} ↓`}</button>` : ''}
+          </div>
           <div class="members-table">
             <div class="members-table-header">
               <div>RANK</div>
@@ -6502,7 +6512,7 @@ function renderNationModal() {
                 </div>`;
             }).join('')}
           </div>
-          ${natPeople.length > TOPN ? `<button type="button" id="nation-contrib-toggle" class="contrib-toggle-btn">${showAll ? `Show top ${TOPN} only` : `Show all ${natPeople.length} contributors ↓`}</button>` : ''}
+          ${natPeople.length > TOPN ? `<button type="button" class="nation-contrib-toggle contrib-toggle-btn">${showAll ? `Show top ${TOPN} only` : `Show all ${natPeople.length} contributors ↓`}</button>` : ''}
         </div>
       </div>
     </div>
@@ -7104,11 +7114,10 @@ function render() {
     render();
   };
   if (nClose) nClose.addEventListener('click', closeNation);
-  const nContribToggle = document.getElementById('nation-contrib-toggle');
-  if (nContribToggle) nContribToggle.addEventListener('click', () => {
+  document.querySelectorAll('.nation-contrib-toggle').forEach(btn => btn.addEventListener('click', () => {
     nationContribExpanded = !nationContribExpanded;
     render();
-  });
+  }));
   if (nOverlay) nOverlay.addEventListener('click', e => {
     if (e.target === nOverlay) closeNation();
   });
