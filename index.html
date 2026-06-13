@@ -5568,6 +5568,7 @@ function renderSpecialAwards() {
             </div>
           </div>
           ${renderDataAward(topLicences, p => fmtMoney(p.licence_gm), 'No licence GM recorded yet.', 'Licence GM Amount')}
+          ${fullRankingList('licence', sortedLicence, p => p.licence_gm || 0, 'money', 3)}
         </div>
 
         <div class="award-card" style="--c: #16A34A">
