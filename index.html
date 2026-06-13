@@ -3155,9 +3155,17 @@ const TEAM_ALIASES = {
   // then shows "Impulse RainMakers" big with "FR - Digital Impulse" underneath.
   'IMPULSE RAINMAKERS': 'FR - Digital Impulse',
 };
+// Per-person team fixes — stopgap for rows whose TEAM didn't resolve in the OneBI
+// roster and arrive as "#N/A" (name absent/misspelled in People List). Keyed by a
+// loose name (accent/case-insensitive); each value is a real challenge team so the
+// person joins that squad + the right nation/flag. Remove once Jose fixes the Sheet.
+const PEOPLE_TEAM_OVERRIDES = {
+  'majdouline guediri': 'FR - Initiatives Platforms',
+};
 function applyTeamAliases() {
   teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });
   people.forEach(p => { const a = TEAM_ALIASES[teamKey(p.team)]; if (a) p.team = a; });
+  people.forEach(p => { const ov = PEOPLE_TEAM_OVERRIDES[normLoose(p.name)]; if (ov) p.team = ov; });
 }
 
 // Team display: when the Sheet gives a team a nickname, show it big with the
