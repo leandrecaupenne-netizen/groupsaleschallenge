@@ -6615,6 +6615,21 @@ function modalScrollNav() {
       <button type="button" class="msn-btn" data-scrollnav="bottom" title="Jump to bottom" aria-label="Scroll to bottom">↓</button>
     </div>`;
 }
+// Wire the floating scroll-nav within `root` (document, or a manually-appended TV
+// overlay): smooth-scroll the modal on click, and hide the control when the modal
+// isn't tall enough to bother scrolling.
+function bindModalScrollNav(root) {
+  root.querySelectorAll('.msn-btn[data-scrollnav]').forEach(btn => btn.addEventListener('click', () => {
+    const ov = btn.closest('.modal-overlay');
+    const m = ov ? ov.querySelector('.modal') : null;
+    if (m) m.scrollTo({ top: btn.dataset.scrollnav === 'bottom' ? m.scrollHeight : 0, behavior: 'smooth' });
+  }));
+  root.querySelectorAll('.modal-scrollnav').forEach(nav => {
+    const ov = nav.closest('.modal-overlay');
+    const m = ov ? ov.querySelector('.modal') : null;
+    nav.style.display = (m && m.scrollHeight - m.clientHeight > 120) ? 'flex' : 'none';
+  });
+}
 
 // Live countdown to the Paris final (9 July 2026).
 const FINAL_DATE = new Date('2026-07-09T19:00:00+02:00');
@@ -7219,19 +7234,8 @@ function render() {
     if (e.target === nOverlay) closeNation();
   });
 
-  // Floating jump-to-top/bottom controls inside long modals: scroll the modal smoothly,
-  // and hide the whole control when there's barely anything to scroll.
-  document.querySelectorAll('.msn-btn[data-scrollnav]').forEach(btn => btn.addEventListener('click', () => {
-    const ov = btn.closest('.modal-overlay');
-    const m = ov ? ov.querySelector('.modal') : null;
-    if (!m) return;
-    m.scrollTo({ top: btn.dataset.scrollnav === 'bottom' ? m.scrollHeight : 0, behavior: 'smooth' });
-  }));
-  document.querySelectorAll('.modal-scrollnav').forEach(nav => {
-    const ov = nav.closest('.modal-overlay');
-    const m = ov ? ov.querySelector('.modal') : null;
-    nav.style.display = (m && m.scrollHeight - m.clientHeight > 120) ? 'flex' : 'none';
-  });
+  // Floating jump-to-top/bottom controls inside long modals.
+  bindModalScrollNav(document);
 
   enhanceModals();
 }
@@ -8442,6 +8446,9 @@ function openTVTeamCard(country) {
   // Player rows in the squad → open that player's card over the projection.
   el.querySelectorAll('[data-player]').forEach(row =>
     row.addEventListener('click', () => openTVPlayerCard(row.dataset.player)));
+  // The squad modal carries the floating scroll-nav; wire it here too (this overlay
+  // is appended directly, outside the normal render()/bindEvents path).
+  bindModalScrollNav(el);
 }
 
 // === LIVE: polling ===
