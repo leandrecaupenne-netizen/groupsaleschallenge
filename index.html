@@ -2983,6 +2983,7 @@ let coachSearch = '';      // COACH ROOM player name search
 let coachDive = null;      // open deep-dive: { metric } | null
 let coachDiveRegion = null; // drill-down: region opened inside the deep-dive (null = nations level)
 let coachContribExpanded = false; // coach dive: show the full player ranking (not just the top 15)
+let coachPanelExpanded = false; // coach room main panel: show the full contributor list (not just the top 15)
 let fullRankOpen = {}; // { golden: bool, playmaker: bool } — show the full ranking under a board
 let varRegion = 'all';     // VAR Room country/region filter
 let varTeam = 'all';       // VAR Room entity (team) filter
@@ -5083,7 +5084,7 @@ function renderCoachRoom() {
   const ranked = [...pool].filter(p => (Number(p[m.key]) || 0) > 0).sort((a, b) => (Number(b[m.key]) || 0) - (Number(a[m.key]) || 0));
   const metricTotal = ranked.reduce((a, p) => a + (Number(p[m.key]) || 0), 0);
   const TOPN = 15;
-  const top = ranked.slice(0, TOPN);
+  const top = coachPanelExpanded ? ranked : ranked.slice(0, TOPN);
   const contribRows = top.map((p, i) => {
     const v = Number(p[m.key]) || 0;
     const share = metricTotal ? (v / metricTotal) * 100 : 0;
@@ -5162,8 +5163,9 @@ function renderCoachRoom() {
       <div class="coach-contrib">
         <h3 class="coach-h">🔝 Top contributors</h3>
         <div class="search-chips coach-metrics">${metricBtns}</div>
-        <div class="coach-contrib-sub">${escapeHtml(m.desc)} · in scope total: <b>${coachFmt(metricTotal, m.sumFmt)}</b> · showing top ${Math.min(TOPN, ranked.length)} of ${ranked.length}</div>
+        <div class="coach-contrib-sub">${escapeHtml(m.desc)} · in scope total: <b>${coachFmt(metricTotal, m.sumFmt)}</b> · showing ${coachPanelExpanded ? `all ${ranked.length}` : `top ${Math.min(TOPN, ranked.length)} of ${ranked.length}`}</div>
         <div class="coach-rows">${contribRows}</div>
+        ${ranked.length > TOPN ? `<button type="button" id="coach-panel-toggle" class="contrib-toggle-btn">${coachPanelExpanded ? 'Show top 15 only' : `Show all ${ranked.length} contributors ↓`}</button>` : ''}
       </div>
 
       ${renderPhotoCoverage(pool)}
@@ -6843,6 +6845,8 @@ function render() {
     const cClear = document.getElementById('coach-clear');
     if (cClear) cClear.addEventListener('click', () => { coachRegion = 'all'; coachTeam = 'all'; reRender(); });
     document.querySelectorAll('.coach-metric').forEach(btn => btn.addEventListener('click', () => { coachMetric = btn.dataset.metric; reRender(); }));
+    const coachPanelToggle = document.getElementById('coach-panel-toggle');
+    if (coachPanelToggle) coachPanelToggle.addEventListener('click', () => { coachPanelExpanded = !coachPanelExpanded; reRender(); });
     // Clickable KPI tiles → open the deep-dive modal (nations → entities →
     // players contribution to that metric, like the Team Ranking drill-down).
     const openDive = (metric) => { coachDive = { metric }; coachDiveRegion = null; coachContribExpanded = false; render(); document.body.style.overflow = 'hidden'; };
