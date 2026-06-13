@@ -1397,17 +1397,17 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   width: 100%;
   margin-top: 12px;
   padding: 12px 16px;
-  background: var(--cream, #F8F4ED);
+  background: var(--cream);
   border: 1px solid var(--line);
   border-radius: 10px;
-  color: var(--navy, #1E2A78);
+  color: var(--ink);
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.contrib-toggle-btn:hover { background: #efe7d8; border-color: var(--gold, #F2C75C); }
+.contrib-toggle-btn:hover { background: var(--line); border-color: var(--gold); }
 .members-table-header,
 .members-table-row {
   display: grid;
@@ -2982,6 +2982,7 @@ let coachMetric = 'ps_total'; // COACH ROOM contributor metric
 let coachSearch = '';      // COACH ROOM player name search
 let coachDive = null;      // open deep-dive: { metric } | null
 let coachDiveRegion = null; // drill-down: region opened inside the deep-dive (null = nations level)
+let coachContribExpanded = false; // coach dive: show the full player ranking (not just the top 15)
 let fullRankOpen = {}; // { golden: bool, playmaker: bool } — show the full ranking under a board
 let varRegion = 'all';     // VAR Room country/region filter
 let varTeam = 'all';       // VAR Room entity (team) filter
@@ -5297,7 +5298,8 @@ function renderCoachDiveModal() {
       // Players ranked by their own GM% (weight = their PS €); under-25% flagged 🟨.
       // Flag on the TOTAL GM shown here (this whole dive is total-business margin), so
       // the 🟨 always matches the number printed — NOT yellow_gm, which is New-Business.
-      const players = inReg.filter(p => (Number(p.ps_total) || 0) > 0).sort((a, b) => (b.ps_total_gm || 0) - (a.ps_total_gm || 0)).slice(0, 15);
+      const allPlayers = inReg.filter(p => (Number(p.ps_total) || 0) > 0).sort((a, b) => (b.ps_total_gm || 0) - (a.ps_total_gm || 0));
+      const players = coachContribExpanded ? allPlayers : allPlayers.slice(0, 15);
       const maxP = Math.max(0.001, ...players.map(p => p.ps_total_gm || 0));
       const playerRows = players.map((p, i) => { const lowGm = (p.ps_total_gm || 0) < 0.25; return row({
         rank: lowGm ? '🟨' : '#' + (i + 1), name: p.name, sub: p.team, barPct: ((p.ps_total_gm || 0) / maxP) * 100,
@@ -5308,8 +5310,9 @@ function renderCoachDiveModal() {
       body = `
         <h3 class="cd-h">🏢 Entities · weighted GM%</h3>
         ${entRows}
-        <h3 class="cd-h">⚽ Players · GM% · weight = PS €${players.length >= 15 ? ' · top 15' : ''}</h3>
-        ${playerRows}`;
+        <h3 class="cd-h">⚽ Players · GM% · weight = PS €${allPlayers.length > 15 ? (coachContribExpanded ? ` · all ${allPlayers.length}` : ` · top 15 of ${allPlayers.length}`) : ''}</h3>
+        ${playerRows}
+        ${allPlayers.length > 15 ? `<button type="button" id="cd-contrib-toggle" class="contrib-toggle-btn">${coachContribExpanded ? 'Show top 15 only' : `Show all ${allPlayers.length} players ↓`}</button>` : ''}`;
     }
   } else {
     // === Value-metric deep-dive (PS Total, NB, meetings, opps, licence) ===
@@ -5341,7 +5344,8 @@ function renderCoachDiveModal() {
         color: colorForTeam(t.team), avatar: '🏢',
         cls: 'cd-row-click', attr: `data-cd-team="${escapeHtml(t.team)}"`
       })).join('') || `<div class="no-result">No entity data.</div>`;
-      const players = inReg.filter(p => val(p) > 0).sort((a, b) => val(b) - val(a)).slice(0, 15);
+      const allPlayers = inReg.filter(p => val(p) > 0).sort((a, b) => val(b) - val(a));
+      const players = coachContribExpanded ? allPlayers : allPlayers.slice(0, 15);
       const playerRows = players.map((p, i) => row({
         rank: '#' + (i + 1), name: p.name, sub: p.team, value: val(p), of: regTotal, fmt: m.rowFmt,
         color: colorForTeam(p.team), avatar: initials(p.name), photoName: p.name,
@@ -5350,8 +5354,9 @@ function renderCoachDiveModal() {
       body = `
         <h3 class="cd-h">🏢 Entities</h3>
         ${entRows}
-        <h3 class="cd-h">⚽ Top contributors${players.length >= 15 ? ' · top 15' : ''}</h3>
-        ${playerRows}`;
+        <h3 class="cd-h">⚽ Top contributors${allPlayers.length > 15 ? (coachContribExpanded ? ` · all ${allPlayers.length}` : ` · top 15 of ${allPlayers.length}`) : ''}</h3>
+        ${playerRows}
+        ${allPlayers.length > 15 ? `<button type="button" id="cd-contrib-toggle" class="contrib-toggle-btn">${coachContribExpanded ? 'Show top 15 only' : `Show all ${allPlayers.length} players ↓`}</button>` : ''}`;
     }
   }
 
@@ -6840,7 +6845,7 @@ function render() {
     document.querySelectorAll('.coach-metric').forEach(btn => btn.addEventListener('click', () => { coachMetric = btn.dataset.metric; reRender(); }));
     // Clickable KPI tiles → open the deep-dive modal (nations → entities →
     // players contribution to that metric, like the Team Ranking drill-down).
-    const openDive = (metric) => { coachDive = { metric }; coachDiveRegion = null; render(); document.body.style.overflow = 'hidden'; };
+    const openDive = (metric) => { coachDive = { metric }; coachDiveRegion = null; coachContribExpanded = false; render(); document.body.style.overflow = 'hidden'; };
     document.querySelectorAll('.coach-kpi-click[data-kpi], .coach-disc-click[data-kpi]').forEach(t => {
       t.addEventListener('click', () => openDive(t.dataset.kpi));
       t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDive(t.dataset.kpi); } });
@@ -6851,8 +6856,10 @@ function render() {
       const closeDive = () => { coachDive = null; coachDiveRegion = null; document.body.style.overflow = ''; render(); };
       cdOverlay.addEventListener('click', e => { if (e.target === cdOverlay) closeDive(); });
       const x = document.getElementById('cd-close'); if (x) x.addEventListener('click', closeDive);
-      const back = document.getElementById('cd-back'); if (back) back.addEventListener('click', () => { coachDiveRegion = null; render(); });
-      cdOverlay.querySelectorAll('[data-cd-region]').forEach(r => r.addEventListener('click', () => { coachDiveRegion = r.dataset.cdRegion; render(); }));
+      const back = document.getElementById('cd-back'); if (back) back.addEventListener('click', () => { coachDiveRegion = null; coachContribExpanded = false; render(); });
+      cdOverlay.querySelectorAll('[data-cd-region]').forEach(r => r.addEventListener('click', () => { coachDiveRegion = r.dataset.cdRegion; coachContribExpanded = false; render(); }));
+      const cdToggle = document.getElementById('cd-contrib-toggle');
+      if (cdToggle) cdToggle.addEventListener('click', () => { coachContribExpanded = !coachContribExpanded; render(); });
       // Entity rows → open that team's page (squad + contributors), closing the
       // dive so the modals don't stack; the team modal has its own drill-down.
       cdOverlay.querySelectorAll('[data-cd-team]').forEach(tr => tr.addEventListener('click', () => {
