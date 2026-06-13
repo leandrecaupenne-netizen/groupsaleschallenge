@@ -6523,6 +6523,21 @@ function renderNationModal() {
   `;
 }
 
+// Re-render while keeping a modal's internal scroll position. A modal (.modal) scrolls
+// on its own, so a plain render() — which rebuilds the DOM — would snap it back to the
+// top. Used by the in-modal "Show all / Show top 15" toggles (nation + coach dive).
+function renderKeepModalScroll(overlayId) {
+  const o = document.getElementById(overlayId);
+  const m = o ? o.querySelector('.modal') : null;
+  const so = o ? o.scrollTop : 0;
+  const sm = m ? m.scrollTop : 0;
+  render();
+  const o2 = document.getElementById(overlayId);
+  if (o2) o2.scrollTop = so;
+  const m2 = o2 ? o2.querySelector('.modal') : null;
+  if (m2) m2.scrollTop = sm;
+}
+
 // Live countdown to the Paris final (9 July 2026).
 const FINAL_DATE = new Date('2026-07-09T19:00:00+02:00');
 function updateCountdown() {
@@ -6879,7 +6894,7 @@ function render() {
       const back = document.getElementById('cd-back'); if (back) back.addEventListener('click', () => { coachDiveRegion = null; coachContribExpanded = false; render(); });
       cdOverlay.querySelectorAll('[data-cd-region]').forEach(r => r.addEventListener('click', () => { coachDiveRegion = r.dataset.cdRegion; coachContribExpanded = false; render(); }));
       const cdToggle = document.getElementById('cd-contrib-toggle');
-      if (cdToggle) cdToggle.addEventListener('click', () => { coachContribExpanded = !coachContribExpanded; render(); });
+      if (cdToggle) cdToggle.addEventListener('click', () => { coachContribExpanded = !coachContribExpanded; renderKeepModalScroll('cd-overlay'); });
       // Entity rows → open that team's page (squad + contributors), closing the
       // dive so the modals don't stack; the team modal has its own drill-down.
       cdOverlay.querySelectorAll('[data-cd-team]').forEach(tr => tr.addEventListener('click', () => {
@@ -7120,7 +7135,7 @@ function render() {
   if (nClose) nClose.addEventListener('click', closeNation);
   document.querySelectorAll('.nation-contrib-toggle').forEach(btn => btn.addEventListener('click', () => {
     nationContribExpanded = !nationContribExpanded;
-    render();
+    renderKeepModalScroll('nation-overlay');
   }));
   if (nOverlay) nOverlay.addEventListener('click', e => {
     if (e.target === nOverlay) closeNation();
