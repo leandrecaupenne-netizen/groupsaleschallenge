@@ -1392,6 +1392,22 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   border-radius: 10px;
   overflow: hidden;
 }
+.contrib-toggle-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--cream, #F8F4ED);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--navy, #1E2A78);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.contrib-toggle-btn:hover { background: #efe7d8; border-color: var(--gold, #F2C75C); }
 .members-table-header,
 .members-table-row {
   display: grid;
@@ -2972,6 +2988,7 @@ let varTeam = 'all';       // VAR Room entity (team) filter
 let varSearch = '';        // VAR Room player name search
 let openTeamModal = null; // country name si modal ouverte
 let openNationModal = null; // region key when a nation drilldown modal is open
+let nationContribExpanded = false; // nation modal: show the full contributor ranking (not just the top 15)
 let openPlayerModal = null; // player name shown in the Panini-style player card modal
 let varReviewName = null;   // player under VAR review (their card + verdict buttons in a modal)
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
@@ -6380,7 +6397,8 @@ function renderNationModal() {
   const natPeople = people.filter(p => regionOf(p.team) === openNationModal)
     .sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
   const TOPN = 15;
-  const topPeople = natPeople.slice(0, TOPN);
+  const showAll = nationContribExpanded || natPeople.length <= TOPN;
+  const topPeople = showAll ? natPeople : natPeople.slice(0, TOPN);
 
   return `
     <div class="modal-overlay" id="nation-overlay" role="dialog" aria-modal="true" aria-label="Nation details">
@@ -6439,7 +6457,7 @@ function renderNationModal() {
             ${natTeams.length ? '' : `<div class="no-result">No team-level breakdown yet — this nation has no Team Ranking row (its people still rank individually below).</div>`}
           </div>
 
-          <h3 class="modal-section-title">⚽ Top contributors${natPeople.length > TOPN ? ` · top ${TOPN} of ${natPeople.length}` : ''}</h3>
+          <h3 class="modal-section-title">⚽ ${showAll ? 'All contributors' : 'Top contributors'}${natPeople.length > TOPN ? (showAll ? ` · all ${natPeople.length}` : ` · top ${TOPN} of ${natPeople.length}`) : ''}</h3>
           <div class="members-table">
             <div class="members-table-header">
               <div>RANK</div>
@@ -6475,6 +6493,7 @@ function renderNationModal() {
                 </div>`;
             }).join('')}
           </div>
+          ${natPeople.length > TOPN ? `<button type="button" id="nation-contrib-toggle" class="contrib-toggle-btn">${showAll ? `Show top ${TOPN} only` : `Show all ${natPeople.length} contributors ↓`}</button>` : ''}
         </div>
       </div>
     </div>
@@ -7030,6 +7049,7 @@ function render() {
     row.addEventListener('click', () => {
       setModalTrigger(row);
       openNationModal = row.dataset.nation;
+      nationContribExpanded = false;
       render();
       document.body.style.overflow = 'hidden';
     });
@@ -7071,6 +7091,11 @@ function render() {
     render();
   };
   if (nClose) nClose.addEventListener('click', closeNation);
+  const nContribToggle = document.getElementById('nation-contrib-toggle');
+  if (nContribToggle) nContribToggle.addEventListener('click', () => {
+    nationContribExpanded = !nationContribExpanded;
+    render();
+  });
   if (nOverlay) nOverlay.addEventListener('click', e => {
     if (e.target === nOverlay) closeNation();
   });
@@ -8618,7 +8643,7 @@ async function init() {
     const natQ = params.get('nation');
     if (natQ) {
       const nat = nationsRanking().find(n => String(n.region).toLowerCase() === natQ.toLowerCase());
-      if (nat) { currentTab = 'teams'; openNationModal = nat.region; render(); document.body.style.overflow = 'hidden'; }
+      if (nat) { currentTab = 'teams'; openNationModal = nat.region; nationContribExpanded = false; render(); document.body.style.overflow = 'hidden'; }
     }
   } catch (e) {}
 
