@@ -1414,9 +1414,11 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 }
 .contrib-toggle-btn:hover { filter: brightness(1.06); box-shadow: 0 6px 20px rgba(242,199,92,0.45), inset 0 1px 0 rgba(255,255,255,0.5); }
 .contrib-toggle-btn:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(242,199,92,0.3); }
-.nat-contrib-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.nat-contrib-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; }
+.nat-contrib-head > span { min-width: 0; flex: 1 1 auto; }
 .contrib-toggle-mini {
   width: auto;
+  flex: 0 0 auto;
   margin-top: 0;
   padding: 8px 18px;
   font-size: 11px;
@@ -1997,6 +1999,10 @@ img, table { max-width: 100%; }
   .modal-summary { padding: 16px; gap: 12px; }
   .modal-body { padding: 16px 16px 28px; }
   .modal-section-title { font-size: 16px; }
+  /* The "Show all / Show top 15" pill drops onto its own full-width line under the
+     title instead of crowding or orphaning to the right on narrow screens. */
+  .nat-contrib-head > span { flex: 1 1 100%; }
+  .contrib-toggle-mini { flex: 1 0 100%; width: 100%; text-align: center; }
 
   .app-footer { padding: 22px 16px; }
   .app-footer .countdown { font-size: 18px; }
