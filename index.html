@@ -3161,6 +3161,10 @@ const TEAM_ALIASES = {
 // person joins that squad + the right nation/flag. Remove once Jose fixes the Sheet.
 const PEOPLE_TEAM_OVERRIDES = {
   'majdouline guediri': 'FR - Initiatives Platforms',
+  // Provisional: placed at Portugal nation level (no specific PORTUGAL 1/2/3 squad
+  // confirmed yet) — easy to point at a numbered squad once Léandre/Jose confirm.
+  'maria de fatima santos': 'PORTUGAL',
+  'marta godinho': 'PORTUGAL',
 };
 function applyTeamAliases() {
   teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });
