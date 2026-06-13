@@ -3508,7 +3508,7 @@ async function _fetchDataImpl(fresh) {
 
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name); // ignore empty rows
-    applyTeamAliases(); // e.g. ALPS → Switzerland, before names/ranks are computed
+    applyTeamAliases(); // e.g. ALPS → Alps, before names/ranks are computed
     updated_at = data.updated_at;
     period = data.period || '';
     challenge_dates = data.challenge_dates || {};
@@ -3552,7 +3552,7 @@ function hydrateFromSnapshot() {
     const data = snap.data;
     teams = data.teams || [];
     people = (data.people || []).filter(p => p.name);
-    applyTeamAliases(); // e.g. ALPS → Switzerland (same as the live fetch path)
+    applyTeamAliases(); // e.g. ALPS → Alps (same as the live fetch path)
     updated_at = data.updated_at;
     period = data.period || '';
     challenge_dates = data.challenge_dates || {};
@@ -5637,7 +5637,7 @@ function renderSpecialAwards() {
             </div>
           </div>
           ${renderDataAward(topLicences, p => fmtMoney(p.licence_gm), 'No licence GM recorded yet.', 'Licence GM Amount')}
-          ${fullRankingList('licence', sortedLicence, p => p.licence_gm || 0, 'money', 3)}
+          ${fullRankingList('licence_aw', sortedLicence, p => p.licence_gm || 0, 'money', 3)}
         </div>
 
         <div class="award-card" style="--c: #16A34A">
@@ -7234,8 +7234,10 @@ function render() {
     if (e.target === nOverlay) closeNation();
   });
 
-  // Floating jump-to-top/bottom controls inside long modals.
-  bindModalScrollNav(document);
+  // Floating jump-to-top/bottom controls inside long modals. Scope to #app so a
+  // poll-driven re-render doesn't re-bind a TV overlay (appended to <body>, and
+  // already wired by openTVTeamCard) and cause double smooth-scrolls.
+  bindModalScrollNav(document.getElementById('app') || document);
 
   enhanceModals();
 }
