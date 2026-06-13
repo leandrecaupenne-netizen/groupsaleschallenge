@@ -5580,6 +5580,7 @@ function renderSpecialAwards() {
             </div>
           </div>
           ${renderDataAward(topRookies, p => fmtMoney(p.ps_nb), 'No rookies with PS Bookings yet — coming soon.', 'PS Bookings · New Business')}
+          ${fullRankingList('rookies_aw', sortedRookies, p => p.ps_nb || 0, 'money', 3)}
         </div>
 
         <div class="award-card" style="--c: #8B5CF6">
