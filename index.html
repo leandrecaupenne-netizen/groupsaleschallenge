@@ -727,6 +727,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .ms-who-name .ms-mini-badge { font-size: 12px; margin-left: 5px; }
 .ms-figure { text-align: right; min-width: 0; }
 .ms-val { font-family: 'Anton', Impact, sans-serif; font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Small "NB" (etc.) unit after a ranking value, so the metric is clear next to every
+   figure on scroll — not just under the #1 hero. */
+.val-unit { font-family: ui-monospace, monospace; font-size: 0.6em; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; margin-left: 3px; vertical-align: 0.08em; }
 .ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 2px; line-height: 1.25; }
 .ms-anim { opacity: 0; animation: spotIn 0.45s cubic-bezier(.2,.7,.3,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .ms-anim { opacity: 1; animation: none; } }
@@ -4589,7 +4592,7 @@ function renderMatchSheet(list, opts) {
           <div class="ms-who-team">${playerTeamHTML(p.team, 'tnk-real-muted')}</div>
         </div>
         <div class="ms-figure">
-          <div class="ms-val">${fmtByType(v, opts.fmt)}</div>
+          <div class="ms-val">${fmtByType(v, opts.fmt)}${opts.unit ? `<span class="val-unit">${opts.unit}</span>` : ''}</div>
         </div>
       </div>`;
   }).join('');
@@ -4599,7 +4602,7 @@ function renderMatchSheet(list, opts) {
 // The full ranking below the top podium — so everyone can see how close they are
 // to the leaders, not just the top 5 (Alexis' feedback). Collapsed by default,
 // starting at the rank right after the podium; every row opens the player card.
-function fullRankingList(key, list, valueOf, fmt, podiumCount) {
+function fullRankingList(key, list, valueOf, fmt, podiumCount, unit) {
   const ranked = list.filter(p => valueOf(p) > 0);
   if (ranked.length <= podiumCount) return '';
   const open = !!fullRankOpen[key];
@@ -4615,7 +4618,7 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount) {
         <span class="fr-rank">#${rank}</span>
         <span class="fr-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}</span>
         <span class="fr-name">${escapeHtml(p.name)}<em>${teamShortLabel(p.team)}</em></span>
-        <span class="fr-val">${fmtByType(valueOf(p), fmt)}</span>
+        <span class="fr-val">${fmtByType(valueOf(p), fmt)}${unit ? `<span class="val-unit">${unit}</span>` : ''}</span>
       </div>`;
   }).join('') : '';
   return `
@@ -4640,9 +4643,9 @@ function renderGoldenBoot() {
       ${renderMatchSheet(top5, {
         badge: '⚽ TOP SCORER', color: '#F2C75C', keyPrefix: 'gb',
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
-        line: pickHeadlineFor('scorer')
+        unit: 'NB', line: pickHeadlineFor('scorer')
       })}
-      ${fullRankingList('golden', sortedGoldenBoot, p => p.ps_nb || 0, 'money', 5)}
+      ${fullRankingList('golden', sortedGoldenBoot, p => p.ps_nb || 0, 'money', 5, 'NB')}
     </div>
   `;
 }
@@ -4684,9 +4687,9 @@ function renderRookies() {
       ${renderMatchSheet(top6, {
         badge: '🎓 TOP ROOKIE', color: '#16A34A', keyPrefix: 'rk',
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
-        line: pickHeadlineFor('rookie')
+        unit: 'NB', line: pickHeadlineFor('rookie')
       })}
-      ${fullRankingList('rookies', sortedRookies, p => p.ps_nb || 0, 'money', 6)}
+      ${fullRankingList('rookies', sortedRookies, p => p.ps_nb || 0, 'money', 6, 'NB')}
     </div>
   `;
 }
@@ -5661,7 +5664,7 @@ function renderSpecialAwards() {
             </div>
           </div>
           ${renderDataAward(topRookies, p => fmtMoney(p.ps_nb), 'No rookies with PS Bookings yet — coming soon.', 'PS Bookings · New Business')}
-          ${fullRankingList('rookies_aw', sortedRookies, p => p.ps_nb || 0, 'money', 3)}
+          ${fullRankingList('rookies_aw', sortedRookies, p => p.ps_nb || 0, 'money', 3, 'NB')}
         </div>
 
         <div class="award-card" style="--c: #8B5CF6">
