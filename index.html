@@ -8309,7 +8309,7 @@ function tvMatchSheet(items, opts) {
   const c = colorForTeam(top.team || top.name);
   // Clickable panels open a card over the projection: people panels open the
   // player's Panini card (`player`), the podium opens the team modal (`team`).
-  const kind = opts.clickable ? 'player' : (opts.clickTeam ? 'team' : null);
+  const kind = opts.clickable ? 'player' : (opts.clickTeam ? 'team' : (opts.clickNation ? 'nation' : null));
   const clk = !!kind;
   const clkAttr = (item) => {
     // item.id is the lookup key (e.g. official country name) when the displayed
@@ -8317,9 +8317,10 @@ function tvMatchSheet(items, opts) {
     const id = item.id || item.name;
     if (kind === 'player') return ` data-tvplayer="${escapeHtml(id)}" title="Tap to open ${escapeHtml(item.name)}'s card"`;
     if (kind === 'team') return ` data-tvteam="${escapeHtml(id)}" title="Tap to open ${escapeHtml(item.name)}'s squad"`;
+    if (kind === 'nation') return ` data-tvnation="${escapeHtml(id)}" title="Tap to open ${escapeHtml(item.name)}"`;
     return '';
   };
-  const tapHint = kind === 'team' ? '👆 tap for the squad' : '👆 tap for the card';
+  const tapHint = kind === 'team' ? '👆 tap for the squad' : kind === 'nation' ? '👆 tap for the nation' : '👆 tap for the card';
   const hero = `
     <div class="tv-hero${clk ? ' tv-clickable' : ''}" style="--c:${c}"${clk ? clkAttr(top) : ''}>
       <div class="tv-hero-top">
@@ -8424,9 +8425,9 @@ function tvPanelHTML(kind) {
     // same cross-platform flag the country chips use.
     const nats = nationsRanking(); // already sorted by avg PS per person, desc
     const items = tvLimit(nats).map(n => ({
-      name: regionParts(n.region).name, team: '', flagKey: n.region, val: fmtMoney(n.avg_ps)
+      name: regionParts(n.region).name, id: n.region, team: '', flagKey: n.region, val: fmtMoney(n.avg_ps)
     }));
-    return tvMatchSheet(items, { title: '🌍 NATIONS — TOP COUNTRIES', sub: 'Average PS Bookings per person · all teams combined', badge: '🌍 TOP NATION', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON' }) + tvMoreBtn(nats.length);
+    return tvMatchSheet(items, { title: '🌍 NATIONS — TOP COUNTRIES', sub: 'Average PS Bookings per person · all teams combined', badge: '🌍 TOP NATION', valLabel: 'AVG PS / PERSON', unit: 'AVG PS / PERSON', clickNation: true }) + tvMoreBtn(nats.length);
   }
   const spots = buildSpotlights();
   if (!spots.length) return tvSection('⭐ PLAYERS OF THE MOMENT', "This matchday's standout performances", `<div class="tv-row"><span class="tv-name">No standouts yet.</span></div>`);
@@ -8471,6 +8472,9 @@ function renderTV() {
   // Podium teams are tappable too → open the team's squad over the projection.
   root.querySelectorAll('[data-tvteam]').forEach(el =>
     el.addEventListener('click', () => openTVTeamCard(el.dataset.tvteam)));
+  // Nations panel: each country opens its drilldown over the projection.
+  root.querySelectorAll('[data-tvnation]').forEach(el =>
+    el.addEventListener('click', () => openTVNationCard(el.dataset.tvnation)));
   // "+ Show more" / "− Show top 5" toggle on ranking panels.
   root.querySelectorAll('[data-tvmore]').forEach(el =>
     el.addEventListener('click', () => { tvExpanded = el.dataset.tvmore === '1'; renderTV(); }));
@@ -8531,6 +8535,34 @@ function openTVTeamCard(country) {
     row.addEventListener('click', () => openTVPlayerCard(row.dataset.player)));
   // The squad modal carries the floating scroll-nav; wire it here too (this overlay
   // is appended directly, outside the normal render()/bindEvents path).
+  bindModalScrollNav(el);
+}
+// Nation drilldown shown OVER the TV projection (same pattern as the team squad): the
+// nation's teams open their squad, its contributors open the player card — so everything
+// inside the nation card is tappable on the projection too.
+function openTVNationCard(region) {
+  const nat = nationsRanking().find(n => String(n.region) === String(region));
+  if (!nat) return;
+  closeTVPlayerCard();
+  const prev = openNationModal;
+  openNationModal = region;
+  const inner = renderNationModal(); // full .modal-overlay#nation-overlay > .modal
+  openNationModal = prev;            // don't disturb the underlying app state
+  const el = document.createElement('div');
+  el.className = 'tv-player-overlay';
+  el.id = 'tv-player-overlay';
+  el.innerHTML = inner;
+  document.body.appendChild(el);
+  const close = () => closeTVPlayerCard();
+  const overlay = el.querySelector('#nation-overlay');
+  const btn = el.querySelector('#nation-close-btn');
+  if (btn) btn.addEventListener('click', close);
+  if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  // Team rows → that team's squad; contributor rows → that player's card — all over TV.
+  el.querySelectorAll('[data-nteam]').forEach(row =>
+    row.addEventListener('click', () => openTVTeamCard(row.dataset.nteam)));
+  el.querySelectorAll('[data-player]').forEach(row =>
+    row.addEventListener('click', () => openTVPlayerCard(row.dataset.player)));
   bindModalScrollNav(el);
 }
 

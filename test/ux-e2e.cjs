@@ -211,6 +211,16 @@ function mockData() {
       }
       if (await page.has('#tv-next')) { await page.tap('#tv-next'); await page.waitForTimeout(250); log('TV next panel (no crash)', true); }
       if (await page.has('[data-tvplayer]')) { await page.tap('[data-tvplayer]'); await page.waitForTimeout(300); log('TV player card over projection', await page.has('#tv-player-overlay')); await esc(page); await page.waitForTimeout(150); }
+      // Nations panel: each country is tappable → its drilldown opens over the projection.
+      const dots = await page.$$('.tv-dots span');
+      if (dots.length) {
+        await dots[dots.length - 1].click(); await page.waitForTimeout(350); // last panel = Nations
+        if (await page.has('[data-tvnation]')) {
+          await page.tap('.tv-ms-row[data-tvnation], .tv-hero[data-tvnation]'); await page.waitForTimeout(350);
+          log('TV: tapping a nation opens its drilldown', await page.has('#tv-player-overlay #nation-overlay'));
+          await esc(page); await page.waitForTimeout(150);
+        }
+      }
       await page.screenshot({ path: '/tmp/shots/tv-mode.png' }).catch(() => {});
       await page.tap('#tv-close'); await page.waitForTimeout(200); log('TV mode exits', !(await page.has('#tv-overlay'))); }
 
