@@ -1530,6 +1530,11 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 }
 .member-cards { display: flex; gap: 4px; }
 .member-cards .badge { font-size: 14px; }
+/* Mobile-only summary line under the name (the table columns are hidden on phones).
+   Desktop keeps the columns, so this stays out of the way. */
+.member-meta { display: none; }
+.member-meta-cards { display: inline-flex; gap: 3px; }
+.member-meta-cards .badge { font-size: 12px; }
 /* Individual yellow card: tappable (reveals its single reason) wherever it appears. */
 .tt-card1 { cursor: pointer; }
 
@@ -1542,6 +1547,12 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
     gap: 7px;
   }
   .col-meet, .col-opps, .col-gm { display: none; }
+  /* The hidden columns reappear as a compact summary line under the name, so phones keep
+     full info parity with desktop without 6 cramped columns. */
+  .member-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; margin-top: 4px;
+    font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); line-height: 1.3;
+  }
   .member-avatar { width: 40px; height: 40px; font-size: 14px; }
   .member-who { gap: 8px; }
   /* Smaller rank glyphs so 3-digit ranks (#100–#377 in a 377-player list) fit the
@@ -3242,6 +3253,25 @@ function cardBadge(type, detail, cls) {
   return `<span class="tt-card1${cls ? ' ' + cls : ''}" role="button" tabindex="0" aria-label="${title}" title="${title}" data-c1="${type}" data-c1d="${escapeHtml(String(detail))}">🟨</span>`;
 }
 
+// Compact one-line summary of a player's secondary stats, shown UNDER the name on phones
+// (≤800px) where the member-table columns (NB / GM / meetings / opps / cards) are hidden.
+// Gives mobile full info parity with desktop without cramming 6 columns. Skips empty
+// values (no NB → no NB/GM line) to stay light; the yellow cards stay tappable.
+function memberMetaMobile(p) {
+  const bits = [];
+  if ((p.ps_nb || 0) > 0) {
+    bits.push('NB ' + fmtMoney(p.ps_nb));
+    const gm = indivGm(p);
+    if (gm != null) bits.push('GM ' + fmtPct(gm));
+  }
+  bits.push(fmtNum(p.meetings) + ' mtg/wk');
+  bits.push(Number(p.opps || 0).toFixed(0) + ' opps');
+  let cards = '';
+  if (p.yellow_meetings) cards += cardBadge('act', fmtNum(p.meetings), 'badge');
+  if (p.yellow_gm) cards += cardBadge('mar', fmtPct(indivGm(p)), 'badge');
+  return `<div class="member-meta">${bits.join(' · ')}${cards ? ' <span class="member-meta-cards">' + cards + '</span>' : ''}</div>`;
+}
+
 // Tap/click a 🟨 (N) tally → floating popover with the split, for touch devices where
 // there's no hover. One delegated handler, bound once; survives re-renders.
 let cardsPopEl = null, cardsPopAt = 0, cardsPopKey = null;
@@ -4468,6 +4498,7 @@ function renderTeamRanking() {
                   <div>
                     <div class="member-name">${escapeHtml(p.name)}</div>
                     <div class="member-tenure">${playerTeamHTML(p.team, 'tnk-real-muted', p.is_rookie ? ' · 🎓 Rookie' : '')}</div>
+                    ${memberMetaMobile(p)}
                   </div>
                 </div>
                 <div class="member-stat">${fmtMoney(p.ps_total)}</div>
@@ -6481,6 +6512,7 @@ function renderTeamModal() {
                     <div>
                       <div class="member-name">${escapeHtml(m.name)}</div>
                       <div class="member-tenure">${escapeHtml(tenureLabel)}</div>
+                      ${memberMetaMobile(m)}
                     </div>
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
@@ -6601,6 +6633,7 @@ function renderNationModal() {
                     <div>
                       <div class="member-name">${escapeHtml(m.name)}</div>
                       <div class="member-tenure">${escapeHtml(m.team)}</div>
+                      ${memberMetaMobile(m)}
                     </div>
                   </div>
                   <div class="member-stat">${fmtMoney(m.ps_total)}</div>
