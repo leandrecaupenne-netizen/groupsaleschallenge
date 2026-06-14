@@ -172,6 +172,12 @@ function mockData() {
       log('Tap NB → explains New Business (no player card)', /New Business/i.test(nbPop) && !(await page.has('#player-overlay')));
       await page.tap('.val-unit.pc-explain'); await page.waitForTimeout(120); // toggle closed
     }
+    // The board's metric label is a tappable glossary term too.
+    if (await page.has('.ms-hero-stat-label .metric-help')) {
+      await page.tap('.ms-hero-stat-label .metric-help'); await page.waitForTimeout(160);
+      log('Board metric label explains the metric', /New Business|Opportunities|Licence/i.test((await page.textContent('#cards-pop').catch(() => '')) || ''));
+      await page.keyboard.press('Escape').catch(() => {});
+    }
 
     await tab(page, 'position'); await page.waitForTimeout(150);
     if (await page.has('#position-search')) { await page.fill('#position-search', 'thorsager'); await page.waitForTimeout(250);
@@ -232,6 +238,18 @@ function mockData() {
     await dl('?player=Claus', '#player-overlay', 'Deep link ?player= opens the card on load');
     await dl('?team=DENMARK', '#modal-overlay', 'Deep link ?team= opens the squad on load');
     await dl('?nation=DENMARK', '#nation-overlay', 'Deep link ?nation= opens the nation on load');
+    // Member-table column headers are tappable glossary terms (and the modal stays open).
+    {
+      const { ctx, page } = await newPage();
+      await bootstrap(page, `${BASE}?team=DENMARK`);
+      await page.waitForTimeout(300);
+      if (await page.has('.members-table-header .metric-help')) {
+        await page.tap('.members-table-header .metric-help'); await page.waitForTimeout(160);
+        const pop = (await page.textContent('#cards-pop').catch(() => '')) || '';
+        log('Modal column header explains its metric (modal stays open)', /PS Total|New Business|margin|Opportunities|meetings/i.test(pop) && (await page.has('#modal-overlay')));
+      }
+      await ctx.close();
+    }
 
     // Ctrl-click a player row opens a NEW TAB (popup) on the ?player= deep link,
     // and does NOT open the in-place modal in the current tab.
