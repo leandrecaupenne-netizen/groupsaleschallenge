@@ -211,6 +211,21 @@ function mockData() {
         log('Stat explainer popover stays on screen at 320px', fits);
       }
     }
+
+    // Mobile info parity: the member tables hide their stat columns on phones, so a
+    // compact summary line under each name (NB / GM / meetings / opps) must be visible.
+    {
+      await page.setViewportSize({ width: 360, height: 780 }); await page.waitForTimeout(120);
+      await page.click('.tab-btn[data-tab="teams"]').catch(() => {});
+      await page.waitForTimeout(150);
+      const tm = await page.$('[data-team]');
+      if (tm) {
+        await tm.click(); await page.waitForTimeout(250);
+        const metaShown = await page.evaluate(() => { const m = document.querySelector('.member-meta'); return !!(m && m.offsetParent !== null && /opps|mtg/.test(m.textContent || '')); });
+        log('Mobile member rows show the summary meta line', metaShown);
+        await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+      }
+    }
   } catch (e) {
     errors.push('HARNESS: ' + e.message);
   } finally {
