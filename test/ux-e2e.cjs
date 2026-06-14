@@ -162,6 +162,8 @@ function mockData() {
     await tab(page, 'golden'); await page.waitForTimeout(150);
     if (await page.has('[data-fullrank]')) { const before = (await page.$$('.fr-row')).length; await page.tap('[data-fullrank]'); await page.waitForTimeout(200);
       log('Full ranking expands', (await page.$$('.fr-row')).length > before); }
+    // Golden Boot values carry an "NB" unit so the metric is clear next to every figure.
+    log('Golden Boot values are tagged NB', ((await page.textContent('.ms-val .val-unit').catch(() => '')) || '').trim() === 'NB');
 
     await tab(page, 'position'); await page.waitForTimeout(150);
     if (await page.has('#position-search')) { await page.fill('#position-search', 'thorsager'); await page.waitForTimeout(250);
