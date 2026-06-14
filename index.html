@@ -732,6 +732,13 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .val-unit { font-family: ui-monospace, monospace; font-size: 0.6em; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; margin-left: 3px; vertical-align: 0.08em; }
 /* Tappable unit (e.g. NB) → dotted underline cue, like a glossary term. */
 .val-unit.pc-explain { cursor: pointer; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+/* Tappable metric labels (column headers, board labels) → small ⓘ glossary cue. */
+.metric-help { cursor: pointer; white-space: nowrap; }
+.metric-i { font-size: 0.82em; opacity: 0.5; margin-left: 2px; vertical-align: 0.06em; font-weight: 400; }
+.metric-help:hover .metric-i { opacity: 0.85; }
+/* The ⓘ at the end of the mobile member summary line (explains NB/GM/mtg/opps). */
+.meta-help { cursor: pointer; opacity: 0.5; margin-left: 5px; }
+.meta-help:hover { opacity: 0.85; }
 .ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 2px; line-height: 1.25; }
 .ms-anim { opacity: 0; animation: spotIn 0.45s cubic-bezier(.2,.7,.3,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .ms-anim { opacity: 1; animation: none; } }
@@ -3269,7 +3276,7 @@ function memberMetaMobile(p) {
   let cards = '';
   if (p.yellow_meetings) cards += cardBadge('act', fmtNum(p.meetings), 'badge');
   if (p.yellow_gm) cards += cardBadge('mar', fmtPct(indivGm(p)), 'badge');
-  return `<div class="member-meta">${bits.join(' · ')}${cards ? ' <span class="member-meta-cards">' + cards + '</span>' : ''}</div>`;
+  return `<div class="member-meta">${bits.join(' · ')}${cards ? ' <span class="member-meta-cards">' + cards + '</span>' : ''}<span class="meta-help pc-explain" role="button" tabindex="0" data-explain="glossary" aria-label="What do these mean?" title="What do these mean?">ⓘ</span></div>`;
 }
 
 // Tap/click a 🟨 (N) tally → floating popover with the split, for touch devices where
@@ -3353,7 +3360,9 @@ const STAT_EXPLAIN = {
   playmaker: { t: '🌱 Playmaker', b: `Ranks you by <b>opportunities created</b> (${RULES.oppRule}).`, goto: 'playmaker' },
   licence:   { t: '📜 Licence GM', b: 'Ranks you by the <b>Licence gross margin</b> you generate.', goto: 'licence' },
   rookie:    { t: '🎓 Rookie Cup', b: 'New Business rank among reps with <b>under a year</b> at Devoteam.', goto: 'rookies' },
-  ps_total:  { t: '💰 PS Total', b: 'Your <b>total bookings</b> (New Business + renewals). This is <b>not</b> your individual challenge rank — it feeds your <b>team\'s</b> World Cup ranking (teams are ranked on total).' }
+  ps_total:  { t: '💰 PS Total', b: 'Your <b>total bookings</b> (New Business + renewals). This is <b>not</b> your individual challenge rank — it feeds your <b>team\'s</b> World Cup ranking (teams are ranked on total).' },
+  opps:      { t: '🎯 Opportunities', b: `New opportunities created — counted from <b>Stage ${RULES.OPP_STAGE_MIN}+</b> and <b>≥ €${Math.round(RULES.OPP_EUR_MIN / 1000)}K</b>. The Playmaker board is scored on this.` },
+  glossary:  { t: 'ℹ️ What these mean', b: `<b>NB</b> New Business (net-new, renewals excluded) · <b>GM</b> gross margin on NB · <b>mtg/wk</b> meetings per week (target ${RULES.MEETINGS_MIN}+) · <b>opps</b> opportunities (Stage ${RULES.OPP_STAGE_MIN}+, ≥ €${Math.round(RULES.OPP_EUR_MIN / 1000)}K). Tap a player for the full card.` }
 };
 // Small unit tag after a ranking value (e.g. "NB"). If we have an explanation for it,
 // render it as a tappable explainer (same popover/toggle/Esc as the card stats); else a
@@ -3364,6 +3373,12 @@ function unitTag(unit) {
   return STAT_EXPLAIN[key]
     ? `<span class="val-unit pc-explain" role="button" tabindex="0" data-explain="${key}" aria-label="${u} — what is this?" title="What is ${u}?">${u}</span>`
     : `<span class="val-unit">${u}</span>`;
+}
+// A column-header / label that's tappable to explain the metric (glossary popover, same
+// toggle/Esc as the cards). A subtle ⓘ signals it. No-op affordance if the key is unknown.
+function metricHelp(label, key) {
+  if (!STAT_EXPLAIN[key]) return label;
+  return `<span class="metric-help pc-explain" role="button" tabindex="0" data-explain="${key}" title="What is ${escapeHtml(label)}?">${label}<span class="metric-i">ⓘ</span></span>`;
 }
 // Stat → explanation popover (its own toggle, same dismiss/Esc behaviour as the cards).
 function showStatPop(el) {
@@ -4622,7 +4637,7 @@ function renderMatchSheet(list, opts) {
         <div class="ms-hero-name">${escapeHtml(top.name)}</div>
         <div class="ms-hero-team">${playerTeamHTML(top.team, 'tnk-real-light', top.is_rookie ? ' · 🎓 Rookie' : '')}</div>
         <div class="ms-hero-stat">${animNum(opts.keyPrefix + ':' + top.name, opts.valueOf(top), opts.fmt)}</div>
-        <div class="ms-hero-stat-label">${opts.statLabel}</div>
+        <div class="ms-hero-stat-label">${opts.explain ? metricHelp(opts.statLabel, opts.explain) : opts.statLabel}</div>
         ${opts.line ? `<div class="ms-hero-line">“${opts.line(top)}”</div>` : ''}
       </div>
       ${photoFor(top.name) ? `<div class="ms-hero-avatar"><img class="ms-hero-avatar-img" src="${photoFor(top.name)}" alt="" loading="lazy" onerror="this.closest('.ms-hero').classList.remove('has-hero-photo');this.parentElement.remove()" /></div>` : ''}
@@ -4692,7 +4707,7 @@ function renderGoldenBoot() {
       ${renderMatchSheet(top5, {
         badge: '⚽ TOP SCORER', color: '#F2C75C', keyPrefix: 'gb',
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
-        unit: 'NB', line: pickHeadlineFor('scorer')
+        unit: 'NB', explain: 'nb', line: pickHeadlineFor('scorer')
       })}
       ${fullRankingList('golden', sortedGoldenBoot, p => p.ps_nb || 0, 'money', 5, 'NB')}
     </div>
@@ -4711,7 +4726,7 @@ function renderPlaymaker() {
       ${tightRaceBanner(race, 'Playmaker')}
       ${renderMatchSheet(top5, {
         badge: '🌱 THE PLAYMAKER', color: '#C8102E', keyPrefix: 'pm',
-        valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created',
+        valueOf: p => p.opps || 0, fmt: 'int', statLabel: 'Opportunities created', explain: 'opps',
         line: pickHeadlineFor('playmaker')
       })}
       ${fullRankingList('playmaker', sortedPlaymaker, p => p.opps || 0, 'int', 5)}
@@ -4736,7 +4751,7 @@ function renderRookies() {
       ${renderMatchSheet(top6, {
         badge: '🎓 TOP ROOKIE', color: '#16A34A', keyPrefix: 'rk',
         valueOf: p => p.ps_nb || 0, fmt: 'money', statLabel: 'PS Bookings — New Business',
-        unit: 'NB', line: pickHeadlineFor('rookie')
+        unit: 'NB', explain: 'nb', line: pickHeadlineFor('rookie')
       })}
       ${fullRankingList('rookies', sortedRookies, p => p.ps_nb || 0, 'money', 6, 'NB')}
     </div>
@@ -4758,7 +4773,7 @@ function renderLicence() {
       ${tightRaceBanner(race, 'Licence')}
       ${renderMatchSheet(top6, {
         badge: '📜 LICENCE LEADER', color: '#F2C75C', keyPrefix: 'lic',
-        valueOf: p => p.licence_gm || 0, fmt: 'money', statLabel: 'Licence GM Amount',
+        valueOf: p => p.licence_gm || 0, fmt: 'money', statLabel: 'Licence GM Amount', explain: 'licence',
         line: p => `Leading the licence charts with ${fmtMoney(p.licence_gm)} of licence GM.`
       })}
       ${fullRankingList('licence', sortedLicence, p => p.licence_gm || 0, 'money', 6)}
@@ -6493,11 +6508,11 @@ function renderTeamModal() {
             <div class="members-table-header">
               <div>RANK</div>
               <div>PLAYER</div>
-              <div>PS TOTAL</div>
-              <div class="col-nb">PS NB</div>
-              <div class="col-gm">GM</div>
-              <div class="col-meet">MEET/WK</div>
-              <div class="col-opps">OPPS · CARDS</div>
+              <div>${metricHelp('PS TOTAL', 'ps_total')}</div>
+              <div class="col-nb">${metricHelp('PS NB', 'ps_nb')}</div>
+              <div class="col-gm">${metricHelp('GM', 'nb_gm')}</div>
+              <div class="col-meet">${metricHelp('MEET/WK', 'meetings')}</div>
+              <div class="col-opps">${metricHelp('OPPS · CARDS', 'opps')}</div>
             </div>
             ${members.map((m, idx) => {
               const cards = [];
@@ -6615,11 +6630,11 @@ function renderNationModal() {
             <div class="members-table-header">
               <div>RANK</div>
               <div>PLAYER</div>
-              <div>PS TOTAL</div>
-              <div class="col-nb">PS NB</div>
-              <div class="col-gm">GM</div>
-              <div class="col-meet">MEET/WK</div>
-              <div class="col-opps">OPPS · CARDS</div>
+              <div>${metricHelp('PS TOTAL', 'ps_total')}</div>
+              <div class="col-nb">${metricHelp('PS NB', 'ps_nb')}</div>
+              <div class="col-gm">${metricHelp('GM', 'nb_gm')}</div>
+              <div class="col-meet">${metricHelp('MEET/WK', 'meetings')}</div>
+              <div class="col-opps">${metricHelp('OPPS · CARDS', 'opps')}</div>
             </div>
             ${topPeople.map((m, i) => {
               const cards = [];
