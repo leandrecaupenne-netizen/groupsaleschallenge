@@ -164,6 +164,14 @@ function mockData() {
       log('Full ranking expands', (await page.$$('.fr-row')).length > before); }
     // Golden Boot values carry an "NB" unit so the metric is clear next to every figure.
     log('Golden Boot values are tagged NB', ((await page.textContent('.ms-val .val-unit').catch(() => '')) || '').trim() === 'NB');
+    // The NB unit is itself tappable → explains what New Business means, without opening
+    // the row's player card (toggle: re-tap closes).
+    if (await page.has('.val-unit.pc-explain')) {
+      await page.tap('.val-unit.pc-explain'); await page.waitForTimeout(180);
+      const nbPop = (await page.textContent('#cards-pop').catch(() => '')) || '';
+      log('Tap NB → explains New Business (no player card)', /New Business/i.test(nbPop) && !(await page.has('#player-overlay')));
+      await page.tap('.val-unit.pc-explain'); await page.waitForTimeout(120); // toggle closed
+    }
 
     await tab(page, 'position'); await page.waitForTimeout(150);
     if (await page.has('#position-search')) { await page.fill('#position-search', 'thorsager'); await page.waitForTimeout(250);

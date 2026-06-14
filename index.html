@@ -730,6 +730,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 /* Small "NB" (etc.) unit after a ranking value, so the metric is clear next to every
    figure on scroll — not just under the #1 hero. */
 .val-unit { font-family: ui-monospace, monospace; font-size: 0.6em; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; margin-left: 3px; vertical-align: 0.08em; }
+/* Tappable unit (e.g. NB) → dotted underline cue, like a glossary term. */
+.val-unit.pc-explain { cursor: pointer; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .ms-sub { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; margin-top: 2px; line-height: 1.25; }
 .ms-anim { opacity: 0; animation: spotIn 0.45s cubic-bezier(.2,.7,.3,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .ms-anim { opacity: 1; animation: none; } }
@@ -3258,7 +3260,12 @@ function hideCardsPop() { if (cardsPopEl) cardsPopEl.hidden = true; cardsPopKey 
 function badgeKey(b) {
   if (b.classList.contains('tt-cards')) return 'c:' + b.dataset.act + ':' + b.dataset.mar;
   if (b.classList.contains('tt-card1')) return '1:' + b.dataset.c1 + ':' + b.dataset.c1d;
-  return 's:' + (b.dataset.explain || '');
+  // For stats, include the owning row's identity so the SAME explainer on two different
+  // rows (e.g. the "NB" unit on every Golden Boot row) re-targets instead of toggling
+  // shut — while staying render-stable (the player/team name survives a re-render).
+  const row = b.closest('[data-player],[data-team],[data-nteam],[data-nation]');
+  const ctx = row ? (row.dataset.player || row.dataset.team || row.dataset.nteam || row.dataset.nation || '') : '';
+  return 's:' + (b.dataset.explain || '') + ':' + ctx;
 }
 // Open (or toggle-close) the explainer for a trigger. Shared by click + keyboard.
 function activateBadge(badge) {
@@ -3309,6 +3316,7 @@ function showCard1Pop(badge) {
 const STAT_EXPLAIN = {
   nb_rank:   { t: '🥇 New Business rank', b: 'Your position on <b>New Business</b> bookings — this is the <b>individual challenge</b> metric (the Golden Boot). Climb it by booking net-new deals.', goto: 'golden' },
   ps_nb:     { t: 'PS NB · New Business', b: 'PS Bookings, <b>New Business</b> only (net-new — renewals excluded). What the individual challenge is scored on.', goto: 'golden' },
+  nb:        { t: '🆕 New Business', b: 'PS Bookings, <b>New Business</b> only — net-new business won this period (<b>renewals excluded</b>). The Golden Boot & Rookie Cup are scored on this.' },
   nb_gm:     { t: 'NB GM · margin', b: `Gross margin on your New Business. <b>Below ${RULES.GM_PCT}%</b> picks up a 🥅 <b>${RULES.marLabel}</b> yellow card.` },
   meetings:  { t: 'Meetings / week', b: `<b>Fewer than ${RULES.MEETINGS_MIN}</b> meetings per week picks up a 🏃 <b>${RULES.actLabel}</b> yellow card.` },
   golden:    { t: '🥇 Golden Boot', b: 'Ranks you by <b>New Business</b> bookings — the main individual challenge board.', goto: 'golden' },
@@ -3317,6 +3325,16 @@ const STAT_EXPLAIN = {
   rookie:    { t: '🎓 Rookie Cup', b: 'New Business rank among reps with <b>under a year</b> at Devoteam.', goto: 'rookies' },
   ps_total:  { t: '💰 PS Total', b: 'Your <b>total bookings</b> (New Business + renewals). This is <b>not</b> your individual challenge rank — it feeds your <b>team\'s</b> World Cup ranking (teams are ranked on total).' }
 };
+// Small unit tag after a ranking value (e.g. "NB"). If we have an explanation for it,
+// render it as a tappable explainer (same popover/toggle/Esc as the card stats); else a
+// plain label. `data-explain` keys off the lowercased unit (NB → STAT_EXPLAIN.nb).
+function unitTag(unit) {
+  if (!unit) return '';
+  const u = escapeHtml(unit), key = unit.toLowerCase();
+  return STAT_EXPLAIN[key]
+    ? `<span class="val-unit pc-explain" role="button" tabindex="0" data-explain="${key}" aria-label="${u} — what is this?" title="What is ${u}?">${u}</span>`
+    : `<span class="val-unit">${u}</span>`;
+}
 // Stat → explanation popover (its own toggle, same dismiss/Esc behaviour as the cards).
 function showStatPop(el) {
   const x = STAT_EXPLAIN[el.dataset.explain];
@@ -4592,7 +4610,7 @@ function renderMatchSheet(list, opts) {
           <div class="ms-who-team">${playerTeamHTML(p.team, 'tnk-real-muted')}</div>
         </div>
         <div class="ms-figure">
-          <div class="ms-val">${fmtByType(v, opts.fmt)}${opts.unit ? `<span class="val-unit">${opts.unit}</span>` : ''}</div>
+          <div class="ms-val">${fmtByType(v, opts.fmt)}${unitTag(opts.unit)}</div>
         </div>
       </div>`;
   }).join('');
@@ -4618,7 +4636,7 @@ function fullRankingList(key, list, valueOf, fmt, podiumCount, unit) {
         <span class="fr-rank">#${rank}</span>
         <span class="fr-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${rc}">${avatarInner(p.name)}</span>
         <span class="fr-name">${escapeHtml(p.name)}<em>${teamShortLabel(p.team)}</em></span>
-        <span class="fr-val">${fmtByType(valueOf(p), fmt)}${unit ? `<span class="val-unit">${unit}</span>` : ''}</span>
+        <span class="fr-val">${fmtByType(valueOf(p), fmt)}${unitTag(unit)}</span>
       </div>`;
   }).join('') : '';
   return `
