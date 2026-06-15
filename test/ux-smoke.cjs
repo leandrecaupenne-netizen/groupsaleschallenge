@@ -240,6 +240,37 @@ function mockData() {
       log('Board hero text fits & clears the portrait (no overflow under avatar)', heroBad.length === 0, heroBad.slice(0, 4).join(' | '));
     }
 
+    // Text fits inside the Panini card AND the journal cards. Flags any leaf text that
+    // is horizontally clipped (scrollWidth > clientWidth) WITHOUT an ellipsis affordance
+    // — i.e. content genuinely cut off, not deliberately truncated. Skips ellipsis nodes.
+    {
+      const scan = sels => {
+        const bad = [];
+        sels.forEach(sel => document.querySelectorAll(sel).forEach(el => {
+          if (getComputedStyle(el).textOverflow === 'ellipsis') return; // intentional truncation
+          if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) {
+            const cls = (typeof el.className === 'string' ? el.className.split(/\s+/)[0] : 'el');
+            bad.push(cls + '+' + (el.scrollWidth - el.clientWidth));
+          }
+        }));
+        return [...new Set(bad)];
+      };
+      await page.setViewportSize({ width: 360, height: 800 }); await page.waitForTimeout(120);
+      // Panini player card (rendered inline in My Position).
+      await page.click('.tab-btn[data-tab="position"]').catch(() => {});
+      await page.fill('#position-search', 'thorsager').catch(() => {});
+      await page.waitForTimeout(300);
+      const pcBad = await page.evaluate(scan, ['.pc-name', '.pc-stat-val', '.pc-stat-label', '.pc-rating b', '.pc-rating span', '.pc-total-note']);
+      log('Panini card text fits (no non-ellipsis overflow)', pcBad.length === 0, pcBad.slice(0, 5).join(' | '));
+      // Weekly journal cards (hero headline, Duel, Team of the Week, Stat of the Week,
+      // pull-quote, leaderboard values).
+      await page.evaluate(() => { if (typeof window.openDigest === 'function') window.openDigest(); });
+      await page.waitForTimeout(300);
+      const magBad = await page.evaluate(scan, ['.mag-headline', '.mp-stat', '.mp-statlabel', '.mag-duel-name', '.mag-duel-val', '.mag-duel-unit', '.mag-totw-name', '.mag-totw-stat', '.mag-sotw-val', '.mag-sotw-who', '.mag-lb-val', '.mag-quote-text']);
+      log('Journal card text fits (no non-ellipsis overflow)', magBad.length === 0, magBad.slice(0, 6).join(' | '));
+      await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+    }
+
     // Player card at the smallest phone width (320px): the 4-up hero stat row must
     // fit (no overflow), and tapping a stat must open an explainer that stays on
     // screen. Guards the responsive regression from adding the ⓘ affordances.
