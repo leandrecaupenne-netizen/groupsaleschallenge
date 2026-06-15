@@ -106,6 +106,24 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v6 : visages partout + Duel of the Week + esprit Mondial
+Retour Léandre (capture à l'appui) : quand on **mentionne quelqu'un, toujours montrer sa carte
+Panini** ; + plus d'images, de texte, d'**engagement/suspense**, sentir l'**esprit Mondial**.
+Fast-forward `main`. Commit `4901b84`.
+
+- **Visage sur chaque mention** : les tuiles **Stat of the Week** ont désormais un **disque
+  portrait** (badge emoji en coin) ; l'**éditorial** affiche une **bande de chips-visages**
+  cliquables pour chaque joueur cité (plus de nom en texte seul). Tout ouvre la fiche Panini.
+- **Duel of the Week** (`recapDuel`) : le top 2 du Golden Boot **face-à-face**, 2 grands
+  portraits + badge **VS** rouge + l'écart entre eux + accroche suspense (« who'll wear the
+  Golden Boot in Paris? » / « Dead heat » si égalité). Les 2 visages ouvrent la fiche.
+- **Éditorial enrichi** : phrase de clôture avec **semaines restantes** (parsées de `period`
+  « Week N of M ») → « With X weeks to go, the race to Paris is wide open 🌍 ».
+- TOC : nouveau chip **⚔️ Duel** (placé après l'édito, avant les Leaders, pour le suspense tôt).
+
+**Vérifs runtime** : Duel présent (écart €495K affiché), 3 tuiles SOTW avec visage, 3 chips-
+visages dans l'édito, closer « weeks to go » OK, **25 joueurs distincts**. JS/CSS OK.
+
 ### 2026-06-15 — Recap v5 : journal enrichi (quick-nav, édito, leaderboards, max joueurs)
 Demande Léandre : « rajoute un maximum de choses qui facilitent l'utilisation du journal ;
 catégories, storytelling, meilleure marge depuis le début, Golden Boots, plus belles
