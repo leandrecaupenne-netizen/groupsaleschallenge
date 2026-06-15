@@ -1313,6 +1313,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 /* Weekly recap: header button dot + magazine front-page modal. */
 .digest-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--usa-red); box-shadow: 0 0 0 2px var(--navy); display: none; }
 .digest-modal { max-width: 680px; }
+/* The journal scrolls inside .digest-modal only (overlay doesn't scroll) → sticky
+   header + quick-nav pin natively, one deterministic scroll container. */
+#digest-overlay { overflow: hidden; }
 .digest-empty { text-align: center; color: var(--muted); font-style: italic; padding: 30px 10px; line-height: 1.7; }
 
 /* Masthead (modal header) — newspaper nameplate. */
@@ -1954,6 +1957,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   transition: background 0.15s, transform 0.3s;
 }
 .refresh-btn:hover { background: rgba(255,255,255,0.25); }
+/* Header overflow menu: on desktop the secondary buttons sit inline (no ⋯). */
+.hdr-more-btn { display: none; }
+.hdr-more { display: contents; }
 .refresh-btn.spinning { animation: spin 0.8s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 /* Touch devices: enlarge the header icon buttons to a comfortable ~42px tap
@@ -2296,6 +2302,14 @@ img, table { max-width: 100%; }
   .header-info { flex: 1 1 auto; align-items: flex-start; }
   .hdr-countdown { white-space: normal; font-size: 12px; }
   .last-update { font-size: 9.5px; }
+  /* Overflow menu: fold the secondary buttons behind ⋯, bump tap targets to 44px. */
+  .hdr-more-btn { display: flex; }
+  .hdr-more { display: none; position: absolute; top: calc(100% + 6px); right: 8px;
+    flex-direction: column; gap: 8px; padding: 10px; background: var(--navy-2);
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 14px;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.45); z-index: 60; }
+  .hdr-more.open { display: flex; }
+  .header-status .refresh-btn { width: 44px; height: 44px; }
 }
 
 @media (max-width: 600px) {
@@ -3184,10 +3198,13 @@ img, table { max-width: 100%; }
     <span class="refresh-flash" id="refresh-flash" role="status" aria-live="polite"></span>
     <button id="digest-btn" class="refresh-btn tv-btn" title="This week's recap" aria-label="This week's recap" style="display:none">📰<span class="digest-dot" id="digest-dot"></span></button>
     <button id="search-btn" class="refresh-btn tv-btn" title="Search a player" aria-label="Search a player">🔍</button>
-    <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
-    <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
-    <button id="install-btn" class="refresh-btn tv-btn" title="Install the app" aria-label="Install the app" style="display:none">📲</button>
-    <button id="tv-btn" class="refresh-btn tv-btn" title="TV / projection mode" aria-label="TV mode">📺</button>
+    <button id="more-btn" class="refresh-btn tv-btn hdr-more-btn" title="More options" aria-label="More options" aria-haspopup="true" aria-expanded="false">⋯</button>
+    <div class="hdr-more" id="hdr-more">
+      <button id="theme-btn" class="refresh-btn tv-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <button id="rules-btn" class="refresh-btn tv-btn" title="Rules & Awards" aria-label="Rules and Awards">ℹ️</button>
+      <button id="install-btn" class="refresh-btn tv-btn" title="Install the app" aria-label="Install the app" style="display:none">📲</button>
+      <button id="tv-btn" class="refresh-btn tv-btn" title="TV / projection mode" aria-label="TV mode">📺</button>
+    </div>
     <button id="refresh-btn" class="refresh-btn" title="Refresh now" aria-label="Refresh now" style="display:none">↻</button>
   </div>
 </header>
@@ -8766,6 +8783,12 @@ function renderRecapMagazine(d) {
 }
 
 // === Weekly recap modal ("what changed since last update") ===
+// Mark a dynamically-built overlay as a modal dialog for assistive tech.
+function setDialogA11y(el, label) {
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  if (label) el.setAttribute('aria-label', label);
+}
 function openDigest() {
   if (document.getElementById('digest-overlay')) return;
   markDigestSeen();
@@ -8780,9 +8803,7 @@ function openDigest() {
   const el = document.createElement('div');
   el.className = 'modal-overlay';
   el.id = 'digest-overlay';
-  el.setAttribute('role', 'dialog');
-  el.setAttribute('aria-modal', 'true');
-  el.setAttribute('aria-label', "This week's recap");
+  setDialogA11y(el, "This week's recap");
   el.innerHTML = `
     <div class="modal digest-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -8914,6 +8935,7 @@ function openRules() {
   const el = document.createElement('div');
   el.className = 'modal-overlay';
   el.id = 'rules-overlay';
+  setDialogA11y(el, 'Rules & Awards');
   el.innerHTML = `
     <div class="modal rules-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -8962,7 +8984,9 @@ function openRules() {
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
-  el.querySelector('#rules-close').addEventListener('click', close);
+  const rClose = el.querySelector('#rules-close');
+  rClose.addEventListener('click', close);
+  try { rClose.focus({ preventScroll: true }); } catch (e) {} // move focus into the dialog
   document.addEventListener('keydown', onKey);
 }
 
@@ -8995,7 +9019,7 @@ function openSearch() {
   const opener = document.activeElement; // a11y: return focus here on close
   let query = '', filter = 'all';
   const el = document.createElement('div');
-  el.className = 'modal-overlay'; el.id = 'search-overlay';
+  el.className = 'modal-overlay'; el.id = 'search-overlay'; setDialogA11y(el, 'Search');
   const chips = [['all', 'All'], ['rookie', '🎓 Rookies'], ['year', 'Over a year'], ['under', '< 1 year']];
   el.innerHTML = `
     <div class="modal search-modal" onclick="event.stopPropagation()">
@@ -9077,7 +9101,7 @@ function openCompare() {
   const better = (a, b) => (a || 0) > (b || 0) ? 0 : (b || 0) > (a || 0) ? 1 : -1; // 0=A,1=B,-1=tie
   const lower = (a, b) => a < b ? 0 : b < a ? 1 : -1;
   const el = document.createElement('div');
-  el.className = 'modal-overlay'; el.id = 'compare-overlay';
+  el.className = 'modal-overlay'; el.id = 'compare-overlay'; setDialogA11y(el, 'Compare players');
   el.innerHTML = `
     <div class="modal compare-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -9939,6 +9963,17 @@ async function init() {
     digestBtn.addEventListener('click', openDigest);
   }
   applyDigestVisibility(); // show 📰 + dot only when there's a fresh recap
+  // Header overflow menu (⋯) — only visible on small phones (CSS); toggles the
+  // secondary buttons. Closes on outside click, Escape, or after picking an item.
+  const moreBtn = document.getElementById('more-btn'), moreWrap = document.getElementById('hdr-more');
+  if (moreBtn && moreWrap && !moreBtn.dataset.bound) {
+    moreBtn.dataset.bound = '1';
+    const setOpen = o => { moreWrap.classList.toggle('open', o); moreBtn.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    moreBtn.addEventListener('click', e => { e.stopPropagation(); setOpen(!moreWrap.classList.contains('open')); });
+    moreWrap.addEventListener('click', () => setOpen(false)); // picking an item closes the menu
+    document.addEventListener('click', e => { if (!moreWrap.contains(e.target) && e.target !== moreBtn) setOpen(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+  }
   const themeBtn = document.getElementById('theme-btn');
   if (themeBtn && !themeBtn.dataset.bound) {
     themeBtn.dataset.bound = '1';
