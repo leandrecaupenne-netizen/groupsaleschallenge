@@ -1311,16 +1311,37 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag { display: flex; flex-direction: column; gap: 18px; }
 /* Staggered entrance — the paper "prints" section by section when you open it. */
 @media (prefers-reduced-motion: no-preference) {
-  .mag > * { animation: magIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .mag > *:nth-child(1) { animation-delay: 0.02s; }
-  .mag > *:nth-child(2) { animation-delay: 0.08s; }
-  .mag > *:nth-child(3) { animation-delay: 0.15s; }
-  .mag > *:nth-child(4) { animation-delay: 0.22s; }
-  .mag > *:nth-child(5) { animation-delay: 0.29s; }
-  .mag > *:nth-child(6) { animation-delay: 0.36s; }
-  .mag > *:nth-child(7) { animation-delay: 0.43s; }
+  .mag > * { animation: magIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 0.05s); }
 }
 @keyframes magIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.mag-block { scroll-margin-top: 10px; }
+
+/* "In this issue" quick-nav */
+.mag-toc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--cream); border: 1px solid var(--line); }
+:root[data-theme="dark"] .mag-toc { background: rgba(255,255,255,0.04); }
+.mag-toc-lab { font-family: ui-monospace, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+.mag-toc-chip { background: var(--paper); border: 1px solid var(--line); color: var(--ink); font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer; transition: background 0.12s, border-color 0.12s, transform 0.12s; }
+.mag-toc-chip:hover { border-color: var(--usa-red); color: var(--usa-red); transform: translateY(-1px); }
+
+/* Editorial note */
+.mag-editorial { padding: 13px 15px; border-radius: 12px; background: var(--cream); border-left: 4px solid var(--gold); }
+:root[data-theme="dark"] .mag-editorial { background: rgba(255,255,255,0.04); }
+.mag-ed-head { font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); margin-bottom: 5px; }
+.mag-ed-body { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.6; color: var(--ink); }
+.mag-ed-body b { color: var(--usa-red); }
+
+/* Themed leaderboards (Golden Boots, Best Opportunities, Sharpest Margins…) */
+.mag-lb { display: flex; flex-direction: column; }
+.mag-lb-row { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.mag-lb-row:last-child { border-bottom: none; }
+.mag-lb-row:hover { background: var(--cream); border-radius: 8px; }
+:root[data-theme="dark"] .mag-lb-row:hover { background: rgba(255,255,255,0.05); }
+.mag-lb-rank { flex: none; width: 26px; text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: 14px; color: var(--muted); }
+.mag-lb-rank.r1, .mag-lb-rank.r2, .mag-lb-rank.r3 { font-size: 16px; }
+.mag-lb-av { width: 30px; height: 30px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 11px; }
+.mag-lb-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mag-lb-name em { font-style: normal; font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
+.mag-lb-val { flex: none; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); letter-spacing: 0.01em; }
 
 /* Edition stamp in the masthead — like a real issue number */
 .mag-edition { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 10px; transform: rotate(-7deg); background: var(--gold); color: #3a2c00; font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
@@ -8169,6 +8190,62 @@ function recapStatOfWeek() {
         </div>`).join('')}</div>
     </section>`;
 }
+// One ranked row in a leaderboard: medal/rank, avatar, name+team, value. Opens the
+// player's card on tap.
+function recapLbRow(rank, p, value) {
+  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : ('#' + rank);
+  return `<div class="mag-lb-row" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(baseName(p.name))}'s card">
+      <span class="mag-lb-rank r${rank <= 3 ? rank : 'n'}">${medal}</span>
+      <span class="mag-lb-av">${avatarInner(p.name)}</span>
+      <span class="mag-lb-name">${escapeHtml(baseName(p.name))}<em>${escapeHtml(teamShortLabel(p.team))}</em></span>
+      <span class="mag-lb-val">${value}</span>
+    </div>`;
+}
+// A themed leaderboard section featuring several players. opts: { id, icon, title,
+// sub, tab, list, valueFn, limit }. Header links to the matching board when tab set.
+function recapBoard(opts) {
+  const list = (opts.list || []).slice(0, opts.limit || 5);
+  if (!list.length) return '';
+  const subHtml = opts.sub ? ` <span class="mag-sech-sub">${opts.sub}</span>` : '';
+  const head = opts.tab
+    ? `<button class="mag-sech mag-sech-link" data-goboard="${opts.tab}">${opts.icon} ${opts.title}${subHtml}<span class="mag-sech-go">↗</span></button>`
+    : `<h3 class="mag-sech">${opts.icon} ${opts.title}${subHtml}</h3>`;
+  const rows = list.map((p, i) => recapLbRow(i + 1, p, opts.valueFn(p))).join('');
+  return `<section class="mag-sec">${head}<div class="mag-lb">${rows}</div></section>`;
+}
+// Short editorial narrative — a couple of human sentences that tell the week's story.
+function recapEditorial(d) {
+  const bits = [];
+  const g = sortedGoldenBoot[0];
+  if (g && (g.ps_nb || 0) > 0) bits.push(`<b>${escapeHtml(baseName(g.name))}</b> leads the Golden Boot race with ${fmtMoney(g.ps_nb)} of new business`);
+  const pm = sortedPlaymaker[0];
+  if (pm && (pm.opps || 0) > 0) bits.push(`<b>${escapeHtml(baseName(pm.name))}</b> pulls the strings with ${Math.round(pm.opps)} opportunities created`);
+  const t = sortedTeams[0];
+  if (t) bits.push(`<b>${escapeHtml(teamShortLabel(t.country))}</b> set the pace among the teams`);
+  if (d && d.climbers && d.climbers.length && d.climbers[0].jump >= 2) {
+    const c = d.climbers[0];
+    bits.push(`<b>${escapeHtml(baseName(c.name))}</b> is the week's big mover (+${c.jump})`);
+  }
+  if (!bits.length) return '';
+  const wk = (/(\d+)/.exec(period || '') || [])[1];
+  return `<section class="mag-editorial">
+      <div class="mag-ed-head">✍️ Editor's Note${wk ? ` · Week ${wk}` : ''}</div>
+      <p class="mag-ed-body">${bits.join('. ')}.</p>
+    </section>`;
+}
+// All the themed leaderboards that put as many players forward as possible.
+function recapBoards() {
+  const blocks = [];
+  blocks.push({ id: 'golden', label: '🥇 Golden Boots', html: recapBoard({ id: 'golden', icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', tab: 'golden', list: sortedGoldenBoot.filter(p => (p.ps_nb || 0) > 0), valueFn: p => fmtMoney(p.ps_nb) }) });
+  blocks.push({ id: 'playmaker', label: '🎩 Best Opportunities', html: recapBoard({ id: 'playmaker', icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', tab: 'playmaker', list: sortedPlaymaker.filter(p => (p.opps || 0) > 0), valueFn: p => Math.round(p.opps) + ' opps' }) });
+  const margins = people.filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null).sort((a, b) => indivGm(b) - indivGm(a));
+  blocks.push({ id: 'margins', label: '🎯 Sharpest Margins', html: recapBoard({ id: 'margins', icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)) }) });
+  if (sortedRookies && sortedRookies.length) blocks.push({ id: 'rookies', label: '🎓 Rookie Watch', html: recapBoard({ id: 'rookies', icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', tab: 'rookies', list: sortedRookies.filter(p => (p.ps_nb || 0) > 0), valueFn: p => fmtMoney(p.ps_nb) }) });
+  if (sortedLicence && sortedLicence.length) blocks.push({ id: 'licence', label: '📜 Licence Leaders', html: recapBoard({ id: 'licence', icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', tab: 'licence', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm) }) });
+  const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && (p.ps_nb || 0) > 0).sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
+  blocks.push({ id: 'fairplay', label: '✅ Clean Sheets', html: recapBoard({ id: 'fairplay', icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', tab: 'var', list: clean, valueFn: p => fmtMoney(p.ps_nb) }) });
+  return blocks.filter(b => b.html);
+}
 function renderRecapMagazine(d) {
   const lead = recapLead(d);
   let hero = '';
@@ -8210,7 +8287,24 @@ function renderRecapMagazine(d) {
       <span>🗞️ New edition every Monday</span>
       <span>🏆 Grand Final · Paris · 9 Jul · <b>J-${jminus}</b></span>
     </div>`;
-  return `<div class="mag">${overline}${hero}${recapStarCards(d)}${recapStatOfWeek()}${recapTicker(d)}${footer}</div>`;
+
+  // Assemble the issue as labelled blocks so we can build a "In this issue" quick-nav
+  // (TOC) from whatever actually has content this week.
+  const blocks = [];
+  blocks.push({ html: hero });
+  blocks.push({ id: 'story', label: '✍️ Editorial', html: recapEditorial(d) });
+  blocks.push({ id: 'stars', label: '⭐ Leaders', html: recapStarCards(d) });
+  blocks.push({ id: 'sotw', label: '📊 Stat of the Week', html: recapStatOfWeek() });
+  recapBoards().forEach(b => blocks.push(b));
+  blocks.push({ id: 'changes', label: '📈 This Week', html: recapTicker(d) });
+  blocks.push({ html: footer });
+
+  const navItems = blocks.filter(b => b.id && b.label && b.html)
+    .map(b => `<button class="mag-toc-chip" data-scrollto="${b.id}">${b.label}</button>`).join('');
+  const toc = navItems ? `<nav class="mag-toc" aria-label="In this issue"><span class="mag-toc-lab">In this issue</span>${navItems}</nav>` : '';
+  // Wrap each labelled block in a [data-sec] anchor so its TOC chip can scroll to it.
+  const body = blocks.map(b => b.html ? (b.id ? `<div class="mag-block" data-sec="${b.id}">${b.html}</div>` : b.html) : '').join('');
+  return `<div class="mag">${overline}${toc}${body}</div>`;
 }
 
 // === Weekly recap modal ("what changed since last update") ===
@@ -8241,6 +8335,7 @@ function openDigest() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
+  el.querySelectorAll('.mag > *').forEach((c, i) => c.style.setProperty('--i', i)); // stagger the entrance
   animateRecapCounts(el); // roll the big gold numbers up from 0 (skipped if reduced-motion)
   syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
@@ -8248,6 +8343,11 @@ function openDigest() {
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#digest-close').addEventListener('click', close);
   document.addEventListener('keydown', onKey);
+  // "In this issue" quick-nav → smooth-scroll to the section inside the paper.
+  el.querySelectorAll('[data-scrollto]').forEach(c => c.addEventListener('click', () => {
+    const target = el.querySelector('[data-sec="' + c.getAttribute('data-scrollto') + '"]');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
   // Tap a category (kicker / card tag / section header) → jump to that board so
   // it's clear what's being showcased. Stop the click bubbling to the card's
   // player-open handler underneath.
