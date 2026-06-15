@@ -828,7 +828,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .aw-hero-flag i { flex: 1; }
 .aw-hero-info { flex: 1; min-width: 0; }
 .aw-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: 19px; letter-spacing: 0.01em; color: #fff; line-height: 1.1; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.2em; }
-.aw-hero-team { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 3px; }
+.aw-hero-team { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.9); margin-top: 3px; }
+.aw-hero-team .tnk-real-light { font-size: 0.92em; color: rgba(255,255,255,0.8); }
 .aw-hero-figure { flex: 0 0 auto; text-align: right; }
 .aw-hero-stat { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; }
 .aw-hero-statlabel { font-family: ui-monospace, monospace; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 3px; }
@@ -851,7 +852,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .aw-mini-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Very small phones: let award runner-up names wrap instead of truncating. */
 @media (max-width: 360px) { .aw-mini-name { white-space: normal; } }
-.aw-mini-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
+.aw-mini-name em { font-style: normal; font-family: ui-monospace, monospace; font-weight: 600; font-size: 12px; color: var(--ink); opacity: 0.72; text-transform: uppercase; margin-left: 6px; }
+/* Expanded "Show full ranking" rows inside award cards: keep the team name legible too. */
+.award-card .fr-name em { font-size: 12px; color: var(--ink); opacity: 0.72; }
 .aw-mini-stat { font-family: ui-monospace, monospace; font-weight: 700; font-size: 12.5px; color: var(--ink); }
 /* Sealed "mystery" card for not-yet-judged awards */
 .aw-mystery {
