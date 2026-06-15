@@ -1313,7 +1313,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 /* HERO / lead story — big magazine cover with a Panini portrait */
 .mag-hero { position: relative; display: grid; grid-template-columns: 168px 1fr; gap: 18px; align-items: stretch; cursor: pointer; overflow: hidden; border-radius: 18px; padding: 16px; color: #fff; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); border: 1px solid rgba(255,255,255,0.1); }
 .mag-hero::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 88% 10%, rgba(242,199,92,0.25), transparent 52%); pointer-events: none; }
-.mag-hero-noimg { grid-template-columns: 1fr; }
+.mag-hero-noimg { grid-template-columns: 1fr; cursor: default; }
 .mag-hero-card { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 22px rgba(0,0,0,0.4); background: linear-gradient(165deg, var(--tc, #444) 0%, var(--navy) 82%); }
 .mag-hero-portrait { position: relative; height: 100%; min-height: 196px; display: flex; align-items: center; justify-content: center; }
 .mag-hero-portrait::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.55), transparent 48%); pointer-events: none; }
@@ -8061,7 +8061,7 @@ function recapAvatarHtml(name) {
   return `<div class="mag-av">${avatarInner(name)}</div>`;
 }
 function recapRow(name, team, badge, extra) {
-  return `<div class="mag-trow" data-jump="${escapeHtml(name)}">
+  return `<div class="mag-trow" data-jump="${escapeHtml(name)}" title="View ${escapeHtml(name)}'s card">
       ${recapAvatarHtml(name)}
       <span class="mag-tname">${escapeHtml(name)}<em>${escapeHtml(team || '')}</em></span>
       ${extra ? `<span class="mag-textra">${escapeHtml(extra)}</span>` : ''}
@@ -8120,7 +8120,7 @@ function renderRecapMagazine(d) {
   if (lead && lead.person) {
     const p = lead.person, team = lead.teamName || p.team;
     const color = colorForTeam(team), ph = photoFor(p.name), ini = avatarInitials(p.name);
-    hero = `<article class="mag-hero" style="--tc:${color}" data-jump="${escapeHtml(p.name)}">
+    hero = `<article class="mag-hero" style="--tc:${color}" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
         <div class="mag-hero-card">
           <div class="mag-hero-portrait${ph ? ' has-photo' : ''}">
             <span class="mag-hero-ini">${ini}</span>
@@ -8136,9 +8136,11 @@ function renderRecapMagazine(d) {
         </div>
       </article>`;
   } else if (lead) {
+    // No portrait available for the lead → text-only cover. The category stays a
+    // real link; the article itself isn't a player target (so no misleading cursor).
     hero = `<article class="mag-hero mag-hero-noimg">
         <div class="mag-hero-text">
-          <span class="mag-kicker">${lead.kicker}</span>
+          <button class="mag-kicker" data-goboard="${lead.tab}">${lead.kicker} ↗</button>
           <h1 class="mag-headline">${lead.headline}</h1>
           <p class="mag-standfirst">${lead.stand}</p>
         </div>
@@ -8189,13 +8191,13 @@ function openDigest() {
     close();
     if (typeof statGoto === 'function') statGoto(tab);
   }));
-  // Tap a player (hero / star card / ticker row) → open that player's card.
+  // Tap a player (hero / star card / Stat tile / ticker row) → open that player's
+  // card. Guard against a stale name (e.g. a ticker entry whose player dropped out
+  // of the latest data) so a tap can never open an empty card.
   el.querySelectorAll('[data-jump]').forEach(n => n.addEventListener('click', () => {
-    close(); openPlayerModal = n.getAttribute('data-jump'); render(); document.body.style.overflow = 'hidden';
-  }));
-  // Tap the top-team card → open that team's drilldown modal.
-  el.querySelectorAll('[data-jump-team]').forEach(n => n.addEventListener('click', () => {
-    close(); openTeamModal = n.getAttribute('data-jump-team'); render(); document.body.style.overflow = 'hidden';
+    const nm = n.getAttribute('data-jump');
+    if (!people.some(p => p.name === nm)) return; // stale → do nothing, keep the cover open
+    close(); openPlayerModal = nm; render(); document.body.style.overflow = 'hidden';
   }));
 }
 
