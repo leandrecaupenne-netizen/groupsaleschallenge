@@ -2674,6 +2674,9 @@ img, table { max-width: 100%; }
 }
 
 .vt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; margin-top: 10px; }
+/* Column-per-card-type layout (mirrors VAR Room): review cards stacked inside each column. */
+.vt-grid { margin-top: 10px; }
+.vt-collist { display: flex; flex-direction: column; gap: 12px; }
 .vt-card {
   position: relative; overflow: hidden;
   background: var(--paper); border: 1px solid var(--line);
@@ -5625,9 +5628,17 @@ function renderVarTime() {
     const m = map[b.verdict] || map.pending;
     return `<span class="vt-refcard vt-rc-${m.cls}" title="${m.label}" aria-label="${m.label}">${m.face}</span>`;
   };
-  const card = (b) => {
+  // In the column-per-card-type layout each column shows only ITS reason
+  // (focus = 'meetings' | 'gm'); a player breaking both appears in both columns,
+  // exactly like VAR Room, with a "2 strikes" badge flagging the red candidacy.
+  const reasonFor = (b, focus) =>
+    focus === 'meetings' ? `${fmtNum(b.p.meetings)} meetings/wk (needs 5)`
+    : focus === 'gm' ? `New Business GM ${fmtPct(indivGm(b.p))} (needs 25%)`
+    : null;
+  const card = (b, focus) => {
     const rc = colorForTeam(b.p.team);
     const fl = flagForTeam(b.p.team);
+    const reasons = focus ? [reasonFor(b, focus)] : b.reasons;
     return `
     <div class="vt-card vt-card-click v-${b.verdict}" data-vtreview="${escapeHtml(b.p.name)}" title="Review ${escapeHtml(b.p.name)}">
       <span class="vt-flash"></span>
@@ -5636,10 +5647,26 @@ function renderVarTime() {
         <div class="vt-who"><span class="vt-name">${escapeHtml(b.p.name)}</span><span class="vt-team">${escapeHtml(b.p.team)}</span></div>
         <div class="vt-refcard-slot">${refcard(b)}${b.reasons.length >= 2 ? '<span class="vt-double" title="Breaks both rules — two yellows make a red">2 strikes</span>' : ''}</div>
       </div>
-      <div class="vt-reasons">${b.reasons.map(r => `<span class="vt-reason">🟨 ${escapeHtml(r)}</span>`).join('')}</div>
+      <div class="vt-reasons">${reasons.map(r => `<span class="vt-reason">🟨 ${escapeHtml(r)}</span>`).join('')}</div>
       <div class="vt-cta">${b.verdict === 'pending' ? '👋 Tap to review &amp; decide' : VERDICT_META[b.verdict].icon + ' ' + VERDICT_META[b.verdict].label + ' · tap to change'}</div>
     </div>`;
   };
+
+  // Split rule-breakers into one column per card type (mirrors VAR Room). Built from
+  // `list` so the All/Pending filter and the country/entity/name scope both apply.
+  const lowMeet = list.filter(b => b.p.yellow_meetings);
+  const lowGm = list.filter(b => b.p.yellow_gm);
+  const colEmpty = vartimeFilter === 'pending'
+    ? 'All reviewed here. ✅'
+    : (filtersActive ? 'Nobody here for this filter.' : 'Clean here. ✅');
+  const vtCol = (title, sub, items, focus) => `
+    <div class="var-col">
+      <div class="var-col-title">${title} <span class="var-col-count">${items.length}</span></div>
+      <div class="var-col-sub">${sub}</div>
+      ${items.length
+        ? `<div class="vt-collist">${items.map(b => card(b, focus)).join('')}</div>`
+        : `<div class="no-result">${colEmpty}</div>`}
+    </div>`;
 
   return `
     <div class="section">
@@ -5671,9 +5698,12 @@ function renderVarTime() {
         <button class="search-chip vt-filter ${vartimeFilter === 'all' ? 'on' : ''}" data-f="all">All (${counts.total})</button>
         <button class="search-chip vt-filter ${vartimeFilter === 'pending' ? 'on' : ''}" data-f="pending">Pending (${counts.pending})</button>
       </div>
-      ${list.length
-        ? `<div class="vt-list">${list.map(card).join('')}</div>`
-        : `<div class="no-result">${emptyMsg}</div>`}
+      ${scoped.length === 0
+        ? `<div class="no-result">${emptyMsg}</div>`
+        : `<div class="var-grid vt-grid">
+            ${vtCol('🟨 Low activity — under 5 meetings/week', 'Not following — under 5 meetings / week', lowMeet, 'meetings')}
+            ${vtCol('🟨 Low margin — GM below 25%', 'Not following — New Business GM below 25%', lowGm, 'gm')}
+          </div>`}
     </div>`;
 }
 
