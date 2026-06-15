@@ -106,6 +106,30 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v5 : journal enrichi (quick-nav, édito, leaderboards, max joueurs)
+Demande Léandre : « rajoute un maximum de choses qui facilitent l'utilisation du journal ;
+catégories, storytelling, meilleure marge depuis le début, Golden Boots, plus belles
+opportunités ; mettre en avant un **maximum de joueurs** ». Fast-forward `main`. Commit `50b0d53`.
+
+- **Quick-nav « In this issue »** : chips qui **scrollent** vers chaque section dans le modal
+  (`data-scrollto` → `[data-sec]`, `scrollIntoView` smooth). Ne liste que les sections **non
+  vides** de la semaine.
+- **Éditorial** (`recapEditorial`) : 2-4 phrases générées (leader Golden Boot, Playmaker, top
+  team, gros grimpeur) → storytelling « Editor's Note · Week N ».
+- **6 leaderboards thématiques** (top 5, chaque ligne ouvre la fiche joueur ; en-tête → board) :
+  🥇 Golden Boots (ps_nb), 🎩 Best Opportunities (opps), 🎯 **Sharpest Margins** (NB GM, *season
+  to date*, ≥ €100K), 🎓 Rookie Watch, 📜 Licence Leaders, ✅ Clean Sheets (top scorers sans
+  carton). Composant réutilisable `recapBoard` + `recapLbRow` (médailles 🥇🥈🥉).
+- **Stagger** passé à un index `--i` posé en JS sur `.mag > *` → s'adapte à n'importe quel
+  nombre de sections.
+- **Sections conditionnelles** : n'apparaissent que si elles ont du contenu (rookies/licence/
+  changes masqués sinon). Wrapper `[data-sec]` ajouté pour l'ancrage TOC.
+
+**Vérifs runtime** : full digest → **25 joueurs distincts** mis en avant (38 cibles), 10 chips
+TOC tous ancrés ; semaine calme (`d=null`) → chip « This Week » correctement absent, 24 joueurs.
+JS/CSS OK. Audit clic/explicabilité maintenu (chaque ligne data-jump + title, en-têtes goboard
+vers onglets valides, chips TOC = navigation interne).
+
 ### 2026-06-15 — Fix UX : retour depuis une carte ouverte du journal → revient au journal
 Bug remonté par Léandre : ouvrir « voir carte » depuis la une puis **Retour** renvoyait au
 **menu** au lieu du **journal**. Fast-forward sur `main`. Commit `3d56b61`.
