@@ -1299,20 +1299,75 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .race-text b { color: var(--usa-red); }
 :root[data-theme="dark"] .race-text b { color: #ff8aa0; }
 
-/* Weekly recap: header button dot + modal. */
+/* Weekly recap: header button dot + magazine front-page modal. */
 .digest-dot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--usa-red); box-shadow: 0 0 0 2px var(--navy); display: none; }
-.digest-modal { max-width: 560px; }
-.digest-body { display: flex; flex-direction: column; gap: 18px; }
-.digest-section { display: flex; flex-direction: column; gap: 8px; }
-.digest-h { font-family: 'Anton', Impact, sans-serif; font-size: 16px; letter-spacing: 0.03em; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
-.digest-sub { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.digest-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--cream); border-radius: 10px; font-size: 13.5px; color: var(--ink); }
-:root[data-theme="dark"] .digest-row { background: rgba(255,255,255,0.05); }
-.digest-emoji { font-size: 15px; min-width: 20px; text-align: center; }
-.digest-row em { font-style: normal; font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-left: 4px; }
-.digest-name { cursor: pointer; border-bottom: 1px dashed transparent; }
-.digest-name:hover { border-bottom-color: currentColor; }
+.digest-modal { max-width: 680px; }
 .digest-empty { text-align: center; color: var(--muted); font-style: italic; padding: 30px 10px; line-height: 1.7; }
+
+/* Masthead (modal header) — newspaper nameplate. */
+.mag-nameplate { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 5vw, 30px); letter-spacing: 0.04em; text-transform: uppercase; line-height: 1; }
+.mag-dateline { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 7px; border-top: 1px solid var(--line); padding-top: 7px; }
+
+.mag { display: flex; flex-direction: column; gap: 18px; }
+
+/* HERO / lead story */
+.mag-hero { position: relative; display: grid; grid-template-columns: 134px 1fr; gap: 16px; align-items: stretch; cursor: pointer; overflow: hidden; border-radius: 16px; padding: 16px; color: #fff; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); border: 1px solid rgba(255,255,255,0.08); }
+.mag-hero::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 86% 12%, rgba(242,199,92,0.22), transparent 55%); pointer-events: none; }
+.mag-hero-media { position: relative; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.08); min-height: 134px; display: flex; align-items: center; justify-content: center; }
+.mag-hero-ini { font-family: 'Anton', Impact, sans-serif; font-size: 46px; color: rgba(255,255,255,0.9); }
+.mag-hero-media.has-photo .mag-hero-ini { display: none; }
+.mag-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.mag-hero-flag { font-size: 66px; }
+.mag-hero-text { display: flex; flex-direction: column; justify-content: center; gap: 9px; position: relative; z-index: 1; min-width: 0; }
+.mag-kicker { align-self: flex-start; background: var(--usa-red); color: #fff; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; }
+.mag-headline { font-family: 'Anton', Impact, sans-serif; font-size: clamp(24px, 6.2vw, 38px); line-height: 0.97; letter-spacing: 0.01em; text-transform: uppercase; color: #fff; }
+.mag-standfirst { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.86); }
+.mag-standfirst b { color: var(--gold); font-weight: 700; }
+
+/* STAR cards grid (current leaders) */
+.mag-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.mag-card { display: flex; flex-direction: column; gap: 10px; cursor: pointer; padding: 12px; border-radius: 14px; background: var(--cream); border: 1px solid var(--line); transition: transform 0.12s, box-shadow 0.12s; }
+.mag-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+.mag-card-gold { background: linear-gradient(160deg, #fff6e0, #ffe9b8); border-color: rgba(242,199,92,0.6); }
+:root[data-theme="dark"] .mag-card { background: rgba(255,255,255,0.05); }
+:root[data-theme="dark"] .mag-card-gold { background: linear-gradient(160deg, rgba(242,199,92,0.20), rgba(242,199,92,0.06)); border-color: rgba(242,199,92,0.45); }
+.mag-card-tag { font-family: ui-monospace, monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.mag-card-body { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mag-card-id { min-width: 0; }
+.mag-card-name { font-weight: 800; font-size: 14px; color: var(--ink); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mag-card-meta { font-family: ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mag-card-statline { display: flex; align-items: baseline; gap: 6px; }
+.mag-card-stat { font-family: 'Anton', Impact, sans-serif; font-size: 21px; color: var(--ink); letter-spacing: 0.01em; }
+.mag-card-unit { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+
+/* Round avatar disc shared by cards + tickers */
+.mag-av { width: 44px; height: 44px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 15px; }
+.mag-av-flag { font-size: 26px; background: transparent; }
+
+/* SECTIONS / press tickers */
+.mag-sec { display: flex; flex-direction: column; gap: 6px; }
+.mag-sech { font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink); display: flex; align-items: center; gap: 8px; border-bottom: 2px solid var(--ink); padding-bottom: 5px; }
+.mag-sech-sub { font-family: ui-monospace, monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.mag-ticker { display: flex; flex-direction: column; }
+.mag-trow { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.mag-trow:last-child { border-bottom: none; }
+.mag-trow .mag-av { width: 30px; height: 30px; font-size: 11px; }
+.mag-tname { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mag-tname em { font-style: normal; font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
+.mag-textra { font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.mag-tbadge { font-family: 'Anton', Impact, sans-serif; font-size: 14px; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.mag-tbadge.up { background: rgba(34,197,94,0.18); color: #15803d; }
+:root[data-theme="dark"] .mag-tbadge.up { color: #5bd98a; }
+.mag-tbadge.rank { background: rgba(242,199,92,0.25); color: #92710f; }
+:root[data-theme="dark"] .mag-tbadge.rank { color: var(--gold); }
+.mag-tbadge.card { background: rgba(242,199,92,0.9); color: #3a2c00; }
+
+@media (max-width: 560px) {
+  .mag-grid { grid-template-columns: 1fr; }
+  .mag-hero { grid-template-columns: 100px 1fr; gap: 13px; }
+  .mag-hero-media { min-height: 100px; }
+  .mag-hero-ini { font-size: 34px; }
+}
 .pc-avatar {
   position: relative; width: 92px; height: 92px; margin: 14px auto 10px;
   border-radius: 50%; background: rgba(255,255,255,0.15);
@@ -7873,40 +7928,135 @@ function playKickoff() {
   });
 }
 
-// === Weekly recap modal ("what changed since last update") ===
-function digestRow(emoji, html) {
-  return `<div class="digest-row"><span class="digest-emoji">${emoji}</span><span>${html}</span></div>`;
+// === Weekly recap → magazine front page ("L'Équipe" style cover) =============
+// Picks the single biggest story of the week as the front-page lead, then backs
+// it with star cards (current leaders) and press-style tickers (movers, new top
+// 10, VAR report) so the recap always reads like a sports paper, never a dull list.
+function recapLead(d) {
+  // 1) A brand-new #1 is always the splash.
+  if (d && d.newLeaders && d.newLeaders.length) {
+    const l = d.newLeaders[0];
+    const isTeam = l.label === 'Team Ranking';
+    const verbs = {
+      'Team Ranking': 'STORMS TO THE SUMMIT',
+      'Golden Boot': 'SEIZES THE GOLDEN BOOT',
+      'Playmaker': 'TAKES CONTROL OF THE MIDFIELD'
+    };
+    const kickers = {
+      'Team Ranking': '🏆 BREAKING · TEAM RANKING',
+      'Golden Boot': '⚡ BREAKING · GOLDEN BOOT',
+      'Playmaker': '🎩 BREAKING · PLAYMAKER'
+    };
+    return {
+      kicker: kickers[l.label] || '🚨 BREAKING',
+      headline: `${escapeHtml(l.who)} ${verbs[l.label] || 'HITS THE TOP'}`,
+      stand: `${escapeHtml(l.who)} is the new <b>${escapeHtml(l.label)}</b> leader — the title race just blew wide open.`,
+      name: isTeam ? null : l.who,
+      team: isTeam ? l.who : null
+    };
+  }
+  // 2) The week's biggest mover, when the jump is worth shouting about.
+  if (d && d.climbers && d.climbers.length && d.climbers[0].jump >= 2) {
+    const c = d.climbers[0];
+    return {
+      kicker: '🚀 ON THE CHARGE',
+      headline: `${escapeHtml(c.name)} ON THE RISE`,
+      stand: `Up <b>${c.jump}</b> place${c.jump > 1 ? 's' : ''} to <b>#${c.to}</b> — the biggest climber of the week on PS Total.`,
+      name: c.name, team: c.team
+    };
+  }
+  // 3) Quiet week → crown the current frontrunner so the cover still sells.
+  const g = sortedGoldenBoot[0];
+  if (g) {
+    return {
+      kicker: '🥇 THE FRONTRUNNER',
+      headline: `${escapeHtml(g.name)} SETS THE PACE`,
+      stand: `Still top of the <b>Golden Boot</b> race with <b>${fmtMoney(g.ps_nb)}</b> in new business.`,
+      name: g.name, team: g.team
+    };
+  }
+  return null;
 }
+function recapHeroMedia(lead) {
+  if (!lead.name) return `<div class="mag-hero-media mag-hero-flag">${flagForTeam(lead.team)}</div>`;
+  const ph = photoFor(lead.name), ini = avatarInitials(lead.name);
+  return `<div class="mag-hero-media${ph ? ' has-photo' : ''}">
+      <span class="mag-hero-ini">${ini}</span>
+      ${ph ? `<img class="mag-hero-img" src="${ph}" alt="" loading="lazy" decoding="async" onerror="this.remove();this.closest('.mag-hero-media').classList.remove('has-photo')"/>` : ''}
+    </div>`;
+}
+function recapAvatarHtml(name, team) {
+  if (!name) return `<div class="mag-av mag-av-flag">${flagForTeam(team)}</div>`;
+  return `<div class="mag-av">${avatarInner(name)}</div>`;
+}
+function recapStarCards(d) {
+  const cards = [];
+  const g = sortedGoldenBoot[0];
+  if (g) cards.push({ tag: '🥇 Golden Boot', name: g.name, team: g.team, stat: fmtMoney(g.ps_nb), unit: 'New business', gold: true });
+  const pm = sortedPlaymaker[0];
+  if (pm) cards.push({ tag: '🎩 Playmaker', name: pm.name, team: pm.team, stat: String(Math.round(pm.opps || 0)), unit: 'Opportunities' });
+  const t = sortedTeams[0];
+  if (t) cards.push({ tag: '🏆 Top Team', team: t.country, stat: fmtMoney(t.avg_ps), unit: 'Avg / rep', isTeam: true });
+  if (!cards.length) return '';
+  return `<div class="mag-grid">${cards.map(c => `
+    <article class="mag-card${c.gold ? ' mag-card-gold' : ''}" ${c.isTeam ? `data-jump-team="${escapeHtml(c.team)}"` : `data-jump="${escapeHtml(c.name)}"`}>
+      <span class="mag-card-tag">${c.tag}</span>
+      <div class="mag-card-body">
+        ${recapAvatarHtml(c.isTeam ? null : c.name, c.team)}
+        <div class="mag-card-id">
+          <div class="mag-card-name">${escapeHtml(c.isTeam ? teamShortLabel(c.team) : c.name)}</div>
+          <div class="mag-card-meta">${escapeHtml(c.isTeam ? 'Top of the table' : c.team)}</div>
+        </div>
+      </div>
+      <div class="mag-card-statline"><span class="mag-card-stat">${c.stat}</span><span class="mag-card-unit">${c.unit}</span></div>
+    </article>`).join('')}</div>`;
+}
+function recapRow(name, team, badge, extra) {
+  return `<div class="mag-trow" data-jump="${escapeHtml(name)}">
+      ${recapAvatarHtml(name, team)}
+      <span class="mag-tname">${escapeHtml(name)}<em>${escapeHtml(team || '')}</em></span>
+      ${extra ? `<span class="mag-textra">${escapeHtml(extra)}</span>` : ''}
+      ${badge}
+    </div>`;
+}
+function recapSection(title, sub, rows) {
+  return `<section class="mag-sec"><h3 class="mag-sech">${title}${sub ? ` <span class="mag-sech-sub">${sub}</span>` : ''}</h3><div class="mag-ticker">${rows.join('')}</div></section>`;
+}
+function recapTicker(d) {
+  if (!d) return '';
+  const out = [];
+  if (d.climbers && d.climbers.length) out.push(recapSection('📈 The Climbers', 'PS Total', d.climbers.map(c =>
+    recapRow(c.name, c.team, `<span class="mag-tbadge up">▲${c.jump}</span>`, `#${c.from}→#${c.to}`))));
+  if (d.newTop10 && d.newTop10.length) out.push(recapSection('⭐ New in the Top 10', 'PS Total', d.newTop10.map(x =>
+    recapRow(x.name, x.team, `<span class="mag-tbadge rank">#${x.rank}</span>`))));
+  if (d.newCards && d.newCards.length) out.push(recapSection('🟨 VAR Report', 'New yellow cards', d.newCards.map(c =>
+    recapRow(c.name, c.team, `<span class="mag-tbadge card">🟨</span>`))));
+  return out.join('');
+}
+function renderRecapMagazine(d) {
+  const lead = recapLead(d);
+  const hero = lead ? `
+    <article class="mag-hero" ${lead.name ? `data-jump="${escapeHtml(lead.name)}"` : (lead.team ? `data-jump-team="${escapeHtml(lead.team)}"` : '')}>
+      ${recapHeroMedia(lead)}
+      <div class="mag-hero-text">
+        <span class="mag-kicker">${lead.kicker}</span>
+        <h1 class="mag-headline">${lead.headline}</h1>
+        <p class="mag-standfirst">${lead.stand}</p>
+      </div>
+    </article>` : '';
+  return `<div class="mag">${hero}${recapStarCards(d)}${recapTicker(d)}</div>`;
+}
+
+// === Weekly recap modal ("what changed since last update") ===
 function openDigest() {
   if (document.getElementById('digest-overlay')) return;
   markDigestSeen();
   const d = weekDigest;
   let body;
-  if (!d || !d.count) {
-    body = `<div class="digest-empty">No weekly changes to show yet.<br/>The recap fills in once a new weekly update lands. Check back after the next data drop! ⚽</div>`;
+  if (sortedGoldenBoot.length) {
+    body = renderRecapMagazine(d);
   } else {
-    const sections = [];
-    if (d.newLeaders.length) sections.push(`
-      <div class="digest-section">
-        <h3 class="digest-h">🚨 New leaders</h3>
-        ${d.newLeaders.map(l => digestRow(l.icon, `<b>${escapeHtml(l.who)}</b> tops the <b>${l.label}</b>`)).join('')}
-      </div>`);
-    if (d.climbers.length) sections.push(`
-      <div class="digest-section">
-        <h3 class="digest-h">📈 Biggest climbers <span class="digest-sub">PS Total rank</span></h3>
-        ${d.climbers.map(c => digestRow('▲', `<b data-jump="${escapeHtml(c.name)}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em> — up <b>${c.jump}</b> (#${c.from}→#${c.to})`)).join('')}
-      </div>`);
-    if (d.newTop10.length) sections.push(`
-      <div class="digest-section">
-        <h3 class="digest-h">⭐ New in the Top 10 <span class="digest-sub">PS Total</span></h3>
-        ${d.newTop10.map(x => digestRow('🔟', `<b data-jump="${escapeHtml(x.name)}" class="digest-name">${escapeHtml(x.name)}</b> <em>${escapeHtml(x.team)}</em> — now #${x.rank}`)).join('')}
-      </div>`);
-    if (d.newCards.length) sections.push(`
-      <div class="digest-section">
-        <h3 class="digest-h">🟨 New yellow cards</h3>
-        ${d.newCards.map(c => digestRow('🟨', `<b data-jump="${escapeHtml(c.name)}" class="digest-name">${escapeHtml(c.name)}</b> <em>${escapeHtml(c.team)}</em>`)).join('')}
-      </div>`);
-    body = sections.join('');
+    body = `<div class="digest-empty">No standings to show yet.<br/>The front page fills in once the first weekly data lands. Check back after the next data drop! ⚽</div>`;
   }
   const el = document.createElement('div');
   el.className = 'modal-overlay';
@@ -7915,8 +8065,8 @@ function openDigest() {
     <div class="modal digest-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div class="modal-title-block">
-          <h2 class="modal-title">📰 THIS WEEK'S RECAP</h2>
-          <div class="modal-subtitle">${d && d.prevPeriod ? `Since ${escapeHtml(d.prevPeriod)}` : 'What changed in the standings'}${period ? ' · now ' + escapeHtml(period) : ''}</div>
+          <h2 class="modal-title mag-nameplate">DEVOTEAM WORLD CUP TIMES</h2>
+          <div class="modal-subtitle mag-dateline">📰 This Week's Recap${d && d.prevPeriod ? ' · since ' + escapeHtml(d.prevPeriod) : ''}${period ? ' · ' + escapeHtml(period) : ''}</div>
         </div>
         <button class="modal-close" id="digest-close" aria-label="Close">×</button>
       </div>
@@ -7930,9 +8080,13 @@ function openDigest() {
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#digest-close').addEventListener('click', close);
   document.addEventListener('keydown', onKey);
-  // Tap a name → open that player's card.
-  el.querySelectorAll('.digest-name[data-jump]').forEach(n => n.addEventListener('click', () => {
-    close(); openPlayerModal = n.dataset.jump; render(); document.body.style.overflow = 'hidden';
+  // Tap a player (hero / star card / ticker row) → open that player's card.
+  el.querySelectorAll('[data-jump]').forEach(n => n.addEventListener('click', () => {
+    close(); openPlayerModal = n.getAttribute('data-jump'); render(); document.body.style.overflow = 'hidden';
+  }));
+  // Tap the top-team card → open that team's drilldown modal.
+  el.querySelectorAll('[data-jump-team]').forEach(n => n.addEventListener('click', () => {
+    close(); openTeamModal = n.getAttribute('data-jump-team'); render(); document.body.style.overflow = 'hidden';
   }));
 }
 
