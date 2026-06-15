@@ -2677,6 +2677,8 @@ img, table { max-width: 100%; }
 /* Column-per-card-type layout (mirrors VAR Room): review cards stacked inside each column. */
 .vt-grid { margin-top: 10px; }
 .vt-collist { display: flex; flex-direction: column; gap: 12px; }
+.vt-sortbar { align-items: center; }
+.vt-sortlab { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 4px; }
 .vt-card {
   position: relative; overflow: hidden;
   background: var(--paper); border: 1px solid var(--line);
@@ -3105,6 +3107,7 @@ let vartimeFilter = 'all'; // admin VAR TIME view: 'all' | 'pending'
 let vartimeRegion = 'all'; // VAR TIME country/region filter
 let vartimeTeam = 'all';   // VAR TIME entity (team) filter
 let vartimeSearch = '';    // VAR TIME player name search
+let vartimeSort = 'nb';    // VAR TIME card sort: 'nb' (PS New Business desc) | 'infraction' (severity)
 let coachRegion = 'all';   // COACH ROOM country/region filter
 let coachTeam = 'all';     // COACH ROOM entity (team) filter
 let coachMetric = 'ps_total'; // COACH ROOM contributor metric
@@ -3117,6 +3120,7 @@ let fullRankOpen = {}; // { golden: bool, playmaker: bool } — show the full ra
 let varRegion = 'all';     // VAR Room country/region filter
 let varTeam = 'all';       // VAR Room entity (team) filter
 let varSearch = '';        // VAR Room player name search
+let varSort = 'nb';        // VAR Room card sort: 'nb' (PS New Business desc) | 'infraction' (severity)
 let openTeamModal = null; // country name si modal ouverte
 let openNationModal = null; // region key when a nation drilldown modal is open
 let nationContribExpanded = false; // nation modal: show the full contributor ranking (not just the top 15)
@@ -5073,10 +5077,19 @@ function renderVAR() {
     (!q || p.name.toLowerCase().includes(q));
   const pool = people.filter(match);
 
-  // Ordered like the player ranking (PS Total desc) so the whole app stays
-  // consistent — the top performer shows first in every VAR list too.
-  const lowMeet = pool.filter(p => p.yellow_meetings).sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
-  const lowGm = pool.filter(p => p.yellow_gm).sort((a, b) => (b.ps_total || 0) - (a.ps_total || 0));
+  // Default order = PS Bookings New Business desc (same metric the individual
+  // challenge is scored on). The "by infraction" toggle re-sorts each column by
+  // its own severity instead: low activity → fewest meetings first, low margin →
+  // lowest GM first.
+  const byNb = (a, b) => (b.ps_nb || 0) - (a.ps_nb || 0);
+  const lowMeet = pool.filter(p => p.yellow_meetings);
+  const lowGm = pool.filter(p => p.yellow_gm);
+  if (varSort === 'infraction') {
+    lowMeet.sort((a, b) => (a.meetings || 0) - (b.meetings || 0));
+    lowGm.sort((a, b) => (a.ps_nb_gm || 0) - (b.ps_nb_gm || 0));
+  } else {
+    lowMeet.sort(byNb); lowGm.sort(byNb);
+  }
   const names = new Set(); lowMeet.forEach(p => names.add(p.name)); lowGm.forEach(p => names.add(p.name));
   // Clean Sheet: players respecting every rule (no cards) — the positive side of the VAR.
   const clean = pool.filter(p => !p.yellow_meetings && !p.yellow_gm && ((p.ps_total || 0) > 0 || (p.ps_nb || 0) > 0));
@@ -5128,6 +5141,11 @@ function renderVAR() {
         <p class="section-subtitle">${t('var.sub', { n: names.size, s: names.size === 1 ? '' : 's' })} · 🧤 ${clean.length} playing by the rules${filtersActive ? ' · filtered' : ''}</p>
       </div>
       ${filterBar}
+      <div class="search-chips vt-sortbar">
+        <span class="vt-sortlab">Sort by</span>
+        <button class="search-chip var-sort ${varSort === 'nb' ? 'on' : ''}" data-varsort="nb">🥇 New Business</button>
+        <button class="search-chip var-sort ${varSort === 'infraction' ? 'on' : ''}" data-varsort="infraction">⚠️ Infraction severity</button>
+      </div>
       <div class="var-grid var-grid-3">
         ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`,
           filtersActive ? 'Nobody here for this filter. ✅' : "Everyone's hitting their meetings. ✅",
@@ -5169,10 +5187,10 @@ function varBreakers() {
     if (p.yellow_gm) reasons.push(`New Business GM ${fmtPct(indivGm(p))} (needs 25%)`);
     return { p, reasons, verdict: (verdicts[p.name] && verdicts[p.name].verdict) || 'pending' };
   }).sort((a, b) =>
-    // Top performers first — a high-revenue rep breaking the rules is the most
-    // interesting case to review. Tie-break on number of strikes (2 before 1),
-    // then on the lowest meetings/week.
-    (b.p.ps_total || 0) - (a.p.ps_total || 0)
+    // Default order = PS Bookings New Business desc (the metric the individual
+    // challenge is scored on). Tie-break on number of strikes (2 before 1), then
+    // the lowest meetings/week. The "by infraction" toggle re-sorts each column.
+    (b.p.ps_nb || 0) - (a.p.ps_nb || 0)
     || b.reasons.length - a.reasons.length
     || (a.p.meetings || 0) - (b.p.meetings || 0));
 }
@@ -5654,8 +5672,14 @@ function renderVarTime() {
 
   // Split rule-breakers into one column per card type (mirrors VAR Room). Built from
   // `list` so the All/Pending filter and the country/entity/name scope both apply.
+  // Order inherits varBreakers() (PS New Business desc); 'infraction' re-sorts each
+  // column by its own severity (fewest meetings / lowest GM first).
   const lowMeet = list.filter(b => b.p.yellow_meetings);
   const lowGm = list.filter(b => b.p.yellow_gm);
+  if (vartimeSort === 'infraction') {
+    lowMeet.sort((a, b) => (a.p.meetings || 0) - (b.p.meetings || 0));
+    lowGm.sort((a, b) => (a.p.ps_nb_gm || 0) - (b.p.ps_nb_gm || 0));
+  }
   const colEmpty = vartimeFilter === 'pending'
     ? 'All reviewed here. ✅'
     : (filtersActive ? 'Nobody here for this filter.' : 'Clean here. ✅');
@@ -5697,6 +5721,11 @@ function renderVarTime() {
       <div class="search-chips">
         <button class="search-chip vt-filter ${vartimeFilter === 'all' ? 'on' : ''}" data-f="all">All (${counts.total})</button>
         <button class="search-chip vt-filter ${vartimeFilter === 'pending' ? 'on' : ''}" data-f="pending">Pending (${counts.pending})</button>
+      </div>
+      <div class="search-chips vt-sortbar">
+        <span class="vt-sortlab">Sort by</span>
+        <button class="search-chip vt-sort ${vartimeSort === 'nb' ? 'on' : ''}" data-vtsort="nb">🥇 New Business</button>
+        <button class="search-chip vt-sort ${vartimeSort === 'infraction' ? 'on' : ''}" data-vtsort="infraction">⚠️ Infraction severity</button>
       </div>
       ${scoped.length === 0
         ? `<div class="no-result">${emptyMsg}</div>`
@@ -7078,6 +7107,8 @@ function render() {
     }
     const vClear = document.getElementById('var-clear');
     if (vClear) vClear.addEventListener('click', () => { varRegion = 'all'; varTeam = 'all'; varSearch = ''; reRender(); });
+    document.querySelectorAll('.var-sort[data-varsort]').forEach(btn =>
+      btn.addEventListener('click', () => { varSort = btn.dataset.varsort; reRender(); }));
     // VAR rows carry data-player → the generic [data-player] handler opens the card.
   }
 
@@ -7092,6 +7123,9 @@ function render() {
     }));
     document.querySelectorAll('.vt-filter').forEach(btn => btn.addEventListener('click', () => {
       vartimeFilter = btn.dataset.f; reRender();
+    }));
+    document.querySelectorAll('.vt-sort[data-vtsort]').forEach(btn => btn.addEventListener('click', () => {
+      vartimeSort = btn.dataset.vtsort; reRender();
     }));
     const vtRegion = document.getElementById('vt-region');
     if (vtRegion) vtRegion.addEventListener('change', e => { vartimeRegion = e.target.value; vartimeTeam = 'all'; reRender(); });
