@@ -106,6 +106,19 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Repasse UX globale du journal (nav collante, a11y, retours fluides)
+Léandre : « repasse globale + améliore l'UX au max sur le journal ». Commit `738e045`.
+Revue de cohérence + 4 améliorations (CI re-vérifiée verte : ESLint + smoke + e2e) :
+- **Quick-nav collante + scrollable** : « In this issue » passe en `position: sticky` (barre
+  une-ligne, `overflow-x:auto`, scrollbar masquée) → toujours accessible en lisant le long numéro.
+  `.mag-block` scroll-margin-top 58px pour ne pas passer sous la barre. Dark theme : fond opaque.
+- **Surbrillance de section active** : `IntersectionObserver` (root = vrai scroller détecté) met le
+  chip de la section lue en surbrillance (`.on`) et le ramène dans la nav.
+- **Accessibilité clavier** : les cibles `div/article` (`[data-jump]`/`[data-scrollto]` non-button)
+  reçoivent `role=button` + `tabindex=0` et s'activent à **Entrée/Espace**.
+- **Retours fluides** : revenir d'une carte **ne rejoue plus** la cascade d'entrée (classe
+  `.mag-instant`) → restauration instantanée à la position de scroll mémorisée.
+
 ### 2026-06-15 — Fix CI (UX tests) + fonts self-hosted + Nation redesign
 CI « UX tests » au rouge (capture Léandre). Diagnostic local (Playwright 1.56.1 +
 `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`) → 2 causes corrigées. Commit `a846e71`.
