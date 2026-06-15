@@ -106,6 +106,20 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v7 : Team of the Week (le XI) + signature rédaction
+Léandre : « imagine que tu es un journaliste spécial Coupe du Monde sales Devoteam, fais vivre
+ton journal pour le vendre ». Fast-forward `main`. Commit `bd31f59`.
+
+- **Team of the Week** (`recapTeamOfWeek`) : le **XI de la semaine** sur une **pelouse verte**
+  (gradient + ligne médiane + rond central), un titulaire par rôle — ⚡ Striker (Golden Boot),
+  🅰️ Playmaker (opps), 🎯 Finisher (meilleure marge), 🎓 Wonderkid (top rookie), 🧤 Clean Sheet
+  (sans carton) — **5 joueurs distincts** (dedup via `picked` Set), grands visages cliquables →
+  fiche Panini. Placé après les Leaders, dans la quick-nav (chip 🌟).
+- **Signature rédaction** dans le bandeau-titre : « ⚽ By the Devoteam Newsroom · Group Sales ».
+
+**Vérif runtime** : XI = 5 rôles / 5 joueurs distincts, stats correctes (€1.27M / 22 opps /
+76.4% / €463K / €430K), chip TOC `totw` présent, 25 joueurs distincts dans le numéro. JS/CSS OK.
+
 ### 2026-06-15 — Recap v6 : visages partout + Duel of the Week + esprit Mondial
 Retour Léandre (capture à l'appui) : quand on **mentionne quelqu'un, toujours montrer sa carte
 Panini** ; + plus d'images, de texte, d'**engagement/suspense**, sentir l'**esprit Mondial**.
