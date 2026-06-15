@@ -3183,16 +3183,20 @@ const TEAM_ALIASES = {
 // loose name (accent/case-insensitive); each value is a real challenge team so the
 // person joins that squad + the right nation/flag. Remove once Jose fixes the Sheet.
 const PEOPLE_TEAM_OVERRIDES = {
-  'majdouline guediri': 'FR - Initiatives Platforms',
-  // Provisional: placed at Portugal nation level (no specific PORTUGAL 1/2/3 squad
-  // confirmed yet) — easy to point at a numbered squad once Léandre/Jose confirm.
-  'maria de fatima santos': 'PORTUGAL',
-  'marta godinho': 'PORTUGAL',
+  // (currently empty) — Jose fixed the source on 06-14: the real "Madjouline Guediri"
+  // row now carries "FR - Initiatives Platforms", and Maria/Marta are no longer in the
+  // sheet. The leftover "Majdouline GUEDIRI" #N/A duplicate is dropped by the filter
+  // below. Add entries here only to reassign a *legit* person whose TEAM is wrong.
 };
 function applyTeamAliases() {
   teams.forEach(t => { const a = TEAM_ALIASES[teamKey(t.country)]; if (a) t.country = a; });
   people.forEach(p => { const a = TEAM_ALIASES[teamKey(p.team)]; if (a) p.team = a; });
   people.forEach(p => { const ov = PEOPLE_TEAM_OVERRIDES[normLoose(p.name)]; if (ov) p.team = ov; });
+  // Drop rows whose TEAM never resolved in the OneBI roster (sentinel "#N/A"): they
+  // can't be placed in any squad/nation and would otherwise show as a phantom "#N/A"
+  // nation (and, post-fix, as a €0 duplicate of a now-correct row). Reassign via
+  // PEOPLE_TEAM_OVERRIDES above before this filter if a #N/A row is actually legit.
+  people = people.filter(p => String(p.team).trim().toUpperCase() !== '#N/A');
 }
 
 // Team display: when the Sheet gives a team a nickname, show it big with the
