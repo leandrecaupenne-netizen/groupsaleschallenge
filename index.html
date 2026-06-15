@@ -1389,7 +1389,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-lb-av { width: 30px; height: 30px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 11px; }
 .mag-lb-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mag-lb-name em { font-style: normal; font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
-.mag-lb-val { flex: none; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); letter-spacing: 0.01em; }
+.mag-lb-val { flex: none; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); letter-spacing: 0.01em; text-align: right; }
+.mag-lb-unit { display: block; font-family: ui-monospace, monospace; font-weight: 400; font-size: 8px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
 /* Journalist stand-first under a section header */
 .mag-dek { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 12.5px; line-height: 1.45; color: var(--muted); margin: 2px 0 6px; }
 .mag-dek b { font-style: normal; color: var(--ink); }
@@ -1431,8 +1432,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-nation-body { flex: 1; min-width: 0; }
 .mag-nation-tag { font-family: ui-monospace, monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
 .mag-nation-name { font-family: 'Anton', Impact, sans-serif; font-size: 24px; line-height: 1.05; letter-spacing: 0.02em; }
-.mag-nation-stats { display: inline-block; margin-top: 4px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); color: #fff; font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.03em; padding: 3px 9px; border-radius: 999px; cursor: pointer; }
-.mag-nation-stats:hover { background: rgba(255,255,255,0.2); }
+.mag-nation-stats { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.03em; color: rgba(255,255,255,0.8); margin-top: 3px; }
 .mag-nation-cap { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; padding: 4px 11px 4px 4px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; }
 .mag-nation-cap:hover { background: rgba(255,255,255,0.2); }
 .mag-nation-cap-av { width: 24px; height: 24px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy-2); display: inline-flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 9px; }
@@ -8206,7 +8206,9 @@ function countSpan(cls, text, raw, fmt) {
 // opening the full board only if no in-issue section matches.
 function recapCatAttr(tab) {
   const map = { golden: 'golden', playmaker: 'playmaker', teams: 'nation', spotlight: 'stars', var: 'fairplay', rookies: 'rookies', licence: 'licence' };
-  return map[tab] ? `data-scrollto="${map[tab]}"` : `data-goboard="${tab}"`;
+  // Always an in-issue scroll target — links never leave the magazine. If a tab has
+  // no matching section, the scroll handler simply finds nothing and does nothing.
+  return `data-scrollto="${map[tab] || tab || ''}"`;
 }
 // A collectible Panini-style card: team-tinted foil, big portrait, flag, rank
 // ribbon and headline stat. The whole card opens the player; the category tag
@@ -8253,11 +8255,9 @@ function recapRow(name, team, badge, extra) {
       ${badge}
     </div>`;
 }
-function recapSection(title, sub, rows, tab) {
+function recapSection(title, sub, rows) {
   const subHtml = sub ? ` <span class="mag-sech-sub">${sub}</span>` : '';
-  const head = tab
-    ? `<button class="mag-sech mag-sech-link" data-goboard="${tab}">${title}${subHtml}<span class="mag-sech-go">↗</span></button>`
-    : `<h3 class="mag-sech">${title}${subHtml}</h3>`;
+  const head = `<h3 class="mag-sech">${title}${subHtml}</h3>`;
   return `<section class="mag-sec">${head}<div class="mag-ticker">${rows.join('')}</div></section>`;
 }
 function recapTicker(d) {
@@ -8301,13 +8301,13 @@ function recapStatOfWeek() {
 }
 // One ranked row in a leaderboard: medal/rank, avatar, name+team, value. Opens the
 // player's card on tap.
-function recapLbRow(rank, p, value) {
+function recapLbRow(rank, p, value, unit) {
   const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : ('#' + rank);
   return `<div class="mag-lb-row" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(baseName(p.name))}'s card">
       <span class="mag-lb-rank r${rank <= 3 ? rank : 'n'}">${medal}</span>
       <span class="mag-lb-av">${avatarInner(p.name)}</span>
       <span class="mag-lb-name">${escapeHtml(baseName(p.name))}<em>${escapeHtml(teamShortLabel(p.team))}</em></span>
-      <span class="mag-lb-val">${value}</span>
+      <span class="mag-lb-val">${value}${unit ? `<span class="mag-lb-unit">${unit}</span>` : ''}</span>
     </div>`;
 }
 // A themed leaderboard section featuring several players. opts: { id, icon, title,
@@ -8316,11 +8316,11 @@ function recapBoard(opts) {
   const list = (opts.list || []).slice(0, opts.limit || 5);
   if (!list.length) return '';
   const subHtml = opts.sub ? ` <span class="mag-sech-sub">${opts.sub}</span>` : '';
-  const head = opts.tab
-    ? `<button class="mag-sech mag-sech-link" data-goboard="${opts.tab}">${opts.icon} ${opts.title}${subHtml}<span class="mag-sech-go">↗</span></button>`
-    : `<h3 class="mag-sech">${opts.icon} ${opts.title}${subHtml}</h3>`;
+  // Plain header — the journal never links out to an external board (the rows open
+  // the player card, which stays in the magazine flow).
+  const head = `<h3 class="mag-sech">${opts.icon} ${opts.title}${subHtml}</h3>`;
   const dek = opts.dek ? `<p class="mag-dek">${opts.dek}</p>` : '';
-  const rows = list.map((p, i) => recapLbRow(i + 1, p, opts.valueFn(p))).join('');
+  const rows = list.map((p, i) => recapLbRow(i + 1, p, opts.valueFn(p), opts.unit)).join('');
   return `<section class="mag-sec">${head}${dek}<div class="mag-lb">${rows}</div></section>`;
 }
 // Short editorial narrative — a couple of human sentences that tell the week's
@@ -8438,21 +8438,21 @@ function recapBoards() {
   const nm = p => escapeHtml(baseName(p.name));
   const blocks = [];
   const gb = sortedGoldenBoot.filter(p => (p.ps_nb || 0) > 0);
-  blocks.push({ id: 'golden', label: '🥇 Golden Boots', html: recapBoard({ icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', tab: 'golden', list: gb, valueFn: p => fmtMoney(p.ps_nb),
+  blocks.push({ id: 'golden', label: '🥇 Golden Boots', html: recapBoard({ icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', tab: 'golden', list: gb, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
     dek: recapDek(gb, l => l.length >= 2 ? `<b>${nm(l[0])}</b> sets the target at ${fmtMoney(l[0].ps_nb)} — <b>${nm(l[1])}</b> gives chase.` : `<b>${nm(l[0])}</b> is out in front with ${fmtMoney(l[0].ps_nb)}.`) }) });
   const pmList = sortedPlaymaker.filter(p => (p.opps || 0) > 0);
-  blocks.push({ id: 'playmaker', label: '🎩 Best Opportunities', html: recapBoard({ icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', tab: 'playmaker', list: pmList, valueFn: p => Math.round(p.opps) + ' opps',
+  blocks.push({ id: 'playmaker', label: '🎩 Best Opportunities', html: recapBoard({ icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', tab: 'playmaker', list: pmList, valueFn: p => String(Math.round(p.opps)), unit: 'opps',
     dek: recapDek(pmList, l => `<b>${nm(l[0])}</b> is the supply line, with <b>${Math.round(l[0].opps)}</b> chances created.`) }) });
   const margins = people.filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null).sort((a, b) => indivGm(b) - indivGm(a));
-  blocks.push({ id: 'margins', label: '🎯 Sharpest Margins', html: recapBoard({ icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)),
+  blocks.push({ id: 'margins', label: '🎯 Sharpest Margins', html: recapBoard({ icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)), unit: 'NB GM',
     dek: recapDek(margins, l => `Quality over quantity — <b>${nm(l[0])}</b> converts at <b>${fmtPct(indivGm(l[0]))}</b> margin.`) }) });
   const rookList = (sortedRookies || []).filter(p => (p.ps_nb || 0) > 0);
-  if (rookList.length) blocks.push({ id: 'rookies', label: '🎓 Rookie Watch', html: recapBoard({ icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', tab: 'rookies', list: rookList, valueFn: p => fmtMoney(p.ps_nb),
+  if (rookList.length) blocks.push({ id: 'rookies', label: '🎓 Rookie Watch', html: recapBoard({ icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', tab: 'rookies', list: rookList, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
     dek: `The new generation makes its mark — <b>${nm(rookList[0])}</b> leads the class.` }) });
-  if (sortedLicence && sortedLicence.length) blocks.push({ id: 'licence', label: '📜 Licence Leaders', html: recapBoard({ icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', tab: 'licence', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm),
+  if (sortedLicence && sortedLicence.length) blocks.push({ id: 'licence', label: '📜 Licence Leaders', html: recapBoard({ icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', tab: 'licence', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm), unit: 'Licence GM',
     dek: `<b>${nm(sortedLicence[0])}</b> rules the licence charts at ${fmtMoney(sortedLicence[0].licence_gm)}.` }) });
   const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && (p.ps_nb || 0) > 0).sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
-  blocks.push({ id: 'fairplay', label: '✅ Clean Sheets', html: recapBoard({ icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', tab: 'var', list: clean, valueFn: p => fmtMoney(p.ps_nb),
+  blocks.push({ id: 'fairplay', label: '✅ Clean Sheets', html: recapBoard({ icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', tab: 'var', list: clean, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
     dek: `Discipline pays — top scorers with a spotless VAR record.` }) });
   return blocks.filter(b => b.html);
 }
@@ -8516,10 +8516,9 @@ function recapNation() {
       <div class="mag-nation-body">
         <div class="mag-nation-tag">🌍 Nation of the Week</div>
         <div class="mag-nation-name">${escapeHtml(teamShortLabel(t.country))}</div>
-        <button class="mag-nation-stats" data-goboard="teams" title="Open the Team Ranking">${fmtMoney(t.avg_ps)} avg PS / rep${members} ↗</button>
+        <div class="mag-nation-stats">${fmtMoney(t.avg_ps)} avg PS / rep${members}</div>
         ${cap ? `<button class="mag-nation-cap" data-jump="${escapeHtml(cap.name)}" title="View ${escapeHtml(baseName(cap.name))}'s card"><span class="mag-nation-cap-av">${avatarInner(cap.name)}</span>Captain ${escapeHtml(baseName(cap.name))}</button>` : ''}
       </div>
-      <button class="mag-nation-go" data-goboard="teams">Table ↗</button>
     </section>`;
 }
 function renderRecapMagazine(d) {
@@ -8619,12 +8618,14 @@ function openDigest() {
   document.body.style.overflow = 'hidden';
   el.querySelectorAll('.mag > *').forEach((c, i) => c.style.setProperty('--i', i)); // stagger the entrance
   animateRecapCounts(el); // roll the big gold numbers up from 0 (skipped if reduced-motion)
-  // Reopened after viewing a card → land back at the exact scroll position, not the top.
+  // Reopened after viewing a card → land back at the exact scroll position, not the
+  // top. Copy the value locally FIRST: the deferred restores must not read the
+  // module variable after it's been reset (that bug scrolled back to the top).
   if (digestReturnScroll > 0) {
+    const y = digestReturnScroll; digestReturnScroll = 0;
     const modal = el.querySelector('.digest-modal');
-    const restore = () => { if (modal) modal.scrollTop = digestReturnScroll; el.scrollTop = digestReturnScroll; };
-    restore(); requestAnimationFrame(restore);
-    digestReturnScroll = 0;
+    const restore = () => { if (modal) modal.scrollTop = y; el.scrollTop = y; };
+    restore(); requestAnimationFrame(restore); setTimeout(restore, 60);
   }
   syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
