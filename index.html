@@ -2197,7 +2197,11 @@ img, table { max-width: 100%; }
 .tv-awcol .tv-pos { font-size: clamp(18px, 3vmin, 38px); }
 .tv-awcol .tv-avatar { width: clamp(40px, 5vmin, 66px); height: clamp(40px, 5vmin, 66px); }
 .tv-awcol .tv-name { font-size: clamp(15px, 2.3vmin, 27px); }
-.tv-awcol .tv-name em { font-size: 0.46em; margin-top: 2px; }
+.tv-awcol .tv-name em { font-size: clamp(13px, 1.95vmin, 22px); margin-top: 3px; }
+/* The official team name nests inside the nickname <em>, so an em-relative size
+   compounds down to ~5px. Give it an absolute clamp (and beat the .tv-name small
+   rule on specificity) so it stays readable on a projector. */
+.tv-awcol .tv-name em small.tv-real { font-size: clamp(11px, 1.5vmin, 18px); color: rgba(255,255,255,0.78); margin-top: 3px; }
 .tv-awcol .tv-val { font-size: clamp(17px, 2.8vmin, 34px); }
 /* "+ Show more" toggle on TV ranking panels (top 5 by default, expand for the rest).
    Sticky to the bottom of the viewport so the "back to top 5" control stays reachable
