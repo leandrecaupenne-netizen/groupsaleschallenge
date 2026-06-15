@@ -537,7 +537,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 /* === Movers strip === */
 .movers-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
 .movers-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-right: 4px; }
-.mover { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
+.mover { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; cursor: pointer; transition: filter 0.12s, transform 0.12s; }
+.mover:hover { filter: brightness(1.08); transform: translateY(-1px); }
 .mover.up { background: rgba(22,163,74,0.12); color: var(--green); }
 .mover.down { background: rgba(200,16,46,0.10); color: var(--usa-red); }
 .mover b { font-variant-numeric: tabular-nums; }
@@ -4772,7 +4773,7 @@ function moversStrip() {
   const climbers = movers.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
   const fallers = movers.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 2);
   if (!climbers.length && !fallers.length) return '';
-  const chip = (m, up) => `<span class="mover ${up ? 'up' : 'down'}">${escapeHtml(m.c)} <b>${up ? '▲' : '▼'}${Math.abs(m.delta)}</b></span>`;
+  const chip = (m, up) => `<span class="mover ${up ? 'up' : 'down'}" data-team="${escapeHtml(m.c)}" title="View ${escapeHtml(m.c)}'s squad">${escapeHtml(m.c)} <b>${up ? '▲' : '▼'}${Math.abs(m.delta)}</b></span>`;
   return `<div class="movers-strip"><span class="movers-label">📈 Movers since the last update</span>${climbers.map(m => chip(m, true)).join('')}${fallers.map(m => chip(m, false)).join('')}</div>`;
 }
 
@@ -7806,6 +7807,16 @@ function render() {
     card.addEventListener('click', () => {
       setModalTrigger(card);
       openTeamModal = card.dataset.team;
+      render();
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  // "Movers since the last update" chips → open that team's squad.
+  document.querySelectorAll('.mover[data-team]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      setModalTrigger(chip);
+      openTeamModal = chip.dataset.team;
       render();
       document.body.style.overflow = 'hidden';
     });
