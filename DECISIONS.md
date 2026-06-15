@@ -106,6 +106,29 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Fix UX : retour depuis une carte ouverte du journal → revient au journal
+Bug remonté par Léandre : ouvrir « voir carte » depuis la une puis **Retour** renvoyait au
+**menu** au lieu du **journal**. Fast-forward sur `main`. Commit `3d56b61`.
+
+**Cause.** La une (`#digest-overlay`) est un **overlay dynamique** retiré du DOM dès qu'on ouvre
+une carte joueur — contrairement aux modals équipe/nation qui ont un retour (`playerReturnToTeam/
+Nation`). La carte n'avait donc **aucune cible de retour** → fermeture = menu.
+
+**Fix.** Nouveau flag `playerReturnToDigest` (calqué sur les autres) :
+- **posé** quand une carte est ouverte depuis la une (handler `[data-jump]` du digest) ;
+- **honoré dans les 3 chemins de fermeture** — bouton Back/Close à l'écran (`closePlayer`),
+  Back navigateur / `popstate` (`closeTopLayer`), et `Escape` — qui **rouvrent `openDigest()`**
+  et **ré-arment le garde d'historique** (un Back suivant ferme alors le journal) ;
+- **remis à false** sur toute autre transition pour éviter un état périmé : ouverture de carte
+  in-app (`[data-player]`), lien squad (`pc-team-link`), et `statGoto` (saut vers un board) ;
+- le **bouton de la carte** affiche « ← Back » (au lieu de « ← Close ») quand le retour mène
+  au journal.
+
+**Vérif.** 6 scénarios tracés à la main contre la logique du garde d'historique (Back nav,
+bouton écran, Esc, lien squad, view-full-ranking, ouverture in-app) — pas de double-push ni de
+sortie d'app intempestive. JS/CSS OK. (Pas de test e2e dédié : comportement d'historique
+navigateur, non couvert par la suite Playwright mockée.)
+
 ### 2026-06-15 — Recap v4 : finitions « catchy » (count-up, reveal, N° d'édition, teaser)
 Demande Léandre : rendre la une **vraiment plaisante à lire**, qui **parle à l'œil** et soit
 **catchy**, façon couverture de magazine. Fast-forward sur `main`. Commit `7fd175b`.
