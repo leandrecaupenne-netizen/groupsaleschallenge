@@ -1329,6 +1329,29 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-ed-head { font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); margin-bottom: 5px; }
 .mag-ed-body { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.6; color: var(--ink); }
 .mag-ed-body b { color: var(--usa-red); }
+.mag-ed-faces { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+.mag-ed-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 4px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
+.mag-ed-chip:hover { border-color: var(--usa-red); transform: translateY(-1px); }
+.mag-ed-av { width: 26px; height: 26px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 10px; }
+
+/* Duel of the Week — Golden Boot head-to-head */
+.mag-duel { padding: 14px; border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); border: 1px solid rgba(255,255,255,0.1); color: #fff; }
+.mag-duel-head { color: #fff; border-bottom-color: rgba(255,255,255,0.25); }
+.mag-duel-head .mag-sech-sub { color: rgba(255,255,255,0.6); }
+.mag-duel-body { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-top: 12px; }
+.mag-duel-side { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; gap: 3px; }
+.mag-duel-face { position: relative; width: 92px; height: 92px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(165deg, var(--tc, #444), var(--navy) 85%); box-shadow: 0 6px 16px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,255,255,0.18); transition: transform 0.14s; }
+.mag-duel-side:hover .mag-duel-face { transform: scale(1.05); }
+.mag-duel-ini { font-family: 'Anton', Impact, sans-serif; font-size: 34px; color: rgba(255,255,255,0.9); }
+.mag-duel-face.has-photo .mag-duel-ini { display: none; }
+.mag-duel-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.mag-duel-flag { position: absolute; bottom: 4px; right: 6px; display: flex; width: 22px; height: 14px; border-radius: 2px; overflow: hidden; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.mag-duel-name { font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.02em; margin-top: 4px; }
+.mag-duel-team { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.65); }
+.mag-duel-val { font-family: 'Anton', Impact, sans-serif; font-size: 18px; color: var(--gold); margin-top: 2px; }
+.mag-duel-vs-x { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--usa-red); color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: 16px; box-shadow: 0 3px 10px rgba(200,16,46,0.5); }
+.mag-duel-cap { text-align: center; font-family: Georgia, 'Times New Roman', serif; font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,0.88); margin-top: 12px; }
+.mag-duel-cap b { color: var(--gold); }
 
 /* Themed leaderboards (Golden Boots, Best Opportunities, Sharpest Margins…) */
 .mag-lb { display: flex; flex-direction: column; }
@@ -1412,7 +1435,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-sotw-tile { position: relative; padding: 14px 12px; text-align: center; color: #fff; cursor: pointer; border-right: 1px solid rgba(255,255,255,0.08); transition: background 0.15s; }
 .mag-sotw-tile:last-child { border-right: none; }
 .mag-sotw-tile:hover { background: rgba(255,255,255,0.06); }
-.mag-sotw-ico { font-size: 18px; }
+.mag-sotw-face { position: relative; width: 52px; height: 52px; margin: 0 auto 4px; }
+.mag-sotw-disc { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: var(--navy-2); color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: 17px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18); }
+.mag-sotw-ico { position: absolute; bottom: -3px; right: -3px; font-size: 15px; line-height: 1; background: var(--navy); border-radius: 50%; padding: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
 .mag-sotw-val { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1.1; margin-top: 2px; }
 .mag-sotw-lbl { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 3px; }
 .mag-sotw-who { font-size: 11px; font-weight: 700; color: #fff; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -8183,7 +8208,7 @@ function recapStatOfWeek() {
       <div class="mag-sotw-head">📊 Stat of the Week</div>
       <div class="mag-sotw-grid">${tiles.map(tt => `
         <div class="mag-sotw-tile" data-jump="${escapeHtml(tt.name)}" title="View ${escapeHtml(baseName(tt.name))}'s card">
-          <div class="mag-sotw-ico">${tt.icon}</div>
+          <div class="mag-sotw-face"><span class="mag-sotw-disc">${avatarInner(tt.name)}</span><span class="mag-sotw-ico">${tt.icon}</span></div>
           ${countSpan('mag-sotw-val', tt.value, tt.raw, tt.fmt)}
           <div class="mag-sotw-lbl">${tt.label}</div>
           <div class="mag-sotw-who">${escapeHtml(baseName(tt.name))} · ${escapeHtml(tt.sub)}</div>
@@ -8213,24 +8238,66 @@ function recapBoard(opts) {
   const rows = list.map((p, i) => recapLbRow(i + 1, p, opts.valueFn(p))).join('');
   return `<section class="mag-sec">${head}<div class="mag-lb">${rows}</div></section>`;
 }
-// Short editorial narrative — a couple of human sentences that tell the week's story.
+// Short editorial narrative — a couple of human sentences that tell the week's
+// story, plus a strip of the faces it mentions (every named player shows a face).
 function recapEditorial(d) {
-  const bits = [];
+  const bits = [], faces = [], seen = new Set();
+  const addFace = p => { if (p && p.name && !seen.has(p.name)) { seen.add(p.name); faces.push(p); } };
   const g = sortedGoldenBoot[0];
-  if (g && (g.ps_nb || 0) > 0) bits.push(`<b>${escapeHtml(baseName(g.name))}</b> leads the Golden Boot race with ${fmtMoney(g.ps_nb)} of new business`);
+  if (g && (g.ps_nb || 0) > 0) { bits.push(`<b>${escapeHtml(baseName(g.name))}</b> leads the Golden Boot race with ${fmtMoney(g.ps_nb)} of new business`); addFace(g); }
   const pm = sortedPlaymaker[0];
-  if (pm && (pm.opps || 0) > 0) bits.push(`<b>${escapeHtml(baseName(pm.name))}</b> pulls the strings with ${Math.round(pm.opps)} opportunities created`);
+  if (pm && (pm.opps || 0) > 0) { bits.push(`<b>${escapeHtml(baseName(pm.name))}</b> pulls the strings with ${Math.round(pm.opps)} opportunities created`); addFace(pm); }
   const t = sortedTeams[0];
   if (t) bits.push(`<b>${escapeHtml(teamShortLabel(t.country))}</b> set the pace among the teams`);
   if (d && d.climbers && d.climbers.length && d.climbers[0].jump >= 2) {
     const c = d.climbers[0];
     bits.push(`<b>${escapeHtml(baseName(c.name))}</b> is the week's big mover (+${c.jump})`);
+    addFace(people.find(x => x.name === c.name));
   }
   if (!bits.length) return '';
   const wk = (/(\d+)/.exec(period || '') || [])[1];
+  const tot = (/of\s+(\d+)/i.exec(period || '') || [])[1];
+  const left = (wk && tot) ? Math.max(0, (+tot) - (+wk)) : 0;
+  const closer = left > 0
+    ? ` With <b>${left} week${left > 1 ? 's' : ''}</b> to go, the race to Paris is wide open. 🌍`
+    : ` The final whistle is near — it's all to play for! 🌍`;
+  const facesHtml = faces.length
+    ? `<div class="mag-ed-faces">${faces.map(p => `<button class="mag-ed-chip" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(baseName(p.name))}'s card"><span class="mag-ed-av">${avatarInner(p.name)}</span>${escapeHtml(baseName(p.name))}</button>`).join('')}</div>`
+    : '';
   return `<section class="mag-editorial">
       <div class="mag-ed-head">✍️ Editor's Note${wk ? ` · Week ${wk}` : ''}</div>
-      <p class="mag-ed-body">${bits.join('. ')}.</p>
+      <p class="mag-ed-body">${bits.join('. ')}.${closer}</p>
+      ${facesHtml}
+    </section>`;
+}
+// "Duel of the Week" — the Golden Boot top two, head-to-head with big faces and the
+// gap between them. Pure World Cup drama; both faces open the player's card.
+function recapDuel() {
+  const a = sortedGoldenBoot[0], b = sortedGoldenBoot[1];
+  if (!a || !b || (a.ps_nb || 0) <= 0) return '';
+  const gap = (a.ps_nb || 0) - (b.ps_nb || 0);
+  const face = p => `
+    <div class="mag-duel-side" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(baseName(p.name))}'s card">
+      <div class="mag-duel-face${photoFor(p.name) ? ' has-photo' : ''}" style="--tc:${colorForTeam(p.team)}">
+        <span class="mag-duel-ini">${avatarInitials(p.name)}</span>
+        ${photoFor(p.name) ? `<img src="${photoFor(p.name)}" alt="" loading="lazy" decoding="async" onerror="this.remove();this.closest('.mag-duel-face').classList.remove('has-photo')"/>` : ''}
+        <span class="mag-duel-flag">${flagBars(flagForTeam(p.team))}</span>
+      </div>
+      <div class="mag-duel-name">${escapeHtml(baseName(p.name))}</div>
+      <div class="mag-duel-team">${escapeHtml(teamShortLabel(p.team))}</div>
+      <div class="mag-duel-val">${fmtMoney(p.ps_nb)}</div>
+    </div>`;
+  const cap = gap > 0
+    ? `Only <b>${fmtMoney(gap)}</b> between them — who'll wear the Golden Boot in Paris? 🏆`
+    : `Dead heat — they're level at the top! Who blinks first? 🏆`;
+  return `<section class="mag-duel">
+      <div class="mag-sech mag-duel-head">⚔️ Duel of the Week <span class="mag-sech-sub">Golden Boot top 2</span></div>
+      <div class="mag-duel-body">
+        ${face(a)}
+        <div class="mag-duel-vs"><span class="mag-duel-vs-x">VS</span></div>
+        ${face(b)}
+      </div>
+      <div class="mag-duel-cap">${cap}</div>
     </section>`;
 }
 // All the themed leaderboards that put as many players forward as possible.
@@ -8293,6 +8360,7 @@ function renderRecapMagazine(d) {
   const blocks = [];
   blocks.push({ html: hero });
   blocks.push({ id: 'story', label: '✍️ Editorial', html: recapEditorial(d) });
+  blocks.push({ id: 'duel', label: '⚔️ Duel', html: recapDuel() });
   blocks.push({ id: 'stars', label: '⭐ Leaders', html: recapStarCards(d) });
   blocks.push({ id: 'sotw', label: '📊 Stat of the Week', html: recapStatOfWeek() });
   recapBoards().forEach(b => blocks.push(b));
