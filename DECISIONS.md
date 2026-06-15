@@ -106,6 +106,34 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Revue de code + analyse UX complètes (2 agents) → correctifs sûrs appliqués
+Léandre : « revue complète du code + analyse UX complète ». 2 agents lancés en // (code review +
+UX). Synthèse priorisée ; correctifs sûrs appliqués (commit `2f6d833`), gros sujets laissés au
+choix de Léandre. CI re-vérifiée verte (ESLint + smoke + e2e, **+ nouveau test recap**).
+
+**Appliqué (code review)** : suppression handler mort `[data-goboard]` + CSS morte
+(`.mag-sech-link/.mag-sech-go`) ; **disconnect de l'IntersectionObserver** à la fermeture (fuite) ;
+arg inutile retiré de `recapSection` ; **test smoke recap** ajouté (ouvre le journal → carte → Back
+restaure le journal).
+
+**Appliqué (UX)** : **découvrabilité** → 4ᵉ étape de tour vers le 📰 ; **a11y** → digest en
+`role=dialog`/`aria-modal` + focus déplacé sur le bouton fermer à l'ouverture, médailles avec
+`aria-label`, marquee BREAKING en `aria-hidden` ; **share** → anti double-tap + toast « Building
+your front page… » + état disabled ; **clarté** → tooltips glossaire sur les unités (NB/NB GM/
+Licence GM/opps) ; **perf** → count-up sauté au retour d'une carte ; contraste micro-label gold
+11px/600.
+
+**⏸️ Laissé au choix de Léandre (gros / subjectif, non appliqués)** :
+- **P1-1 Longueur/redondance du journal** : ~13 blocs, le leader Golden Boot peut apparaître ~10×.
+  Conflit avec la demande explicite « max de joueurs / faut que ça claque ». Options proposées :
+  regrouper les 6 leaderboards en accordéon/onglets, et/ou dé-dupliquer le lead (le retirer de
+  Talking Points / pull-quote). **À trancher.**
+- **P1-4** : 2 conteneurs scrollables (overlay + modal) → épinglage sticky géré en JS (mesure
+  hauteur header). Robuste mais fragile ; option : rendre le `.modal` seul scroller.
+- **P0-2/P0-3 étendus** : `role=dialog`/focus appliqués au digest ; à étendre aux autres overlays
+  dynamiques (rules) pour cohérence a11y (search/compare focalisent déjà un input).
+- **P2-1** : header chargé sur petit mobile (7 icônes ~42px) → menu « ⋯ » + cibles 44px.
+
 ### 2026-06-15 — Partage de la « une » en image + liste portraits prioritaires
 Commit `64a9ace`. Les 2 pistes proposées, livrées.
 
