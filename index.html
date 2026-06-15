@@ -1353,6 +1353,28 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-duel-cap { text-align: center; font-family: Georgia, 'Times New Roman', serif; font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,0.88); margin-top: 12px; }
 .mag-duel-cap b { color: var(--gold); }
 
+/* Masthead byline */
+.mag-byline { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-top: 4px; opacity: 0.9; }
+
+/* Team of the Week — the matchday XI on a green pitch */
+.mag-totw { padding: 14px; border-radius: 16px; overflow: hidden; color: #fff; background: radial-gradient(120% 90% at 50% 0%, #1f7a43 0%, #14532d 60%, #0f3d22 100%); border: 1px solid rgba(255,255,255,0.12); position: relative; }
+.mag-totw::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(255,255,255,0.14); pointer-events: none; }
+.mag-totw::after { content: ''; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.14); border-radius: 50%; pointer-events: none; }
+.mag-totw-head { color: #fff; border-bottom-color: rgba(255,255,255,0.25); position: relative; z-index: 1; }
+.mag-totw-head .mag-sech-sub { color: rgba(255,255,255,0.65); }
+.mag-totw-pitch { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 12px; margin-top: 14px; }
+.mag-totw-pick { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; cursor: pointer; }
+.mag-totw-face { position: relative; width: 70px; height: 70px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(165deg, var(--tc, #444), #0f3d22 88%); box-shadow: 0 5px 14px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.25); transition: transform 0.14s; }
+.mag-totw-pick:hover .mag-totw-face { transform: scale(1.06); }
+.mag-totw-ini { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: rgba(255,255,255,0.9); }
+.mag-totw-face.has-photo .mag-totw-ini { display: none; }
+.mag-totw-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.mag-totw-flag { position: absolute; bottom: 3px; right: 5px; display: flex; width: 18px; height: 12px; border-radius: 2px; overflow: hidden; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.mag-totw-role { font-family: ui-monospace, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold); margin-top: 6px; }
+.mag-totw-name { font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.01em; line-height: 1.05; }
+.mag-totw-stat { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.92); }
+.mag-totw-sub { font-family: ui-monospace, monospace; font-weight: 400; font-size: 8.5px; letter-spacing: 0.03em; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+
 /* Themed leaderboards (Golden Boots, Best Opportunities, Sharpest Margins…) */
 .mag-lb { display: flex; flex-direction: column; }
 .mag-lb-row { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -8300,6 +8322,50 @@ function recapDuel() {
       <div class="mag-duel-cap">${cap}</div>
     </section>`;
 }
+// "Team of the Week" — the matchday XI: one standout per role, on a green pitch,
+// all distinct players (dedup), each face opening the Panini card. Pure squad-sheet
+// energy to make the paper feel alive.
+function recapTeamOfWeek() {
+  const picked = new Set();
+  const pick = (list, filt) => {
+    for (const p of (list || [])) {
+      if (!p || !p.name || picked.has(p.name)) continue;
+      if (filt && !filt(p)) continue;
+      picked.add(p.name); return p;
+    }
+    return null;
+  };
+  const slots = [];
+  const add = (role, sub, p, stat) => { if (p) slots.push({ role, sub, p, stat }); };
+  add('⚡ Striker', 'Golden Boot', pick(sortedGoldenBoot, p => (p.ps_nb || 0) > 0), null);
+  add('🅰️ Playmaker', 'Opportunities', pick(sortedPlaymaker, p => (p.opps || 0) > 0), null);
+  const margins = people.filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null).sort((a, b) => indivGm(b) - indivGm(a));
+  add('🎯 Finisher', 'Best margin', pick(margins), null);
+  add('🎓 Wonderkid', 'Top rookie', pick(sortedRookies, p => (p.ps_nb || 0) > 0), null);
+  const cleanList = people.filter(p => !p.yellow_meetings && !p.yellow_gm && (p.ps_nb || 0) > 0).sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
+  add('🧤 Clean Sheet', 'By the rules', pick(cleanList), null);
+  // Stats per slot (computed from the role's metric).
+  slots.forEach(s => {
+    s.stat = s.role.includes('Playmaker') ? Math.round(s.p.opps || 0) + ' opps'
+      : s.role.includes('Finisher') ? fmtPct(indivGm(s.p))
+      : fmtMoney(s.p.ps_nb);
+  });
+  if (slots.length < 3) return '';
+  return `<section class="mag-totw">
+      <div class="mag-sech mag-totw-head">🌟 Team of the Week <span class="mag-sech-sub">The matchday XI</span></div>
+      <div class="mag-totw-pitch">${slots.map(s => `
+        <div class="mag-totw-pick" data-jump="${escapeHtml(s.p.name)}" title="View ${escapeHtml(baseName(s.p.name))}'s card" style="--tc:${colorForTeam(s.p.team)}">
+          <div class="mag-totw-face${photoFor(s.p.name) ? ' has-photo' : ''}">
+            <span class="mag-totw-ini">${avatarInitials(s.p.name)}</span>
+            ${photoFor(s.p.name) ? `<img src="${photoFor(s.p.name)}" alt="" loading="lazy" decoding="async" onerror="this.remove();this.closest('.mag-totw-face').classList.remove('has-photo')"/>` : ''}
+            <span class="mag-totw-flag">${flagBars(flagForTeam(s.p.team))}</span>
+          </div>
+          <div class="mag-totw-role">${s.role}</div>
+          <div class="mag-totw-name">${escapeHtml(baseName(s.p.name))}</div>
+          <div class="mag-totw-stat">${s.stat}<span class="mag-totw-sub"> · ${s.sub}</span></div>
+        </div>`).join('')}</div>
+    </section>`;
+}
 // All the themed leaderboards that put as many players forward as possible.
 function recapBoards() {
   const blocks = [];
@@ -8362,6 +8428,7 @@ function renderRecapMagazine(d) {
   blocks.push({ id: 'story', label: '✍️ Editorial', html: recapEditorial(d) });
   blocks.push({ id: 'duel', label: '⚔️ Duel', html: recapDuel() });
   blocks.push({ id: 'stars', label: '⭐ Leaders', html: recapStarCards(d) });
+  blocks.push({ id: 'totw', label: '🌟 Team of the Week', html: recapTeamOfWeek() });
   blocks.push({ id: 'sotw', label: '📊 Stat of the Week', html: recapStatOfWeek() });
   recapBoards().forEach(b => blocks.push(b));
   blocks.push({ id: 'changes', label: '📈 This Week', html: recapTicker(d) });
@@ -8396,6 +8463,7 @@ function openDigest() {
         <div class="modal-title-block">
           <h2 class="modal-title mag-nameplate">DEVOTEAM WORLD CUP TIMES${editionNo ? `<span class="mag-edition">N°${editionNo}</span>` : ''}</h2>
           <div class="modal-subtitle mag-dateline">📰 This Week's Recap${d && d.prevPeriod ? ' · since ' + escapeHtml(d.prevPeriod) : ''}${period ? ' · ' + escapeHtml(period) : ''}</div>
+          <div class="mag-byline">⚽ By the Devoteam Newsroom · Group Sales</div>
         </div>
         <button class="modal-close" id="digest-close" aria-label="Close">×</button>
       </div>
