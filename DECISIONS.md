@@ -106,6 +106,24 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v3.1 : audit « tout cliquable & explicable » sans léser l'UX
+Demande Léandre : vérifier que **tout est cliquable et explicable**, sans dégrader l'UX.
+Fast-forward sur `main`. Commit `e0b8318`.
+
+**Audit runtime** (rendu full digest + semaine calme + nom périmé) : tous les `data-jump`
+(hero/cartes/tuiles SOTW/lignes ticker) résolvent vers des **personnes réelles** ; tous les
+`data-goboard` pointent vers des **onglets valides** (golden/playmaker/teams/spotlight/var) ;
+chaque cible a un **handler** + une **affordance** (tooltip + `↗`/CTA).
+
+**Correctifs UX appliqués :**
+- **Garde anti-nom périmé** : si une ligne de ticker référence un joueur sorti des données, le
+  tap ne fait **rien** (ne peut plus ouvrir une fiche vide) au lieu d'ouvrir un modal cassé.
+- **Hero sans portrait** (`mag-hero-noimg`) : la catégorie devient un **vrai lien** et l'article
+  n'affiche plus un **curseur pointer trompeur** (`cursor:default`).
+- **Code mort retiré** : handler `data-jump-team` supprimé (la carte Top Team cible son capitaine
+  via `data-jump`).
+- **Tooltips** ajoutés au hero et aux lignes de ticker → chaque cible est auto-explicative.
+
 ### 2026-06-15 — Recap v3 : magazine permanent + pastille lundi + foil holo + Stat of the Week
 Suite des v1/v2 recap. Fast-forward sur `main`. Commit `22fad6d`.
 
