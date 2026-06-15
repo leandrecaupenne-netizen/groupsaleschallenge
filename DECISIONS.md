@@ -106,6 +106,25 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v4 : finitions « catchy » (count-up, reveal, N° d'édition, teaser)
+Demande Léandre : rendre la une **vraiment plaisante à lire**, qui **parle à l'œil** et soit
+**catchy**, façon couverture de magazine. Fast-forward sur `main`. Commit `7fd175b`.
+
+- **Entrée en cascade** (`@keyframes magIn` + delays sur `.mag > *`) : la une « s'imprime »
+  section par section à l'ouverture. Désactivée sous `prefers-reduced-motion`.
+- **Count-up** (`animateRecapCounts` + `countSpan` → `data-cv`/`data-cf`) : les gros chiffres
+  dorés (stats des Panini + Stat of the Week) **montent de 0** vers leur valeur (money/pct/int,
+  easing cubic). La **valeur finale est rendue d'abord** (no-JS / reduced-motion = valeur exacte
+  immédiate). Vérifié : raw→format == valeur affichée pour les 6 compteurs.
+- **N° d'édition** : tampon doré incliné `N°3` dans le bandeau-titre (parsé depuis `period`).
+- **Living paper** : overline « ⚽ Matchday Report · The Race to Paris 🇫🇷 » (filet doré) en haut,
+  et **footer teaser** « 🗞️ New edition every Monday · 🏆 Grand Final · Paris · 9 Jul · J-N »
+  (J- calculé vers le 2026-07-09 ; testé J-24 au 15/06).
+- Fix : `.mag-sotw-val` repassé en `display:block` (devenu `<span>` pour le count-up).
+
+Vérifs : 3 scripts JS OK, accolades CSS équilibrées, test runtime (overline/footer/edition/
+6 compteurs cohérents).
+
 ### 2026-06-15 — Recap v3.1 : audit « tout cliquable & explicable » sans léser l'UX
 Demande Léandre : vérifier que **tout est cliquable et explicable**, sans dégrader l'UX.
 Fast-forward sur `main`. Commit `e0b8318`.
