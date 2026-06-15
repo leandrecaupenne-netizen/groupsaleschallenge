@@ -1482,7 +1482,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-headline { font-family: 'Anton', Impact, sans-serif; font-size: clamp(26px, 6.4vw, 40px); line-height: 0.96; letter-spacing: 0.01em; text-transform: uppercase; color: #fff; }
 .mag-standfirst { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.86); }
 .mag-standfirst b { color: var(--gold); font-weight: 700; }
-.mag-hero-cta { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); opacity: 0.9; }
+.mag-hero-cta { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
 
 /* STAR cards grid — collectible Panini cards of the category leaders */
 .mag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
@@ -1537,10 +1537,6 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 /* SECTIONS / press tickers */
 .mag-sec { display: flex; flex-direction: column; gap: 6px; }
 .mag-sech { font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink); display: flex; align-items: center; gap: 8px; border-bottom: 2px solid var(--ink); padding-bottom: 5px; }
-.mag-sech-link { width: 100%; background: none; border: none; border-bottom: 2px solid var(--ink); cursor: pointer; text-align: left; }
-.mag-sech-link:hover { color: var(--usa-red); }
-.mag-sech-go { margin-left: auto; color: var(--muted); font-size: 13px; }
-.mag-sech-link:hover .mag-sech-go { color: var(--usa-red); }
 .mag-sech-sub { font-family: ui-monospace, monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .mag-ticker { display: flex; flex-direction: column; }
 .mag-trow { display: flex; align-items: center; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -1685,6 +1681,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .modal-close:hover { background: rgba(255,255,255,0.25); }
 .digest-share { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); color: var(--gold); font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s, transform 0.15s; }
 .digest-share:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+.digest-share:disabled { opacity: 0.6; cursor: default; transform: none; }
 
 .modal-summary {
   display: grid;
@@ -4577,7 +4574,8 @@ function renderIntroHint() {
 const TOUR_STEPS = [
   { icon: '🏆', title: 'WELCOME TO THE WORLD CUP', text: 'The Devoteam <b>Sales Challenge</b> live leaderboard. Standings update through the challenge — June 1 to July 3, final in Paris.' },
   { icon: '👆', title: 'OPEN ANY CARD', text: 'Tap any <b>player</b> or <b>team</b> to flip their full stats card — rankings, gross margin and yellow cards.' },
-  { icon: '🔍', title: 'FIND YOURSELF', text: 'Head to <b>My Position</b> and search your name to see all your rankings across the challenge.' }
+  { icon: '🔍', title: 'FIND YOURSELF', text: 'Head to <b>My Position</b> and search your name to see all your rankings across the challenge.' },
+  { icon: '📰', title: "READ THIS WEEK'S RECAP", text: 'Tap the <b>📰</b> in the header for the weekly <b>front page</b> — the cover star, the Golden Boot duel, the Team of the Week and more. A fresh edition lands every Monday.' }
 ];
 function maybeShowTour() {
   if (safeGet(TOUR_KEY) === '1' || safeGet(INTRO_KEY) === '1') return; // only true newcomers
@@ -6427,10 +6425,21 @@ function shareCanvas(cv, filename, person) {
 // hands it to the native share sheet (or downloads it). Mirrors generatePlayerCard:
 // load the logo + the star's portrait (same-origin → no canvas taint), wait for the
 // webfonts, then draw once.
+let shareCoverBusy = false;
+function endShareCover() {
+  shareCoverBusy = false;
+  const b = document.getElementById('digest-share');
+  if (b) { b.disabled = false; b.textContent = '📤'; }
+}
 function shareCover() {
+  if (shareCoverBusy) return; // ignore double-taps while the cover is being built
   const lead = (typeof recapLead === 'function') ? recapLead(weekDigest) : null;
   const person = (lead && lead.person) || sortedGoldenBoot[0];
   if (!person) { showToast('Nothing to share yet ⚽'); return; }
+  shareCoverBusy = true;
+  const btn = document.getElementById('digest-share');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  showToast('🎨 Building your front page…');
   const photoSrc = photoFor(person.name);
   let logo = null, photo = null, pending = 0, done = false;
   const fire = () => {
@@ -6476,7 +6485,6 @@ function drawCover(person, lead, logo, photo) {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fff'; ctx.font = "44px Anton, Impact, sans-serif";
   ctx.fillText('DEVOTEAM WORLD CUP TIMES', W / 2, 76);
-  const wk = (/(\d+)/.exec(period || '') || [])[1];
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 13px Montserrat, Inter, sans-serif';
   ctx.fillText(('📰 THIS WEEK’S RECAP' + (period ? ' · ' + period.toUpperCase() : '')).trim(), W / 2, 100);
   // gold rule
@@ -6542,6 +6550,7 @@ function drawCover(person, lead, logo, photo) {
   ctx.fillText('groupsaleschallenge.vercel.app', W / 2, H - 32);
 
   shareCanvas(cv, 'devoteam-world-cup-cover.png', person);
+  endShareCover();
 }
 
 // Region-level flag stripes — used to theme the Nations export bar after the #1
@@ -8404,11 +8413,11 @@ function recapTicker(d) {
   if (!d) return '';
   const out = [];
   if (d.climbers && d.climbers.length) out.push(recapSection('📈 The Climbers', 'PS Total', d.climbers.map(c =>
-    recapRow(c.name, c.team, `<span class="mag-tbadge up">▲${c.jump}</span>`, `#${c.from}→#${c.to}`)), 'spotlight'));
+    recapRow(c.name, c.team, `<span class="mag-tbadge up">▲${c.jump}</span>`, `#${c.from}→#${c.to}`))));
   if (d.newTop10 && d.newTop10.length) out.push(recapSection('⭐ New in the Top 10', 'PS Total', d.newTop10.map(x =>
-    recapRow(x.name, x.team, `<span class="mag-tbadge rank">#${x.rank}</span>`)), 'spotlight'));
+    recapRow(x.name, x.team, `<span class="mag-tbadge rank">#${x.rank}</span>`))));
   if (d.newCards && d.newCards.length) out.push(recapSection('🟨 VAR Report', 'New yellow cards', d.newCards.map(c =>
-    recapRow(c.name, c.team, `<span class="mag-tbadge card">🟨</span>`)), 'var'));
+    recapRow(c.name, c.team, `<span class="mag-tbadge card">🟨</span>`))));
   return out.join('');
 }
 // "Stat of the Week" — a by-the-numbers band that's always worth a look, even on
@@ -8440,14 +8449,22 @@ function recapStatOfWeek() {
     </section>`;
 }
 // One ranked row in a leaderboard: medal/rank, avatar, name+team, value. Opens the
+// Plain-language tooltip for the salesperson-facing abbreviations.
+const UNIT_GLOSSARY = {
+  'NB': 'PS Bookings — New Business',
+  'NB GM': 'Gross Margin on New Business',
+  'Licence GM': 'Licence Gross Margin',
+  'opps': 'Opportunities created (New Business)'
+};
 // player's card on tap.
 function recapLbRow(rank, p, value, unit) {
   const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : ('#' + rank);
+  const ut = unit ? (UNIT_GLOSSARY[unit] || unit) : '';
   return `<div class="mag-lb-row" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(baseName(p.name))}'s card">
-      <span class="mag-lb-rank r${rank <= 3 ? rank : 'n'}">${medal}</span>
+      <span class="mag-lb-rank r${rank <= 3 ? rank : 'n'}" aria-label="Rank ${rank}">${medal}</span>
       <span class="mag-lb-av">${avatarInner(p.name)}</span>
       <span class="mag-lb-name">${escapeHtml(baseName(p.name))}<em>${escapeHtml(teamShortLabel(p.team))}</em></span>
-      <span class="mag-lb-val">${value}${unit ? `<span class="mag-lb-unit">${unit}</span>` : ''}</span>
+      <span class="mag-lb-val">${value}${unit ? `<span class="mag-lb-unit" title="${escapeHtml(ut)}">${unit}</span>` : ''}</span>
     </div>`;
 }
 // A themed leaderboard section featuring several players. opts: { id, icon, title,
@@ -8622,7 +8639,7 @@ function recapBreaking(d) {
   if (d && d.climbers && d.climbers.length && d.climbers[0].jump >= 2) { const c = d.climbers[0]; items.push(`🚀 ${baseName(c.name)} flying up ${c.jump} places`); }
   if (!items.length) return '';
   const strip = items.map(x => `<span class="mag-news-item">${escapeHtml(x)}</span>`).join('<span class="mag-news-dot">●</span>');
-  return `<div class="mag-news"><span class="mag-news-tag">🔴 Breaking</span><div class="mag-news-wrap"><div class="mag-news-track">${strip}<span class="mag-news-dot">●</span>${strip}</div></div></div>`;
+  return `<div class="mag-news" aria-hidden="true"><span class="mag-news-tag">🔴 Breaking</span><div class="mag-news-wrap"><div class="mag-news-track">${strip}<span class="mag-news-dot">●</span>${strip}</div></div></div>`;
 }
 // "Talking Points" — punchy dressing-room takes, each with the player's face + card.
 function recapTalking(d) {
@@ -8745,6 +8762,9 @@ function openDigest() {
   const el = document.createElement('div');
   el.className = 'modal-overlay';
   el.id = 'digest-overlay';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', "This week's recap");
   el.innerHTML = `
     <div class="modal digest-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -8764,7 +8784,7 @@ function openDigest() {
   const reopening = digestReturnScroll > 0; // came back from a card → restore, don't replay
   if (reopening && mag) mag.classList.add('mag-instant'); // skip the print-in cascade on return
   el.querySelectorAll('.mag > *').forEach((c, i) => c.style.setProperty('--i', i)); // stagger the entrance
-  animateRecapCounts(el); // roll the big gold numbers up from 0 (skipped if reduced-motion)
+  if (!reopening) animateRecapCounts(el); // roll the gold numbers up — but not when returning from a card
   // Reopened after viewing a card → land back at the exact scroll position, not the
   // top. Copy the value locally FIRST: the deferred restores must not read the
   // module variable after it's been reset (that bug scrolled back to the top).
@@ -8786,12 +8806,16 @@ function openDigest() {
   setStick(); requestAnimationFrame(setStick);
   window.addEventListener('resize', setStick);
   syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
-  const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); window.removeEventListener('resize', setStick); };
+  let digestIO = null; // section-highlight observer, disconnected on close
+  const close = () => { if (digestIO) digestIO.disconnect(); el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); window.removeEventListener('resize', setStick); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#digest-close').addEventListener('click', close);
   const shareBtn = el.querySelector('#digest-share');
   if (shareBtn) shareBtn.addEventListener('click', () => { if (typeof shareCover === 'function') shareCover(); });
+  // Move focus into the dialog so keyboard/screen-reader users aren't left on the 📰
+  // button behind the overlay (focus returns to the opener on close via the trap).
+  try { el.querySelector('#digest-close').focus({ preventScroll: true }); } catch (e) {}
   document.addEventListener('keydown', onKey);
   // Quick-nav chips + category badges (kicker / card tags) → smooth-scroll to the
   // matching section inside the paper (stays in the magazine). Stop the click
@@ -8800,15 +8824,6 @@ function openDigest() {
     e.stopPropagation();
     const target = el.querySelector('[data-sec="' + c.getAttribute('data-scrollto') + '"]');
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-  // Tap a category (kicker / card tag / section header) → jump to that board so
-  // it's clear what's being showcased. Stop the click bubbling to the card's
-  // player-open handler underneath.
-  el.querySelectorAll('[data-goboard]').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation();
-    const tab = b.getAttribute('data-goboard');
-    close();
-    if (typeof statGoto === 'function') statGoto(tab);
   }));
   // Tap a player (hero / star card / Stat tile / ticker row) → open that player's
   // card. Guard against a stale name (e.g. a ticker entry whose player dropped out
@@ -8843,7 +8858,7 @@ function openDigest() {
   el.querySelectorAll('.mag-toc-chip[data-scrollto]').forEach(c => { chipBy[c.getAttribute('data-scrollto')] = c; });
   const secEls = el.querySelectorAll('.mag-block[data-sec]');
   if (window.IntersectionObserver && secEls.length) {
-    const io = new IntersectionObserver(entries => {
+    digestIO = new IntersectionObserver(entries => {
       entries.forEach(en => {
         if (!en.isIntersecting) return;
         const id = en.target.getAttribute('data-sec');
@@ -8852,7 +8867,7 @@ function openDigest() {
         if (ch) { ch.classList.add('on'); ch.scrollIntoView({ inline: 'nearest', block: 'nearest' }); }
       });
     }, { root: scroller, rootMargin: '0px 0px -78% 0px', threshold: 0 });
-    secEls.forEach(s => io.observe(s));
+    secEls.forEach(s => digestIO.observe(s));
   }
 }
 

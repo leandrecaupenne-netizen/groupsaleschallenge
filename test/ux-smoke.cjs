@@ -140,6 +140,22 @@ function mockData() {
     const tm = await page.$('[data-team]');
     if (tm) { await tm.click(); await page.waitForTimeout(250); log('Team modal opens', !!(await page.$('#modal-overlay'))); await page.keyboard.press('Escape'); await page.waitForTimeout(120); }
 
+    // Weekly recap / magazine: opens, a player jump opens their card, and Back
+    // returns to the journal (not the menu). Guards the recap's core interactions.
+    await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(100);
+    await page.evaluate(() => { if (typeof window.openDigest === 'function') window.openDigest(); });
+    await page.waitForTimeout(250);
+    log('Recap journal opens', !!(await page.$('#digest-overlay .mag')));
+    const jump = await page.$('#digest-overlay [data-jump]');
+    if (jump) {
+      await jump.click(); await page.waitForTimeout(280);
+      log('Recap → player card opens', !!(await page.$('#player-overlay')));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+      log('Recap is restored after closing the card (not the menu)', !!(await page.$('#digest-overlay')));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+    } else log('Recap journal has a tappable player', false);
+    await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+
     // Global search.
     if (await page.$('#search-btn')) {
       await page.click('#search-btn'); await page.waitForTimeout(220);
