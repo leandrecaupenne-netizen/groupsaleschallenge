@@ -106,6 +106,30 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v3 : magazine permanent + pastille lundi + foil holo + Stat of the Week
+Suite des v1/v2 recap. Fast-forward sur `main`. Commit `22fad6d`.
+
+**🗞️ Magazine permanent.** Demande Léandre : « fait apparaître **constamment** le magazine,
+c'est comme un journal qu'on achète et qu'on vit au fur et à mesure ; et **tous les lundis
+pastille rouge** quand les infos sont nouvelles ». → `applyDigestVisibility()` réécrit : le
+bouton 📰 s'affiche **dès que les classements sont chargés** (`sortedGoldenBoot.length > 0`), plus
+seulement quand `weekDigest.count > 0`. La **cover a toujours du contenu** (hero frontrunner + 3
+Panini + Stat of the Week) même sans digest (`renderRecapMagazine(null)` testé OK). La **pastille
+rouge** ne s'allume que pour une **édition fraîche non lue** (`weekDigest.count && !isDigestSeen`),
+càd au changement de `period` → comportement « nouveau numéro du lundi » conservé.
+
+**✨ Foil holographique.** Cartes Panini + hero : tint arc-en-ciel au survol (`::after`,
+`mix-blend:screen`) + **balayage glossy** qui traverse la carte (`::before` translateX). Désactivé
+sous `prefers-reduced-motion`.
+
+**📊 Stat of the Week** (`recapStatOfWeek`). Bandeau navy « by the numbers », 3 tuiles
+cliquables (→ fiche joueur) : 🎯 meilleure marge NB (parmi ≥ €100K NB), 🔥 photo finish (course
+la plus serrée du podium Golden Boot via `tightRace`), 🅰️ plus gros créateur d'opportunités.
+Inséré entre les cartes Panini et les tickers ; toujours présent (indépendant du digest).
+
+**Vérifs.** 3 scripts JS OK, accolades CSS équilibrées, test runtime « semaine calme » (`d=null`)
+→ hero + 3 `mp-card` + SOTW (3 tuiles : 76.4% / photo finish / 22), 0 ticker vide.
+
 ### 2026-06-15 — Recap v2 : cartes Panini + catégories cliquables (cover image-rich)
 Suite directe de la refonte recap ci-dessous. Fast-forward sur `main`. Commit `4dddc52`.
 
