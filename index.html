@@ -3592,8 +3592,8 @@ async function _fetchDataImpl(fresh) {
     people = (data.people || []).filter(p => p.name); // ignore empty rows
     applyTeamAliases(); // e.g. ALPS → Alps, before names/ranks are computed
     updated_at = data.updated_at;
-    period = data.period || '';
     challenge_dates = data.challenge_dates || {};
+    period = computeAutoPeriod() || data.period || ''; // auto "Week N of 5" from dates, fall back to Config tab
     specialAwards = data.special_awards || {};
 
     // Dedup, GM normalisation and discipline flags all happen in computeRankings →
@@ -3612,6 +3612,29 @@ async function _fetchDataImpl(fresh) {
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+// === Auto period label ("Week N of 5") ===
+// Derive the period from the challenge dates so the label advances on its own each
+// Monday — no weekly hand-edit of the Config tab. Falls back to the backend-provided
+// period when challenge_dates.start is missing. Total weeks come from start→end
+// (defaults to 5). Week is clamped to [1, totalWeeks] so it never shows "Week 0/6".
+function computeAutoPeriod() {
+  const cd = challenge_dates || {};
+  if (!cd.start) return '';
+  const DAY = 86400000;
+  const start = new Date(cd.start + 'T00:00:00');
+  if (isNaN(start.getTime())) return '';
+  let totalWeeks = 5;
+  if (cd.end) {
+    const end = new Date(cd.end + 'T00:00:00');
+    if (!isNaN(end.getTime())) totalWeeks = Math.max(1, Math.ceil((end - start) / (DAY * 7)));
+  }
+  const elapsedDays = Math.floor((Date.now() - start) / DAY);
+  let week = Math.floor(elapsedDays / 7) + 1;
+  if (week < 1) week = 1;
+  if (week > totalWeeks) week = totalWeeks;
+  return 'Week ' + week + ' of ' + totalWeeks;
 }
 
 // === Instant paint: cache the last good payload, hydrate from it on return ===
@@ -3636,8 +3659,8 @@ function hydrateFromSnapshot() {
     people = (data.people || []).filter(p => p.name);
     applyTeamAliases(); // e.g. ALPS → Alps (same as the live fetch path)
     updated_at = data.updated_at;
-    period = data.period || '';
     challenge_dates = data.challenge_dates || {};
+    period = computeAutoPeriod() || data.period || ''; // auto "Week N of 5" from dates, fall back to Config tab
     specialAwards = data.special_awards || {};
     if (!teams.length || !people.length) return false;
     computeRankings();
