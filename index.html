@@ -1363,6 +1363,8 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-totw::after { content: ''; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.14); border-radius: 50%; pointer-events: none; }
 .mag-totw-head { color: #fff; border-bottom-color: rgba(255,255,255,0.25); position: relative; z-index: 1; }
 .mag-totw-head .mag-sech-sub { color: rgba(255,255,255,0.65); }
+.mag-totw-dek { position: relative; z-index: 1; font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.82); margin: 8px 0 2px; }
+.mag-totw-dek b { font-style: normal; color: #fff; }
 .mag-totw-pitch { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 12px; margin-top: 14px; }
 .mag-totw-pick { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; cursor: pointer; }
 .mag-totw-face { position: relative; width: 70px; height: 70px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(165deg, var(--tc, #444), #0f3d22 88%); box-shadow: 0 5px 14px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.25); transition: transform 0.14s; }
@@ -8199,15 +8201,22 @@ function countSpan(cls, text, raw, fmt) {
   const ok = raw != null && isFinite(raw);
   return `<span class="${cls}"${ok ? ` data-cv="${raw}" data-cf="${fmt}"` : ''}>${text}</span>`;
 }
+// Category links (hero kicker, card tags) navigate WITHIN the issue — they scroll
+// to the matching in-journal section instead of leaving the magazine. Falls back to
+// opening the full board only if no in-issue section matches.
+function recapCatAttr(tab) {
+  const map = { golden: 'golden', playmaker: 'playmaker', teams: 'nation', spotlight: 'stars', var: 'fairplay', rookies: 'rookies', licence: 'licence' };
+  return map[tab] ? `data-scrollto="${map[tab]}"` : `data-goboard="${tab}"`;
+}
 // A collectible Panini-style card: team-tinted foil, big portrait, flag, rank
-// ribbon and headline stat. The whole card opens the player; the category tag is
-// a separate link that jumps to that board so it's clear what's being showcased.
+// ribbon and headline stat. The whole card opens the player; the category tag
+// scrolls to that section deeper in the issue (stays in the magazine).
 function recapPanini(p, opts) {
   const team = opts.teamName || p.team;
   const color = colorForTeam(team);
   const ph = photoFor(p.name), ini = avatarInitials(p.name);
   const tag = opts.tab
-    ? `<button class="mp-tag" data-goboard="${opts.tab}" title="Open the ${escapeHtml(opts.tagText)} board">${opts.tagText} ↗</button>`
+    ? `<button class="mp-tag" ${recapCatAttr(opts.tab)} title="Jump to ${escapeHtml(opts.tagText)} in this issue">${opts.tagText} ↗</button>`
     : `<span class="mp-tag">${opts.tagText}</span>`;
   return `<article class="mp-card${opts.gold ? ' mp-gold' : ''}" style="--tc:${color}" data-jump="${escapeHtml(p.name)}" title="View ${escapeHtml(p.name)}'s card">
       ${tag}
@@ -8407,6 +8416,7 @@ function recapTeamOfWeek() {
   if (slots.length < 3) return '';
   return `<section class="mag-totw">
       <div class="mag-sech mag-totw-head">🌟 Team of the Week <span class="mag-sech-sub">The matchday XI</span></div>
+      <p class="mag-totw-dek">One standout per role: the <b>top scorer</b> (Golden Boot, PS New Business), the <b>top assist-maker</b> (opportunities created), the sharpest <b>finisher</b> (best NB margin), the best <b>rookie</b> (under a year) and the top scorer with a <b>clean VAR record</b>. Each name appears once.</p>
       <div class="mag-totw-pitch">${slots.map(s => `
         <div class="mag-totw-pick" data-jump="${escapeHtml(s.p.name)}" title="View ${escapeHtml(baseName(s.p.name))}'s card" style="--tc:${colorForTeam(s.p.team)}">
           <div class="mag-totw-face${photoFor(s.p.name) ? ' has-photo' : ''}">
@@ -8527,7 +8537,7 @@ function renderRecapMagazine(d) {
           </div>
         </div>
         <div class="mag-hero-text">
-          <button class="mag-kicker" data-goboard="${lead.tab}">${lead.kicker} ↗</button>
+          <button class="mag-kicker" ${recapCatAttr(lead.tab)} title="Jump to this section in the issue">${lead.kicker} ↗</button>
           <h1 class="mag-headline">${lead.headline}</h1>
           <p class="mag-standfirst">${lead.stand}</p>
           <span class="mag-hero-cta">👆 Tap to open the card</span>
@@ -8538,7 +8548,7 @@ function renderRecapMagazine(d) {
     // real link; the article itself isn't a player target (so no misleading cursor).
     hero = `<article class="mag-hero mag-hero-noimg">
         <div class="mag-hero-text">
-          <button class="mag-kicker" data-goboard="${lead.tab}">${lead.kicker} ↗</button>
+          <button class="mag-kicker" ${recapCatAttr(lead.tab)} title="Jump to this section in the issue">${lead.kicker} ↗</button>
           <h1 class="mag-headline">${lead.headline}</h1>
           <p class="mag-standfirst">${lead.stand}</p>
         </div>
@@ -8622,8 +8632,11 @@ function openDigest() {
   el.addEventListener('click', e => { if (e.target === el) close(); });
   el.querySelector('#digest-close').addEventListener('click', close);
   document.addEventListener('keydown', onKey);
-  // "In this issue" quick-nav → smooth-scroll to the section inside the paper.
-  el.querySelectorAll('[data-scrollto]').forEach(c => c.addEventListener('click', () => {
+  // Quick-nav chips + category badges (kicker / card tags) → smooth-scroll to the
+  // matching section inside the paper (stays in the magazine). Stop the click
+  // bubbling so a badge inside a clickable card doesn't also open the player.
+  el.querySelectorAll('[data-scrollto]').forEach(c => c.addEventListener('click', e => {
+    e.stopPropagation();
     const target = el.querySelector('[data-sec="' + c.getAttribute('data-scrollto') + '"]');
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));

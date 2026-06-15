@@ -106,6 +106,45 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v9 : BREAKING + Talking Points + Nation + KPIs clairs/cliquables + scroll
+Léandre (3 retours) : « faut que ça claque » ; « €1.27M oui mais quoi ? précise toujours (NB…)
+et rends **chaque KPI cliquable** » ; « Back depuis une carte → revient au journal **au même
+niveau**, pas tout en haut ». Fast-forward `main`. Commit `10a9128`.
+
+**Nouveau contenu (esprit Mondial) :**
+- **Bandeau BREAKING défilant** en tête (marquee, pause au survol, `reduced-motion` → statique
+  scrollable). Teasers data-driven.
+- **Talking Points** (`recapTalking`) : 3 brèves de vestiaire **avec visage** + carte cliquable.
+- **Nation of the Week** (`recapNation`) : top team, **grand drapeau**, capitaine (visage), stat
+  moyenne **cliquable** → Team Ranking.
+
+**Clarté KPIs (de quoi parle-t-on + cliquable) :**
+- Duel : valeurs étiquetées **« PS New Business »** ; légende + pull-quote disent « New Business ».
+- Stat of the Week : libellés clarifiés (**Sharpest NB margin**, **NB gap · #x vs #y**,
+  **Opportunities created**).
+- Team of the Week : chaque stat porte son **unité** (NB / GM / opps).
+- Nation : la moyenne devient un **bouton** vers le Team Ranking.
+- (Rappel : tout KPI vit dans un élément cliquable → ouvre la fiche Panini qui explique chaque
+  chiffre via ses tuiles `data-explain`.)
+
+**Fix UX scroll** : ouvrir une carte depuis le journal **mémorise la position de scroll**
+(`digestReturnScroll`, lue sur `.digest-modal`/overlay) ; à la réouverture du journal (Back/Esc/
+bouton), on **restaure exactement** ce niveau au lieu de revenir en haut.
+
+**Navigation interne (ne plus sortir du journal)** : le **bouton rouge (kicker)** du hero et les
+**tags** des cartes Panini ne **quittent plus** le journal — ils **scrollent vers la section
+correspondante** dans le numéro (`recapCatAttr` → `data-scrollto` ; map tab→section
+golden/playmaker/nation/stars/fairplay/rookies/licence). Le handler `data-scrollto` fait
+`stopPropagation` (ne pas ouvrir la fiche en même temps). Les **en-têtes de classement** gardent
+le ↗ « voir le board complet » (sortie délibérée, assumée).
+
+**Team of the Week explicable** : ajout d'un **chapô** qui explique la sélection (« un titulaire
+par rôle : top scorer Golden Boot / top assists / meilleure marge NB / meilleur rookie / top
+scorer au casier VAR vierge — chaque nom une seule fois »).
+
+**Vérif runtime** : breaking/talking/nation présents, labels NB OK partout, stat nation =
+bouton goboard, kicker/tags = `data-scrollto`, chapô TOTW présent, 14 sections TOC. JS/CSS OK.
+
 ### 2026-06-15 — Recap v8 : plume éditoriale (chapôs, pull-quote, Une variable)
 Toujours « faire vivre le journal ». Fast-forward `main`. Commit `798e6e1`.
 
