@@ -106,6 +106,24 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Fix CI (UX tests) + fonts self-hosted + Nation redesign
+CI « UX tests » au rouge (capture Léandre). Diagnostic local (Playwright 1.56.1 +
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`) → 2 causes corrigées. Commit `a846e71`.
+
+- **Cause 1 (smoke)** : le `<link>` **Google Fonts** déclenchait `Failed to load resource`
+  (console error) → `ux-smoke.cjs` échoue (il fail sur toute erreur console). **Fix = fonts
+  self-hosted** : Montserrat (variable) + Anton en **woff2 latin** dans `/fonts` (56 KB total).
+  Plus aucun CDN externe → conforme au brief, marche même si Google Fonts bloqué. CSP `vercel.json`
+  remise à `font-src 'self'` ; header cache 1 an immutable sur `/fonts/*.woff2`.
+- **Cause 2 (e2e)** : maintenant qu'**Anton se charge vraiment**, la line-box du `.pc-name`
+  (gros titre) **recouvrait** le badge 🟨 flottant de la carte joueur → plus tappable
+  (`elementFromPoint` renvoyait `.pc-name`). **Fix** : `.pc-card > .pc-avatar { z-index: 4 }`
+  (le badge vit dans le stacking context de l'avatar) → badge de nouveau cliquable.
+- **Nation of the Week redesign** : drapeau + bloc pays + **chip capitaine** (gros avatar,
+  label « ⭐ Captain » au-dessus du nom) à la place de la pastille du bas, mal disposée.
+
+**Vérif locale (= 3 jobs CI) : ESLint exit 0, UX smoke ALL GREEN, UX e2e ALL GREEN.**
+
 ### 2026-06-15 — Police : Montserrat (UI) + Anton (display) en webfonts
 Léandre : « pour la police, mets du Montserrat ». Commit `0e302ea`.
 Avant : `Inter`/`Anton` étaient juste **nommés** (jamais chargés → fallback système/Impact). Ajout
