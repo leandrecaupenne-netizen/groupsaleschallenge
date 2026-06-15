@@ -1655,6 +1655,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
   font-size: 18px;
   display: flex; align-items: center; justify-content: center;
   flex: 0 0 auto;
+  position: relative; /* anchor the .digest-dot to this button, not the header corner */
   transition: background 0.15s, transform 0.3s;
 }
 .refresh-btn:hover { background: rgba(255,255,255,0.25); }
