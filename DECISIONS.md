@@ -106,6 +106,22 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v8 : plume éditoriale (chapôs, pull-quote, Une variable)
+Toujours « faire vivre le journal ». Fast-forward `main`. Commit `798e6e1`.
+
+- **Chapôs (deks)** sous chaque classement, **générés depuis la data** (italique serif) :
+  Golden Boots « X sets the target at €Y — Z gives chase », Best Opportunities « X is the
+  supply line… », Margins « Quality over quantity — X converts at Z% », Rookies, Licence,
+  Clean Sheets. `recapBoard` accepte désormais `dek`.
+- **Pull-quote** (`recapPullQuote`) entre Stat of the Week et les classements : le chiffre
+  signature de la semaine en très gros (« €1.27M and counting. ») + byline, cliquable → fiche.
+- **Titre de Une variable** : pour le cas frontrunner, le verbe **tourne avec la semaine**
+  (`verbs[wk % n]` : SETS THE PACE / LEADS THE CHASE / OUT IN FRONT / TOPS THE CHARTS / …) pour
+  que la couverture ne soit pas identique chaque lundi.
+
+**Vérif runtime** : pull-quote OK (« €1.27M »), 6 deks data-driven corrects, Une « Erjona GURINA
+TOPS THE CHARTS » (semaine 3). JS/CSS OK.
+
 ### 2026-06-15 — Recap v7 : Team of the Week (le XI) + signature rédaction
 Léandre : « imagine que tu es un journaliste spécial Coupe du Monde sales Devoteam, fais vivre
 ton journal pour le vendre ». Fast-forward `main`. Commit `bd31f59`.
