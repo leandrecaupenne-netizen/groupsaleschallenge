@@ -3246,6 +3246,7 @@ let varReviewName = null;   // player under VAR review (their card + verdict but
 let nationReturnTo = null;  // nation to reopen when closing a team modal opened from within it
 let playerReturnToTeam = null; // team to reopen when closing a player card opened from a team modal
 let playerReturnToNation = null; // nation to reopen when closing a player card opened from a nation modal
+let playerReturnToDigest = false; // reopen the weekly magazine when closing a player card opened from it
 let modalReturnFocus = null; // a11y: selector of the control that opened a modal, refocused on close (WCAG 2.4.3)
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
@@ -3585,6 +3586,7 @@ function applyTabState(tab) {
 function statGoto(tab) {
   hideCardsPop();
   openPlayerModal = null; openTeamModal = null; openNationModal = null;
+  playerReturnToTeam = playerReturnToNation = null; playerReturnToDigest = false; // jumping to a board clears any pending return
   document.body.style.overflow = '';
   applyTabState(tab); render();
   snapSectionRobust(); // land on the ranking, not the hero/podium (real-device safe)
@@ -6526,7 +6528,7 @@ function renderPlayerModal() {
     <div class="modal-overlay" id="player-overlay" role="dialog" aria-modal="true" aria-label="Player card">
       <div class="pc-modal" onclick="event.stopPropagation()">
         <div class="pc-topbar">
-          <button class="pc-back" id="player-back-btn" aria-label="Back">${(playerReturnToTeam || playerReturnToNation) ? '← Back' : '← Close'}</button>
+          <button class="pc-back" id="player-back-btn" aria-label="Back">${(playerReturnToTeam || playerReturnToNation || playerReturnToDigest) ? '← Back' : '← Close'}</button>
           <button class="modal-close pc-close" id="player-close-btn" aria-label="Close">×</button>
         </div>
         ${paniniCardInner(p)}
@@ -7118,6 +7120,7 @@ function render() {
   // Any player element (match-sheet cards/rows, Players-view rows, VAR rows)
   // opens the SAME Panini-style player card — one consistent experience.
   document.querySelectorAll('[data-player]').forEach(el => el.addEventListener('click', () => {
+    playerReturnToDigest = false; // in-app card opens never return to the magazine
     // If opened from inside the team/nation modal, remember it so closing the card
     // returns there (and close that modal so they don't stack).
     if (el.dataset.fromTeam && openTeamModal) { playerReturnToTeam = openTeamModal; openTeamModal = null; }
@@ -7146,6 +7149,7 @@ function render() {
     openPlayerModal = null;
     if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; render(); }
     else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; render(); }
+    else if (playerReturnToDigest) { playerReturnToDigest = false; document.body.style.overflow = ''; render(); openDigest(); }
     else { document.body.style.overflow = ''; render(); }
   };
   const pClose = document.getElementById('player-close-btn');
@@ -7184,6 +7188,7 @@ function render() {
   }
   const pTeamLink = document.querySelector('.pc-team-link[data-team]');
   if (pTeamLink) pTeamLink.addEventListener('click', () => {
+    playerReturnToDigest = false; // navigating into the squad leaves the magazine context
     openPlayerModal = null; openTeamModal = pTeamLink.dataset.team; render(); document.body.style.overflow = 'hidden';
   });
   document.querySelectorAll('.pc-share[data-share]').forEach(pShare => pShare.addEventListener('click', () => {
@@ -7681,6 +7686,7 @@ function closeTopLayer() {
     openPlayerModal = null;
     if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; }
     else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; }
+    else if (playerReturnToDigest) { playerReturnToDigest = false; document.body.style.overflow = ''; render(); openDigest(); return; }
     else if (coachDive) { /* card was opened over the coach dive → keep the dive */ }
     else { document.body.style.overflow = ''; }
     render(); return;
@@ -7738,6 +7744,7 @@ document.addEventListener('keydown', e => {
     openPlayerModal = null;
     if (playerReturnToTeam) { openTeamModal = playerReturnToTeam; playerReturnToTeam = null; }
     else if (playerReturnToNation) { openNationModal = playerReturnToNation; playerReturnToNation = null; }
+    else if (playerReturnToDigest) { playerReturnToDigest = false; document.body.style.overflow = ''; render(); openDigest(); return; }
     else if (coachDive) { /* card was opened over the dive → keep the dive open */ }
     else { document.body.style.overflow = ''; }
     render(); return;
@@ -8256,6 +8263,9 @@ function openDigest() {
   el.querySelectorAll('[data-jump]').forEach(n => n.addEventListener('click', () => {
     const nm = n.getAttribute('data-jump');
     if (!people.some(p => p.name === nm)) return; // stale → do nothing, keep the cover open
+    // Remember the magazine so closing the card (Back / Esc / button) returns here,
+    // not to the main menu.
+    playerReturnToDigest = true;
     close(); openPlayerModal = nm; render(); document.body.style.overflow = 'hidden';
   }));
 }
