@@ -210,6 +210,36 @@ function mockData() {
       log('No content clipped inside a box on mobile (360px, all tabs)', allClipped.length === 0, allClipped.slice(0, 4).join(' | '));
     }
 
+    // Board hero text never clips or runs under the #1 portrait. The generic clip
+    // scan above allowlists `hero` (decorative bg can overflow), so this targets the
+    // hero's actual TEXT: a nowrap label that overflows its column and slides under
+    // the avatar (the "New Business déborde" bug) is caught here.
+    {
+      const heroBad = [];
+      await page.setViewportSize({ width: 360, height: 800 }); await page.waitForTimeout(120);
+      for (const t of ['golden', 'playmaker', 'rookies', 'licence', 'spotlight']) {
+        if (!(await page.$(`.tab-btn[data-tab="${t}"]`))) continue;
+        await page.click(`.tab-btn[data-tab="${t}"]`).catch(() => {});
+        await page.waitForTimeout(160);
+        const bad = await page.evaluate(() => {
+          const out = [];
+          document.querySelectorAll('.ms-hero').forEach(h => {
+            const av = h.querySelector('.ms-hero-avatar');
+            const avL = av ? av.getBoundingClientRect().left : Infinity;
+            h.querySelectorAll('.ms-hero-name, .ms-hero-stat, .ms-hero-stat-label, .ms-hero-team').forEach(el => {
+              const cls = (typeof el.className === 'string' ? el.className.split(/\s+/)[0] : 'el');
+              if (el.scrollWidth > el.clientWidth + 2) out.push(cls + ' clipped+' + (el.scrollWidth - el.clientWidth));
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.right > avL + 1) out.push(cls + ' under-portrait');
+            });
+          });
+          return [...new Set(out)];
+        });
+        if (bad.length) heroBad.push(`${t}: ${bad.join(', ')}`);
+      }
+      log('Board hero text fits & clears the portrait (no overflow under avatar)', heroBad.length === 0, heroBad.slice(0, 4).join(' | '));
+    }
+
     // Player card at the smallest phone width (320px): the 4-up hero stat row must
     // fit (no overflow), and tapping a stat must open an explainer that stays on
     // screen. Guards the responsive regression from adding the ⓘ affordances.
