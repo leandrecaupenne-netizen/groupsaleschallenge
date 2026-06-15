@@ -106,6 +106,25 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Partage de la « une » en image + liste portraits prioritaires
+Commit `64a9ace`. Les 2 pistes proposées, livrées.
+
+- **📤 Partager la une** : bouton dans le header du journal → `shareCover()` charge logo +
+  portrait du cover star, attend les webfonts, puis `drawCover()` dessine une **image portrait
+  720×900 @2x** (masthead + N° + kicker + portrait + nom + stat NB + ruban « la semaine »
+  Golden Boot/Playmaker/Top Team + footer « Grand Final · J-N » + URL). Remis au **partage natif**
+  (`navigator.share` fichier) avec **fallback download** (réutilise `shareCanvas`). Testé headless :
+  2 `toBlob`, 0 erreur.
+- **Sticky fix** : le masthead étant lui aussi `sticky` (z-index 10), la quick-nav est désormais
+  **épinglée juste sous le header** (hauteur mesurée en JS → `tocEl.style.top`), avec
+  `--stick` pour le `scroll-margin-top` des sections. Listener resize nettoyé à la fermeture.
+- **`PORTRAITS_TODO.md`** : croisé data live × `cards/`. Parmi les **vedettes**, seulement **5**
+  à traiter — **3 déjà présents sous un slug proche** (à renommer : `alejandro-rubio`→`-fabian`,
+  `lucas-femina`→`lucas-femenia`, `simon-dhont`→`simon-dhondt`) + **2 à générer**
+  (Pablo MARTIN GUTIERREZ, Noor BENACHAIBA). Procédure rappelée dans le fichier.
+
+**Vérif** : ESLint + UX smoke + UX e2e verts ; génération cover sans erreur.
+
 ### 2026-06-15 — Repasse UX globale du journal (nav collante, a11y, retours fluides)
 Léandre : « repasse globale + améliore l'UX au max sur le journal ». Commit `738e045`.
 Revue de cohérence + 4 améliorations (CI re-vérifiée verte : ESLint + smoke + e2e) :
