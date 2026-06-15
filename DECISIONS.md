@@ -106,6 +106,23 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Suite revue : 4 chantiers choisis par Léandre appliqués
+Léandre a tranché les sujets « laissés au choix ». Commits `d4bd0d3` (accordéon) + `d2e8d39`
+(a11y/scroll/header). CI verte (ESLint + smoke + e2e).
+
+1. **Classements en accordéon** (P1-1, option « regrouper ») : les 6 leaderboards → une section
+   « The Leaderboards » de `<details>` natifs (1er ouvert, autres en teaser → tap pour déplier,
+   accessibles clavier). TOC : 6 chips → 1. Les badges catégorie (kicker/tags) **déplient + scroll**
+   vers le bon board. Journal bien plus court, richesse conservée.
+2. **A11y toutes modales** (P0-2/P0-3) : helper `setDialogA11y()` → `role=dialog`+`aria-modal`+
+   `aria-label` sur digest/rules/search/compare ; focus déplacé dans le dialog à l'ouverture
+   (digest + rules ; search/compare focalisaient déjà un input).
+3. **Conteneur de scroll unique** (P1-4) : `#digest-overlay { overflow:hidden }` → le journal
+   scrolle uniquement dans `.digest-modal`, épinglage sticky déterministe.
+4. **Menu ⋯ header mobile** (P2-1) : ≤560px, les boutons secondaires (🌙/ℹ️/📲/📺) se replient
+   derrière un ⋯ (ferme au clic extérieur/Échap/sélection) ; cibles tactiles **44px**. Desktop
+   inchangé (`display:contents`). Vérifié headless : toggle OK, ⋯ = 44px.
+
 ### 2026-06-15 — Revue de code + analyse UX complètes (2 agents) → correctifs sûrs appliqués
 Léandre : « revue complète du code + analyse UX complète ». 2 agents lancés en // (code review +
 UX). Synthèse priorisée ; correctifs sûrs appliqués (commit `2f6d833`), gros sujets laissés au
