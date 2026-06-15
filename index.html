@@ -1350,6 +1350,30 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mp-stat { font-family: 'Anton', Impact, sans-serif; font-size: 22px; color: var(--gold); letter-spacing: 0.01em; }
 .mp-statlabel { font-family: ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.65); }
 
+/* Holographic foil: a rainbow tint that warms on hover + a glossy sweep across
+   the card, so the Panini cards feel like real trading cards. */
+.mp-card::before { content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.40) 48%, transparent 62%); transform: translateX(-130%); transition: transform 0.65s ease; }
+.mp-card:hover::before { transform: translateX(130%); }
+.mp-card::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 0.25s ease; background: linear-gradient(125deg, rgba(255,0,128,0.16), rgba(0,200,255,0.16) 42%, rgba(255,225,0,0.16) 78%); mix-blend-mode: screen; }
+.mp-card:hover::after { opacity: 1; }
+.mag-hero-card::before { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.32) 48%, transparent 62%); transform: translateX(-130%); transition: transform 0.75s ease; }
+.mag-hero:hover .mag-hero-card::before { transform: translateX(130%); }
+@media (prefers-reduced-motion: reduce) {
+  .mp-card::before, .mag-hero-card::before { display: none; }
+}
+
+/* Stat of the Week — a "by the numbers" band in the paper */
+.mag-sotw { border-radius: 16px; overflow: hidden; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); border: 1px solid rgba(255,255,255,0.1); }
+.mag-sotw-head { font-family: 'Anton', Impact, sans-serif; font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gold); padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+.mag-sotw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.mag-sotw-tile { position: relative; padding: 14px 12px; text-align: center; color: #fff; cursor: pointer; border-right: 1px solid rgba(255,255,255,0.08); transition: background 0.15s; }
+.mag-sotw-tile:last-child { border-right: none; }
+.mag-sotw-tile:hover { background: rgba(255,255,255,0.06); }
+.mag-sotw-ico { font-size: 18px; }
+.mag-sotw-val { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1.1; margin-top: 2px; }
+.mag-sotw-lbl { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 3px; }
+.mag-sotw-who { font-size: 11px; font-weight: 700; color: #fff; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Round avatar disc used in the tickers */
 .mag-av { width: 44px; height: 44px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 15px; }
 
@@ -8062,6 +8086,34 @@ function recapTicker(d) {
     recapRow(c.name, c.team, `<span class="mag-tbadge card">🟨</span>`)), 'var'));
   return out.join('');
 }
+// "Stat of the Week" — a by-the-numbers band that's always worth a look, even on
+// a quiet week: sharpest margin (quality deal), tightest race at the top, and the
+// week's biggest opportunity creator. Each tile opens the player's card.
+function recapStatOfWeek() {
+  const tiles = [];
+  // Sharpest New Business margin among reps with a meaningful book (≥ €100K NB).
+  const sharp = people
+    .filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null)
+    .sort((a, b) => indivGm(b) - indivGm(a))[0];
+  if (sharp) tiles.push({ icon: '🎯', value: fmtPct(indivGm(sharp)), label: 'Sharpest margin', name: sharp.name, sub: fmtMoney(sharp.ps_nb) + ' NB' });
+  // Tightest race at the top of the Golden Boot (closest non-zero gap on podium).
+  const race = tightRace(sortedGoldenBoot, p => p.ps_nb || 0, 'money');
+  if (race && race.leader && race.chaser) tiles.push({ icon: '🔥', value: fmtMoney(race.gap), label: `Photo finish · #${race.rankA} vs #${race.rankB}`, name: race.leader.name, sub: 'ahead of ' + baseName(race.chaser.name) });
+  // The week's biggest opportunity creator (the Playmaker headline number).
+  const pm = sortedPlaymaker[0];
+  if (pm && (pm.opps || 0) > 0) tiles.push({ icon: '🅰️', value: String(Math.round(pm.opps)), label: 'Most assists', name: pm.name, sub: 'opportunities created' });
+  if (!tiles.length) return '';
+  return `<section class="mag-sotw">
+      <div class="mag-sotw-head">📊 Stat of the Week</div>
+      <div class="mag-sotw-grid">${tiles.map(tt => `
+        <div class="mag-sotw-tile" data-jump="${escapeHtml(tt.name)}" title="View ${escapeHtml(baseName(tt.name))}'s card">
+          <div class="mag-sotw-ico">${tt.icon}</div>
+          <div class="mag-sotw-val">${tt.value}</div>
+          <div class="mag-sotw-lbl">${tt.label}</div>
+          <div class="mag-sotw-who">${escapeHtml(baseName(tt.name))} · ${escapeHtml(tt.sub)}</div>
+        </div>`).join('')}</div>
+    </section>`;
+}
 function renderRecapMagazine(d) {
   const lead = recapLead(d);
   let hero = '';
@@ -8092,7 +8144,7 @@ function renderRecapMagazine(d) {
         </div>
       </article>`;
   }
-  return `<div class="mag">${hero}${recapStarCards(d)}${recapTicker(d)}</div>`;
+  return `<div class="mag">${hero}${recapStarCards(d)}${recapStatOfWeek()}${recapTicker(d)}</div>`;
 }
 
 // === Weekly recap modal ("what changed since last update") ===
@@ -8147,18 +8199,21 @@ function openDigest() {
   }));
 }
 
-// Show the 📰 button (with a notification dot) only when a digest exists and the
-// user hasn't opened this period's recap yet.
+// The 📰 magazine button is shown CONSTANTLY once standings are loaded — the
+// recap is a paper you can open any time. The red dot only lights up when a fresh
+// weekly edition (new period detected) hasn't been opened yet — i.e. on Mondays
+// after Jose's update.
 function digestSeenKey() { return 'devoteam_wc_digestseen_' + (weekDigest && weekDigest.period ? weekDigest.period : ''); }
 function isDigestSeen() { try { return safeGet(digestSeenKey()) === '1'; } catch (e) { return false; } }
 function markDigestSeen() { try { safeSet(digestSeenKey(), '1'); } catch (e) {} const dot = document.getElementById('digest-dot'); if (dot) dot.style.display = 'none'; }
 function applyDigestVisibility() {
   const btn = document.getElementById('digest-btn');
   if (!btn) return;
-  const has = !!(weekDigest && weekDigest.count);
-  btn.style.display = has ? 'flex' : 'none';
+  const ready = sortedGoldenBoot.length > 0; // standings loaded → the cover has content
+  btn.style.display = ready ? 'flex' : 'none';
   const dot = document.getElementById('digest-dot');
-  if (dot) dot.style.display = (has && !isDigestSeen()) ? 'block' : 'none';
+  const fresh = !!(weekDigest && weekDigest.count) && !isDigestSeen();
+  if (dot) dot.style.display = (ready && fresh) ? 'block' : 'none';
 }
 
 // === Rules & Awards modal (self-contained overlay) ===
