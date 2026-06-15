@@ -106,6 +106,24 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Période auto « Week N of 5 » (plus d'édition hebdo manuelle)
+Session chat pilotée par Léandre. Développé sur `claude/clever-cori-vs8s31` puis **fast-forward
+sur `main`** (accord explicite → prod redéployée).
+
+**🗓️ Auto-calcul du label de période.** Le header affichait une semaine figée (valeur du champ
+`period` du Config tab / `SETTINGS.PERIOD`), qu'il fallait éditer **à la main chaque lundi**.
+Désormais `computeAutoPeriod()` (`index.html`) **dérive la semaine** à partir de
+`challenge_dates` : `start` (= **2026-06-01**, lundi du coup d'envoi) → semaine courante, et
+`start→end` → nombre total de semaines (**défaut 5**). La semaine est **bornée à [1, totalWeeks]**
+(jamais « Week 0/6 »). Câblé dans **les deux chemins** qui posent `period` (fetch live **et**
+hydrate instant-paint) : `period = computeAutoPeriod() || data.period || ''` → l'auto prend le
+dessus, **fallback** sur le Config tab si `challenge_dates.start` manque. Vérifié :
+15/06 → « Week 3 of 5 », 22/06 → « Week 4 », après le 03/07 → « Week 5 » (plafonné). Commit `468137c`.
+
+**🧭 Confusion résolue en séance** : le départ officiel est bien le **lundi 1er juin** (et non
+« lundi dernier 08/06 »), donc au 15/06 on est en **semaine 3** — l'auto-calcul tombe juste.
+Le champ `period` du Config tab devient **facultatif** (laissé comme filet de secours).
+
 ### 2026-06-13 — Classements complets partout + UX modals + flags Alps/Nordics + repasse globale
 Session pilotée par Léandre en chat (itérations rapides à partir de captures). Tout développé
 sur `claude/clever-cori-vs8s31` puis **fast-forward sur `main`** (avec accord explicite à chaque
