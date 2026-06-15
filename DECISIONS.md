@@ -106,6 +106,26 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v10 : AUCUN lien ne sort du journal + valeurs unitées + fix scroll
+Léandre (3 retours) : « les liens (Golden Boots, Licence…) me **font sortir** du journal — pas
+ce que je veux, vérifie TOUS les liens » ; « les valeurs des classements = quoi ? **NB ?** » ;
+« revenir d'une carte me remet **en haut** du journal, pas à l'endroit cliqué ». Commit `77ef823`.
+
+- **Zéro sortie** : vérifié runtime → **0 `data-goboard`** dans le journal. En-têtes de classement
+  (`recapBoard`) et de tickers (`recapSection`) repassés en **`<h3>` simples** (plus de ↗ board) ;
+  **Nation** : suppression des boutons « Table ↗ » et stat-lien. Les badges catégorie (kicker
+  rouge + tags Panini) → **`recapCatAttr` renvoie toujours `data-scrollto`** (scroll interne, no-op
+  si pas de section). Seule « sortie » = fermer le journal (× / Back). Les cartes joueur restent
+  des overlays internes (Back revient au journal).
+- **Valeurs unitées** : chaque ligne de classement affiche son unité via `recapLbRow(…, unit)` →
+  **NB / opps / NB GM / Licence GM** (Clean Sheets = NB). Header + ligne now sans ambiguïté.
+- **Fix scroll restore** : le bug venait du `requestAnimationFrame` qui relisait
+  `digestReturnScroll` **après** sa remise à 0 → scroll 0 (haut). Corrigé : copie locale `y`
+  d'abord, puis `restore()` synchrone + rAF + `setTimeout(60)` → on revient **pile** à l'endroit.
+
+**Vérif runtime** : 0 goboard, unités {NB, opps, NB GM, Licence GM}, 18 liens scrollto internes,
+55 cartes data-jump, Nation sans goboard. JS/CSS OK.
+
 ### 2026-06-15 — Recap v9 : BREAKING + Talking Points + Nation + KPIs clairs/cliquables + scroll
 Léandre (3 retours) : « faut que ça claque » ; « €1.27M oui mais quoi ? précise toujours (NB…)
 et rends **chaque KPI cliquable** » ; « Back depuis une carte → revient au journal **au même
