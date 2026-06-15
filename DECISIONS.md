@@ -106,6 +106,41 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Weekly recap refait en « une » de magazine sportif (style L'Équipe)
+Session chat pilotée par Léandre, **fast-forward sur `main`**. Commit `b3dcd24`.
+
+**❓ Constat.** Le bouton 📰 « THIS WEEK'S RECAP » ouvrait une **liste plate** de petits
+changements de rang (« up 1 #273→#272 »…) → jugé **triste et sans saveur**. Demande : en faire
+une **première page de magazine** (gros titres « presse », highlights, mise en avant des
+meilleurs joueurs) qui **donne envie**.
+
+**📰 Refonte (`index.html`, `openDigest`).** Le corps du modal est désormais produit par
+`renderRecapMagazine(d)` et ses helpers :
+- **Masthead** dans le header du modal : nameplate `DEVOTEAM WORLD CUP TIMES` + dateline
+  monospace (« 📰 This Week's Recap · since Week N · Week N of 5 »), filet de séparation.
+- **Hero / lead story** (`recapLead`) = **le** gros titre de la semaine, choisi par priorité :
+  1) nouveau #1 (Team/Golden Boot/Playmaker) → « X SEIZES THE GOLDEN BOOT » ; 2) sinon plus
+  gros grimpeur si saut ≥ 2 → « X ON THE RISE » ; 3) sinon le **frontrunner** actuel du Golden
+  Boot → « X SETS THE PACE » (⇒ jamais vide, même une semaine calme). Photo grande (`photoFor`,
+  fallback initiales ; drapeau si lead = équipe), kicker rouge en pastille, headline Anton géant,
+  standfirst en serif (Georgia) pour le côté presse.
+- **Star cards** (`recapStarCards`) = 3 cartes des leaders **actuels** : 🥇 Golden Boot
+  (`ps_nb`), 🎩 Playmaker (`opps`), 🏆 Top Team (`avg_ps`). Carte Golden Boot dorée.
+- **Tickers presse** (`recapTicker`) : 📈 The Climbers, ⭐ New in the Top 10, 🟨 VAR Report
+  (nouveaux cartons), chacun affiché **seulement s'il y a du contenu**.
+- **Interactions** : tap sur un joueur (hero / carte / ligne) → sa carte ; tap sur la carte
+  Top Team → drilldown équipe (binding élargi à `[data-jump]` + nouveau `[data-jump-team]`).
+- Responsive (grille 3→1 col, hero compacté < 560px) + variantes dark theme.
+
+**Nettoyage.** Anciens helper `digestRow` et CSS `.digest-row/.digest-section/.digest-h/...`
+**supprimés** (0 référence restante). Vérifs : 3 scripts JS OK, accolades CSS équilibrées,
+test runtime des builders sur données live (hero/grid/ticker présents, les 3 priorités de lead
+correctes, stats cartes €1.27M / 22 / €547K).
+
+**Note produit** : le bouton 📰 + pastille n'apparaît toujours que quand un digest existe
+(`weekDigest.count > 0`, càd après un **changement de semaine** détecté côté `period`). La
+« une » ne s'affiche donc qu'à partir de la 2ᵉ semaine de données — comportement inchangé.
+
 ### 2026-06-15 — Tri VAR par défaut = PS New Business + toggle « par infraction »
 Session chat pilotée par Léandre. Développé sur `claude/clever-cori-vs8s31` puis **fast-forward
 sur `main`** (accord explicite → prod redéployée). Commit `7c4a12e`.
