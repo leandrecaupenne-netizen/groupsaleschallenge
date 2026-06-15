@@ -1404,6 +1404,20 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-lb-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mag-lb-name em { font-style: normal; font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
 .mag-lb-val { flex: none; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); letter-spacing: 0.01em; text-align: right; }
+/* Leaderboards grouped as accordions (native <details>) */
+.mag-boards { display: flex; flex-direction: column; gap: 8px; }
+.mag-acc { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper); scroll-margin-top: var(--stick, 110px); }
+:root[data-theme="dark"] .mag-acc { background: rgba(255,255,255,0.04); }
+.mag-acc-sum { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 11px 13px; font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink); }
+.mag-acc-sum::-webkit-details-marker { display: none; }
+.mag-acc-sum:hover { background: var(--cream); }
+:root[data-theme="dark"] .mag-acc-sum:hover { background: rgba(255,255,255,0.05); }
+.mag-acc-lead { margin-left: auto; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: none; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42%; }
+.mag-acc-chev { color: var(--muted); font-size: 12px; transition: transform 0.15s; }
+.mag-acc[open] .mag-acc-chev { transform: rotate(180deg); }
+.mag-acc[open] .mag-acc-lead { display: none; }
+.mag-acc[open] .mag-acc-chev { margin-left: auto; }
+.mag-acc-body { padding: 0 13px 10px; }
 .mag-lb-unit { display: block; font-family: ui-monospace, monospace; font-weight: 400; font-size: 8px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-top: 1px; }
 /* Journalist stand-first under a section header */
 .mag-dek { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 12.5px; line-height: 1.45; color: var(--muted); margin: 2px 0 6px; }
@@ -8467,18 +8481,19 @@ function recapLbRow(rank, p, value, unit) {
       <span class="mag-lb-val">${value}${unit ? `<span class="mag-lb-unit" title="${escapeHtml(ut)}">${unit}</span>` : ''}</span>
     </div>`;
 }
-// A themed leaderboard section featuring several players. opts: { id, icon, title,
-// sub, tab, list, valueFn, limit }. Header links to the matching board when tab set.
-function recapBoard(opts) {
+// One themed leaderboard as a collapsible accordion item (native <details> →
+// keyboard-accessible, no JS). Collapsed shows the leader as a teaser; the first one
+// opens by default. opts: { id, icon, title, sub, list, valueFn, unit, dek, limit }.
+function recapAccBoard(opts, open) {
   const list = (opts.list || []).slice(0, opts.limit || 5);
   if (!list.length) return '';
   const subHtml = opts.sub ? ` <span class="mag-sech-sub">${opts.sub}</span>` : '';
-  // Plain header — the journal never links out to an external board (the rows open
-  // the player card, which stays in the magazine flow).
-  const head = `<h3 class="mag-sech">${opts.icon} ${opts.title}${subHtml}</h3>`;
   const dek = opts.dek ? `<p class="mag-dek">${opts.dek}</p>` : '';
   const rows = list.map((p, i) => recapLbRow(i + 1, p, opts.valueFn(p), opts.unit)).join('');
-  return `<section class="mag-sec">${head}${dek}<div class="mag-lb">${rows}</div></section>`;
+  return `<details class="mag-acc" data-sec="${opts.id}"${open ? ' open' : ''}>
+      <summary class="mag-acc-sum">${opts.icon} ${opts.title}${subHtml}<span class="mag-acc-lead">${escapeHtml(baseName(list[0].name))}</span><span class="mag-acc-chev" aria-hidden="true">▾</span></summary>
+      <div class="mag-acc-body">${dek}<div class="mag-lb">${rows}</div></div>
+    </details>`;
 }
 // Short editorial narrative — a couple of human sentences that tell the week's
 // story, plus a strip of the faces it mentions (every named player shows a face).
@@ -8590,28 +8605,31 @@ function recapTeamOfWeek() {
 // A short journalist "dek" (stand-first) under a board header — gives the paper a
 // voice. nm = escaped short name helper.
 function recapDek(list, fn) { return list && list.length ? fn(list) : ''; }
-// All the themed leaderboards that put as many players forward as possible.
+// All themed leaderboards, grouped into ONE collapsible section (accordion) so the
+// issue stays compact — the first board opens by default, the rest are a tap away.
 function recapBoards() {
   const nm = p => escapeHtml(baseName(p.name));
-  const blocks = [];
+  const specs = [];
   const gb = sortedGoldenBoot.filter(p => (p.ps_nb || 0) > 0);
-  blocks.push({ id: 'golden', label: '🥇 Golden Boots', html: recapBoard({ icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', tab: 'golden', list: gb, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
-    dek: recapDek(gb, l => l.length >= 2 ? `<b>${nm(l[0])}</b> sets the target at ${fmtMoney(l[0].ps_nb)} — <b>${nm(l[1])}</b> gives chase.` : `<b>${nm(l[0])}</b> is out in front with ${fmtMoney(l[0].ps_nb)}.`) }) });
+  if (gb.length) specs.push({ id: 'golden', icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', list: gb, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
+    dek: recapDek(gb, l => l.length >= 2 ? `<b>${nm(l[0])}</b> sets the target at ${fmtMoney(l[0].ps_nb)} — <b>${nm(l[1])}</b> gives chase.` : `<b>${nm(l[0])}</b> is out in front with ${fmtMoney(l[0].ps_nb)}.`) });
   const pmList = sortedPlaymaker.filter(p => (p.opps || 0) > 0);
-  blocks.push({ id: 'playmaker', label: '🎩 Best Opportunities', html: recapBoard({ icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', tab: 'playmaker', list: pmList, valueFn: p => String(Math.round(p.opps)), unit: 'opps',
-    dek: recapDek(pmList, l => `<b>${nm(l[0])}</b> is the supply line, with <b>${Math.round(l[0].opps)}</b> chances created.`) }) });
+  if (pmList.length) specs.push({ id: 'playmaker', icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', list: pmList, valueFn: p => String(Math.round(p.opps)), unit: 'opps',
+    dek: recapDek(pmList, l => `<b>${nm(l[0])}</b> is the supply line, with <b>${Math.round(l[0].opps)}</b> chances created.`) });
   const margins = people.filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null).sort((a, b) => indivGm(b) - indivGm(a));
-  blocks.push({ id: 'margins', label: '🎯 Sharpest Margins', html: recapBoard({ icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)), unit: 'NB GM',
-    dek: recapDek(margins, l => `Quality over quantity — <b>${nm(l[0])}</b> converts at <b>${fmtPct(indivGm(l[0]))}</b> margin.`) }) });
+  if (margins.length) specs.push({ id: 'margins', icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)), unit: 'NB GM',
+    dek: recapDek(margins, l => `Quality over quantity — <b>${nm(l[0])}</b> converts at <b>${fmtPct(indivGm(l[0]))}</b> margin.`) });
   const rookList = (sortedRookies || []).filter(p => (p.ps_nb || 0) > 0);
-  if (rookList.length) blocks.push({ id: 'rookies', label: '🎓 Rookie Watch', html: recapBoard({ icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', tab: 'rookies', list: rookList, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
-    dek: `The new generation makes its mark — <b>${nm(rookList[0])}</b> leads the class.` }) });
-  if (sortedLicence && sortedLicence.length) blocks.push({ id: 'licence', label: '📜 Licence Leaders', html: recapBoard({ icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', tab: 'licence', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm), unit: 'Licence GM',
-    dek: `<b>${nm(sortedLicence[0])}</b> rules the licence charts at ${fmtMoney(sortedLicence[0].licence_gm)}.` }) });
+  if (rookList.length) specs.push({ id: 'rookies', icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', list: rookList, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
+    dek: `The new generation makes its mark — <b>${nm(rookList[0])}</b> leads the class.` });
+  if (sortedLicence && sortedLicence.length) specs.push({ id: 'licence', icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm), unit: 'Licence GM',
+    dek: `<b>${nm(sortedLicence[0])}</b> rules the licence charts at ${fmtMoney(sortedLicence[0].licence_gm)}.` });
   const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && (p.ps_nb || 0) > 0).sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
-  blocks.push({ id: 'fairplay', label: '✅ Clean Sheets', html: recapBoard({ icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', tab: 'var', list: clean, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
-    dek: `Discipline pays — top scorers with a spotless VAR record.` }) });
-  return blocks.filter(b => b.html);
+  if (clean.length) specs.push({ id: 'fairplay', icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', list: clean, valueFn: p => fmtMoney(p.ps_nb), unit: 'NB',
+    dek: `Discipline pays — top scorers with a spotless VAR record.` });
+  const items = specs.map((o, i) => recapAccBoard(o, i === 0)).filter(Boolean).join('');
+  if (!items) return '';
+  return `<section class="mag-boards"><h3 class="mag-sech">📊 The Leaderboards <span class="mag-sech-sub">tap to expand</span></h3>${items}</section>`;
 }
 // A dramatic pull-quote — the week's signature number, magazine-style. Opens the player.
 function recapPullQuote() {
@@ -8735,7 +8753,7 @@ function renderRecapMagazine(d) {
   blocks.push({ id: 'nation', label: '🌍 Nation', html: recapNation() });
   blocks.push({ id: 'sotw', label: '📊 Stat of the Week', html: recapStatOfWeek() });
   blocks.push({ html: recapPullQuote() });
-  recapBoards().forEach(b => blocks.push(b));
+  blocks.push({ id: 'boards', label: '📊 Leaderboards', html: recapBoards() });
   blocks.push({ id: 'changes', label: '📈 This Week', html: recapTicker(d) });
   blocks.push({ html: footer });
 
@@ -8823,7 +8841,9 @@ function openDigest() {
   el.querySelectorAll('[data-scrollto]').forEach(c => c.addEventListener('click', e => {
     e.stopPropagation();
     const target = el.querySelector('[data-sec="' + c.getAttribute('data-scrollto') + '"]');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!target) return;
+    if (target.tagName === 'DETAILS') target.open = true; // expand the accordion board first
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
   // Tap a player (hero / star card / Stat tile / ticker row) → open that player's
   // card. Guard against a stale name (e.g. a ticker entry whose player dropped out
