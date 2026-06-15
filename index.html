@@ -1349,6 +1349,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-duel-name { font-family: 'Anton', Impact, sans-serif; font-size: 15px; letter-spacing: 0.02em; margin-top: 4px; }
 .mag-duel-team { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.65); }
 .mag-duel-val { font-family: 'Anton', Impact, sans-serif; font-size: 18px; color: var(--gold); margin-top: 2px; }
+.mag-duel-unit { display: block; font-family: ui-monospace, monospace; font-weight: 400; font-size: 8px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-top: 1px; }
 .mag-duel-vs-x { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--usa-red); color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: 16px; box-shadow: 0 3px 10px rgba(200,16,46,0.5); }
 .mag-duel-cap { text-align: center; font-family: Georgia, 'Times New Roman', serif; font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,0.88); margin-top: 12px; }
 .mag-duel-cap b { color: var(--gold); }
@@ -1398,6 +1399,43 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-quote-text span { color: var(--ink); }
 .mag-quote-by { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 13px; color: var(--muted); margin-top: 8px; }
 .mag-quote-by b { font-style: normal; color: var(--ink); }
+
+/* BREAKING news ticker */
+.mag-news { display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; background: var(--navy); border: 1px solid rgba(255,255,255,0.12); }
+.mag-news-tag { flex: none; display: flex; align-items: center; background: var(--usa-red); color: #fff; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0 11px; }
+.mag-news-wrap { overflow: hidden; flex: 1; }
+.mag-news-track { display: inline-flex; align-items: center; gap: 16px; white-space: nowrap; padding: 9px 16px; animation: magMarquee 30s linear infinite; }
+.mag-news:hover .mag-news-track { animation-play-state: paused; }
+.mag-news-item { color: #fff; font-size: 12px; font-weight: 600; }
+.mag-news-dot { color: var(--gold); font-size: 6px; }
+@keyframes magMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .mag-news-track { animation: none; } .mag-news-wrap { overflow-x: auto; } }
+
+/* Talking Points */
+.mag-talk { display: flex; flex-direction: column; gap: 4px; }
+.mag-talk .mag-sech { margin-bottom: 4px; }
+.mag-talk-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.mag-talk-row:last-child { border-bottom: none; }
+.mag-talk-row:hover { background: var(--cream); border-radius: 8px; }
+:root[data-theme="dark"] .mag-talk-row:hover { background: rgba(255,255,255,0.05); }
+.mag-talk-av { width: 34px; height: 34px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 12px; }
+.mag-talk-ico { flex: none; font-size: 16px; }
+.mag-talk-text { font-size: 13px; line-height: 1.4; color: var(--ink); }
+.mag-talk-text b { color: var(--usa-red); }
+
+/* Nation of the Week */
+.mag-nation { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, var(--tc, var(--navy)) 0%, var(--navy) 78%); border: 1px solid rgba(255,255,255,0.12); }
+.mag-nation-flag { flex: none; display: flex; width: 64px; height: 44px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 3px 10px rgba(0,0,0,0.4); }
+.mag-nation-body { flex: 1; min-width: 0; }
+.mag-nation-tag { font-family: ui-monospace, monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.mag-nation-name { font-family: 'Anton', Impact, sans-serif; font-size: 24px; line-height: 1.05; letter-spacing: 0.02em; }
+.mag-nation-stats { display: inline-block; margin-top: 4px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); color: #fff; font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.03em; padding: 3px 9px; border-radius: 999px; cursor: pointer; }
+.mag-nation-stats:hover { background: rgba(255,255,255,0.2); }
+.mag-nation-cap { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; padding: 4px 11px 4px 4px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.mag-nation-cap:hover { background: rgba(255,255,255,0.2); }
+.mag-nation-cap-av { width: 24px; height: 24px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy-2); display: inline-flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 9px; }
+.mag-nation-go { flex: none; align-self: flex-start; background: var(--gold); color: #3a2c00; border: none; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 10px; border-radius: 999px; cursor: pointer; }
+.mag-nation-go:hover { filter: brightness(1.08); }
 
 /* Edition stamp in the masthead — like a real issue number */
 .mag-edition { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 10px; transform: rotate(-7deg); background: var(--gold); color: #3a2c00; font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
@@ -3326,6 +3364,7 @@ let nationReturnTo = null;  // nation to reopen when closing a team modal opened
 let playerReturnToTeam = null; // team to reopen when closing a player card opened from a team modal
 let playerReturnToNation = null; // nation to reopen when closing a player card opened from a nation modal
 let playerReturnToDigest = false; // reopen the weekly magazine when closing a player card opened from it
+let digestReturnScroll = 0; // scroll position to restore in the magazine when reopened from a card
 let modalReturnFocus = null; // a11y: selector of the control that opened a modal, refocused on close (WCAG 2.4.3)
 let suppressAnim = false;  // true during background poll re-renders (no replayed animations)
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
@@ -8232,13 +8271,13 @@ function recapStatOfWeek() {
   const sharp = people
     .filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null)
     .sort((a, b) => indivGm(b) - indivGm(a))[0];
-  if (sharp) tiles.push({ icon: '🎯', value: fmtPct(indivGm(sharp)), raw: indivGm(sharp), fmt: 'pct', label: 'Sharpest margin', name: sharp.name, sub: fmtMoney(sharp.ps_nb) + ' NB' });
+  if (sharp) tiles.push({ icon: '🎯', value: fmtPct(indivGm(sharp)), raw: indivGm(sharp), fmt: 'pct', label: 'Sharpest NB margin', name: sharp.name, sub: fmtMoney(sharp.ps_nb) + ' NB' });
   // Tightest race at the top of the Golden Boot (closest non-zero gap on podium).
   const race = tightRace(sortedGoldenBoot, p => p.ps_nb || 0, 'money');
-  if (race && race.leader && race.chaser) tiles.push({ icon: '🔥', value: fmtMoney(race.gap), raw: race.gap, fmt: 'money', label: `Photo finish · #${race.rankA} vs #${race.rankB}`, name: race.leader.name, sub: 'ahead of ' + baseName(race.chaser.name) });
+  if (race && race.leader && race.chaser) tiles.push({ icon: '🔥', value: fmtMoney(race.gap), raw: race.gap, fmt: 'money', label: `NB gap · #${race.rankA} vs #${race.rankB}`, name: race.leader.name, sub: baseName(race.leader.name) + ' ahead of ' + baseName(race.chaser.name) });
   // The week's biggest opportunity creator (the Playmaker headline number).
   const pm = sortedPlaymaker[0];
-  if (pm && (pm.opps || 0) > 0) tiles.push({ icon: '🅰️', value: String(Math.round(pm.opps)), raw: pm.opps, fmt: 'int', label: 'Most assists', name: pm.name, sub: 'opportunities created' });
+  if (pm && (pm.opps || 0) > 0) tiles.push({ icon: '🅰️', value: String(Math.round(pm.opps)), raw: pm.opps, fmt: 'int', label: 'Opportunities created', name: pm.name, sub: 'New Business opps' });
   if (!tiles.length) return '';
   return `<section class="mag-sotw">
       <div class="mag-sotw-head">📊 Stat of the Week</div>
@@ -8322,11 +8361,11 @@ function recapDuel() {
       </div>
       <div class="mag-duel-name">${escapeHtml(baseName(p.name))}</div>
       <div class="mag-duel-team">${escapeHtml(teamShortLabel(p.team))}</div>
-      <div class="mag-duel-val">${fmtMoney(p.ps_nb)}</div>
+      <div class="mag-duel-val">${fmtMoney(p.ps_nb)}<span class="mag-duel-unit">PS New Business</span></div>
     </div>`;
   const cap = gap > 0
-    ? `Only <b>${fmtMoney(gap)}</b> between them — who'll wear the Golden Boot in Paris? 🏆`
-    : `Dead heat — they're level at the top! Who blinks first? 🏆`;
+    ? `Only <b>${fmtMoney(gap)}</b> of New Business between them — who'll wear the Golden Boot in Paris? 🏆`
+    : `Dead heat — they're level at the top on New Business! Who blinks first? 🏆`;
   return `<section class="mag-duel">
       <div class="mag-sech mag-duel-head">⚔️ Duel of the Week <span class="mag-sech-sub">Golden Boot top 2</span></div>
       <div class="mag-duel-body">
@@ -8359,11 +8398,11 @@ function recapTeamOfWeek() {
   add('🎓 Wonderkid', 'Top rookie', pick(sortedRookies, p => (p.ps_nb || 0) > 0), null);
   const cleanList = people.filter(p => !p.yellow_meetings && !p.yellow_gm && (p.ps_nb || 0) > 0).sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
   add('🧤 Clean Sheet', 'By the rules', pick(cleanList), null);
-  // Stats per slot (computed from the role's metric).
+  // Stats per slot — always carry the unit so it's clear what the number means.
   slots.forEach(s => {
     s.stat = s.role.includes('Playmaker') ? Math.round(s.p.opps || 0) + ' opps'
-      : s.role.includes('Finisher') ? fmtPct(indivGm(s.p))
-      : fmtMoney(s.p.ps_nb);
+      : s.role.includes('Finisher') ? fmtPct(indivGm(s.p)) + ' GM'
+      : fmtMoney(s.p.ps_nb) + ' NB';
   });
   if (slots.length < 3) return '';
   return `<section class="mag-totw">
@@ -8412,9 +8451,66 @@ function recapPullQuote() {
   const g = sortedGoldenBoot[0];
   if (!g || (g.ps_nb || 0) <= 0) return '';
   return `<blockquote class="mag-quote" data-jump="${escapeHtml(g.name)}" title="View ${escapeHtml(baseName(g.name))}'s card">
-      <div class="mag-quote-text">${fmtMoney(g.ps_nb)} <span>and counting.</span></div>
+      <div class="mag-quote-text">${fmtMoney(g.ps_nb)} <span>of New Business — and counting.</span></div>
       <div class="mag-quote-by">— <b>${escapeHtml(baseName(g.name))}</b> sets the pace in the race for the Golden Boot</div>
     </blockquote>`;
+}
+// A scrolling "BREAKING" news strip — pure TV-channel flair (non-interactive; each
+// name it teases also appears with a face + card elsewhere in the issue).
+function recapBreaking(d) {
+  const items = [];
+  const g = sortedGoldenBoot[0];
+  if (g && (g.ps_nb || 0) > 0) items.push(`🥇 ${baseName(g.name)} leads the Golden Boot — ${fmtMoney(g.ps_nb)}`);
+  const b = sortedGoldenBoot[1];
+  if (g && b && (g.ps_nb || 0) > 0) { const gap = (g.ps_nb || 0) - (b.ps_nb || 0); items.push(gap > 0 ? `⚔️ Just ${fmtMoney(gap)} in the Golden Boot duel` : `⚔️ Golden Boot duel level at the top`); }
+  const pm = sortedPlaymaker[0];
+  if (pm && (pm.opps || 0) > 0) items.push(`🎩 ${baseName(pm.name)} tops the assists with ${Math.round(pm.opps)}`);
+  const r = (sortedRookies || []).filter(p => (p.ps_nb || 0) > 0)[0];
+  if (r) items.push(`🎓 Rookie watch: ${baseName(r.name)} (${fmtMoney(r.ps_nb)})`);
+  const t = sortedTeams[0];
+  if (t) items.push(`🏆 ${teamShortLabel(t.country)} top of the table`);
+  if (d && d.climbers && d.climbers.length && d.climbers[0].jump >= 2) { const c = d.climbers[0]; items.push(`🚀 ${baseName(c.name)} flying up ${c.jump} places`); }
+  if (!items.length) return '';
+  const strip = items.map(x => `<span class="mag-news-item">${escapeHtml(x)}</span>`).join('<span class="mag-news-dot">●</span>');
+  return `<div class="mag-news"><span class="mag-news-tag">🔴 Breaking</span><div class="mag-news-wrap"><div class="mag-news-track">${strip}<span class="mag-news-dot">●</span>${strip}</div></div></div>`;
+}
+// "Talking Points" — punchy dressing-room takes, each with the player's face + card.
+function recapTalking(d) {
+  const pts = [];
+  const g = sortedGoldenBoot[0];
+  if (g && (g.ps_nb || 0) > 0) pts.push({ p: g, icon: '🔥', text: `<b>${escapeHtml(baseName(g.name))}</b> can't stop scoring — ${fmtMoney(g.ps_nb)} of new business and leading the charge.` });
+  const sharp = people.filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null).sort((a, b) => indivGm(b) - indivGm(a))[0];
+  if (sharp) pts.push({ p: sharp, icon: '🎯', text: `Efficiency king: <b>${escapeHtml(baseName(sharp.name))}</b> converts at ${fmtPct(indivGm(sharp))} margin.` });
+  const r = (sortedRookies || []).filter(p => (p.ps_nb || 0) > 0)[0];
+  if (r) pts.push({ p: r, icon: '🌱', text: `One to watch — <b>${escapeHtml(baseName(r.name))}</b> tops the rookie class.` });
+  const pm = sortedPlaymaker[0];
+  if (pm && (pm.opps || 0) > 0 && pts.length < 3) pts.push({ p: pm, icon: '🎩', text: `<b>${escapeHtml(baseName(pm.name))}</b> keeps the chances coming: ${Math.round(pm.opps)} created.` });
+  if (!pts.length) return '';
+  return `<section class="mag-talk">
+      <div class="mag-sech">🗣️ Talking Points</div>
+      ${pts.slice(0, 3).map(t => `<div class="mag-talk-row" data-jump="${escapeHtml(t.p.name)}" title="View ${escapeHtml(baseName(t.p.name))}'s card">
+        <span class="mag-talk-av">${avatarInner(t.p.name)}</span>
+        <span class="mag-talk-ico">${t.icon}</span>
+        <span class="mag-talk-text">${t.text}</span>
+      </div>`).join('')}
+    </section>`;
+}
+// "Nation of the Week" — the top team with its flag, headline stat and captain.
+function recapNation() {
+  const t = sortedTeams[0];
+  if (!t) return '';
+  const cap = teamCaptain(t.country);
+  const members = (t.members != null && isFinite(t.members)) ? ` · ${t.members} players` : '';
+  return `<section class="mag-nation" style="--tc:${colorForTeam(t.country)}">
+      <div class="mag-nation-flag">${flagBars(flagForTeam(t.country))}</div>
+      <div class="mag-nation-body">
+        <div class="mag-nation-tag">🌍 Nation of the Week</div>
+        <div class="mag-nation-name">${escapeHtml(teamShortLabel(t.country))}</div>
+        <button class="mag-nation-stats" data-goboard="teams" title="Open the Team Ranking">${fmtMoney(t.avg_ps)} avg PS / rep${members} ↗</button>
+        ${cap ? `<button class="mag-nation-cap" data-jump="${escapeHtml(cap.name)}" title="View ${escapeHtml(baseName(cap.name))}'s card"><span class="mag-nation-cap-av">${avatarInner(cap.name)}</span>Captain ${escapeHtml(baseName(cap.name))}</button>` : ''}
+      </div>
+      <button class="mag-nation-go" data-goboard="teams">Table ↗</button>
+    </section>`;
 }
 function renderRecapMagazine(d) {
   const lead = recapLead(d);
@@ -8463,9 +8559,11 @@ function renderRecapMagazine(d) {
   const blocks = [];
   blocks.push({ html: hero });
   blocks.push({ id: 'story', label: '✍️ Editorial', html: recapEditorial(d) });
+  blocks.push({ id: 'talk', label: '🗣️ Talking Points', html: recapTalking(d) });
   blocks.push({ id: 'duel', label: '⚔️ Duel', html: recapDuel() });
   blocks.push({ id: 'stars', label: '⭐ Leaders', html: recapStarCards(d) });
   blocks.push({ id: 'totw', label: '🌟 Team of the Week', html: recapTeamOfWeek() });
+  blocks.push({ id: 'nation', label: '🌍 Nation', html: recapNation() });
   blocks.push({ id: 'sotw', label: '📊 Stat of the Week', html: recapStatOfWeek() });
   blocks.push({ html: recapPullQuote() });
   recapBoards().forEach(b => blocks.push(b));
@@ -8477,7 +8575,7 @@ function renderRecapMagazine(d) {
   const toc = navItems ? `<nav class="mag-toc" aria-label="In this issue"><span class="mag-toc-lab">In this issue</span>${navItems}</nav>` : '';
   // Wrap each labelled block in a [data-sec] anchor so its TOC chip can scroll to it.
   const body = blocks.map(b => b.html ? (b.id ? `<div class="mag-block" data-sec="${b.id}">${b.html}</div>` : b.html) : '').join('');
-  return `<div class="mag">${overline}${toc}${body}</div>`;
+  return `<div class="mag">${recapBreaking(d)}${overline}${toc}${body}</div>`;
 }
 
 // === Weekly recap modal ("what changed since last update") ===
@@ -8511,6 +8609,13 @@ function openDigest() {
   document.body.style.overflow = 'hidden';
   el.querySelectorAll('.mag > *').forEach((c, i) => c.style.setProperty('--i', i)); // stagger the entrance
   animateRecapCounts(el); // roll the big gold numbers up from 0 (skipped if reduced-motion)
+  // Reopened after viewing a card → land back at the exact scroll position, not the top.
+  if (digestReturnScroll > 0) {
+    const modal = el.querySelector('.digest-modal');
+    const restore = () => { if (modal) modal.scrollTop = digestReturnScroll; el.scrollTop = digestReturnScroll; };
+    restore(); requestAnimationFrame(restore);
+    digestReturnScroll = 0;
+  }
   syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
@@ -8537,9 +8642,11 @@ function openDigest() {
   el.querySelectorAll('[data-jump]').forEach(n => n.addEventListener('click', () => {
     const nm = n.getAttribute('data-jump');
     if (!people.some(p => p.name === nm)) return; // stale → do nothing, keep the cover open
-    // Remember the magazine so closing the card (Back / Esc / button) returns here,
-    // not to the main menu.
+    // Remember the magazine AND the exact scroll position so closing the card returns
+    // here, at the same place — not the menu, not the top.
     playerReturnToDigest = true;
+    const modal = el.querySelector('.digest-modal');
+    digestReturnScroll = (modal && modal.scrollTop) || el.scrollTop || 0;
     close(); openPlayerModal = nm; render(); document.body.style.overflow = 'hidden';
   }));
 }
