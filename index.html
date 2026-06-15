@@ -1387,6 +1387,17 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-lb-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mag-lb-name em { font-style: normal; font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; margin-left: 6px; }
 .mag-lb-val { flex: none; font-family: 'Anton', Impact, sans-serif; font-size: 15px; color: var(--ink); letter-spacing: 0.01em; }
+/* Journalist stand-first under a section header */
+.mag-dek { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 12.5px; line-height: 1.45; color: var(--muted); margin: 2px 0 6px; }
+.mag-dek b { font-style: normal; color: var(--ink); }
+
+/* Dramatic pull-quote */
+.mag-quote { margin: 0; padding: 16px 18px; border-radius: 14px; background: var(--cream); border-left: 4px solid var(--usa-red); cursor: pointer; position: relative; }
+:root[data-theme="dark"] .mag-quote { background: rgba(255,255,255,0.04); }
+.mag-quote-text { font-family: 'Anton', Impact, sans-serif; font-size: clamp(26px, 7vw, 40px); line-height: 0.98; color: var(--usa-red); letter-spacing: 0.01em; }
+.mag-quote-text span { color: var(--ink); }
+.mag-quote-by { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.mag-quote-by b { font-style: normal; color: var(--ink); }
 
 /* Edition stamp in the masthead — like a real issue number */
 .mag-edition { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 10px; transform: rotate(-7deg); background: var(--gold); color: #3a2c00; font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
@@ -8108,12 +8119,15 @@ function recapLead(d) {
       person: byName(c.name), teamName: c.team
     };
   }
-  // 3) Quiet week → crown the current frontrunner so the cover still sells.
+  // 3) Quiet week → crown the current frontrunner so the cover still sells. The
+  // verb rotates with the week so the cover doesn't read the same every Monday.
   const g = sortedGoldenBoot[0];
   if (g) {
+    const verbs = ['SETS THE PACE', 'LEADS THE CHASE', 'OUT IN FRONT', 'TOPS THE CHARTS', 'STILL THE ONE TO BEAT'];
+    const wk = parseInt((/(\d+)/.exec(period || '') || [])[1], 10) || 0;
     return {
       kicker: '🥇 THE FRONTRUNNER', tab: 'golden',
-      headline: `${escapeHtml(g.name)} SETS THE PACE`,
+      headline: `${escapeHtml(g.name)} ${verbs[wk % verbs.length]}`,
       stand: `Still top of the <b>Golden Boot</b> race with <b>${fmtMoney(g.ps_nb)}</b> in new business.`,
       person: g, teamName: g.team
     };
@@ -8257,8 +8271,9 @@ function recapBoard(opts) {
   const head = opts.tab
     ? `<button class="mag-sech mag-sech-link" data-goboard="${opts.tab}">${opts.icon} ${opts.title}${subHtml}<span class="mag-sech-go">↗</span></button>`
     : `<h3 class="mag-sech">${opts.icon} ${opts.title}${subHtml}</h3>`;
+  const dek = opts.dek ? `<p class="mag-dek">${opts.dek}</p>` : '';
   const rows = list.map((p, i) => recapLbRow(i + 1, p, opts.valueFn(p))).join('');
-  return `<section class="mag-sec">${head}<div class="mag-lb">${rows}</div></section>`;
+  return `<section class="mag-sec">${head}${dek}<div class="mag-lb">${rows}</div></section>`;
 }
 // Short editorial narrative — a couple of human sentences that tell the week's
 // story, plus a strip of the faces it mentions (every named player shows a face).
@@ -8366,18 +8381,40 @@ function recapTeamOfWeek() {
         </div>`).join('')}</div>
     </section>`;
 }
+// A short journalist "dek" (stand-first) under a board header — gives the paper a
+// voice. nm = escaped short name helper.
+function recapDek(list, fn) { return list && list.length ? fn(list) : ''; }
 // All the themed leaderboards that put as many players forward as possible.
 function recapBoards() {
+  const nm = p => escapeHtml(baseName(p.name));
   const blocks = [];
-  blocks.push({ id: 'golden', label: '🥇 Golden Boots', html: recapBoard({ id: 'golden', icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', tab: 'golden', list: sortedGoldenBoot.filter(p => (p.ps_nb || 0) > 0), valueFn: p => fmtMoney(p.ps_nb) }) });
-  blocks.push({ id: 'playmaker', label: '🎩 Best Opportunities', html: recapBoard({ id: 'playmaker', icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', tab: 'playmaker', list: sortedPlaymaker.filter(p => (p.opps || 0) > 0), valueFn: p => Math.round(p.opps) + ' opps' }) });
+  const gb = sortedGoldenBoot.filter(p => (p.ps_nb || 0) > 0);
+  blocks.push({ id: 'golden', label: '🥇 Golden Boots', html: recapBoard({ icon: '🥇', title: 'Golden Boots', sub: 'PS New Business', tab: 'golden', list: gb, valueFn: p => fmtMoney(p.ps_nb),
+    dek: recapDek(gb, l => l.length >= 2 ? `<b>${nm(l[0])}</b> sets the target at ${fmtMoney(l[0].ps_nb)} — <b>${nm(l[1])}</b> gives chase.` : `<b>${nm(l[0])}</b> is out in front with ${fmtMoney(l[0].ps_nb)}.`) }) });
+  const pmList = sortedPlaymaker.filter(p => (p.opps || 0) > 0);
+  blocks.push({ id: 'playmaker', label: '🎩 Best Opportunities', html: recapBoard({ icon: '🎩', title: 'Best Opportunities', sub: 'Opportunities created', tab: 'playmaker', list: pmList, valueFn: p => Math.round(p.opps) + ' opps',
+    dek: recapDek(pmList, l => `<b>${nm(l[0])}</b> is the supply line, with <b>${Math.round(l[0].opps)}</b> chances created.`) }) });
   const margins = people.filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null).sort((a, b) => indivGm(b) - indivGm(a));
-  blocks.push({ id: 'margins', label: '🎯 Sharpest Margins', html: recapBoard({ id: 'margins', icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)) }) });
-  if (sortedRookies && sortedRookies.length) blocks.push({ id: 'rookies', label: '🎓 Rookie Watch', html: recapBoard({ id: 'rookies', icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', tab: 'rookies', list: sortedRookies.filter(p => (p.ps_nb || 0) > 0), valueFn: p => fmtMoney(p.ps_nb) }) });
-  if (sortedLicence && sortedLicence.length) blocks.push({ id: 'licence', label: '📜 Licence Leaders', html: recapBoard({ id: 'licence', icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', tab: 'licence', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm) }) });
+  blocks.push({ id: 'margins', label: '🎯 Sharpest Margins', html: recapBoard({ icon: '🎯', title: 'Sharpest Margins', sub: 'NB GM · season to date', list: margins, valueFn: p => fmtPct(indivGm(p)),
+    dek: recapDek(margins, l => `Quality over quantity — <b>${nm(l[0])}</b> converts at <b>${fmtPct(indivGm(l[0]))}</b> margin.`) }) });
+  const rookList = (sortedRookies || []).filter(p => (p.ps_nb || 0) > 0);
+  if (rookList.length) blocks.push({ id: 'rookies', label: '🎓 Rookie Watch', html: recapBoard({ icon: '🎓', title: 'Rookie Watch', sub: 'Best rookie PS NB', tab: 'rookies', list: rookList, valueFn: p => fmtMoney(p.ps_nb),
+    dek: `The new generation makes its mark — <b>${nm(rookList[0])}</b> leads the class.` }) });
+  if (sortedLicence && sortedLicence.length) blocks.push({ id: 'licence', label: '📜 Licence Leaders', html: recapBoard({ icon: '📜', title: 'Licence Leaders', sub: 'Licence GM', tab: 'licence', list: sortedLicence, valueFn: p => fmtMoney(p.licence_gm),
+    dek: `<b>${nm(sortedLicence[0])}</b> rules the licence charts at ${fmtMoney(sortedLicence[0].licence_gm)}.` }) });
   const clean = people.filter(p => !p.yellow_meetings && !p.yellow_gm && (p.ps_nb || 0) > 0).sort((a, b) => (b.ps_nb || 0) - (a.ps_nb || 0));
-  blocks.push({ id: 'fairplay', label: '✅ Clean Sheets', html: recapBoard({ id: 'fairplay', icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', tab: 'var', list: clean, valueFn: p => fmtMoney(p.ps_nb) }) });
+  blocks.push({ id: 'fairplay', label: '✅ Clean Sheets', html: recapBoard({ icon: '✅', title: 'Clean Sheets', sub: 'Top scorers playing by the rules', tab: 'var', list: clean, valueFn: p => fmtMoney(p.ps_nb),
+    dek: `Discipline pays — top scorers with a spotless VAR record.` }) });
   return blocks.filter(b => b.html);
+}
+// A dramatic pull-quote — the week's signature number, magazine-style. Opens the player.
+function recapPullQuote() {
+  const g = sortedGoldenBoot[0];
+  if (!g || (g.ps_nb || 0) <= 0) return '';
+  return `<blockquote class="mag-quote" data-jump="${escapeHtml(g.name)}" title="View ${escapeHtml(baseName(g.name))}'s card">
+      <div class="mag-quote-text">${fmtMoney(g.ps_nb)} <span>and counting.</span></div>
+      <div class="mag-quote-by">— <b>${escapeHtml(baseName(g.name))}</b> sets the pace in the race for the Golden Boot</div>
+    </blockquote>`;
 }
 function renderRecapMagazine(d) {
   const lead = recapLead(d);
@@ -8430,6 +8467,7 @@ function renderRecapMagazine(d) {
   blocks.push({ id: 'stars', label: '⭐ Leaders', html: recapStarCards(d) });
   blocks.push({ id: 'totw', label: '🌟 Team of the Week', html: recapTeamOfWeek() });
   blocks.push({ id: 'sotw', label: '📊 Stat of the Week', html: recapStatOfWeek() });
+  blocks.push({ html: recapPullQuote() });
   recapBoards().forEach(b => blocks.push(b));
   blocks.push({ id: 'changes', label: '📈 This Week', html: recapTicker(d) });
   blocks.push({ html: footer });
