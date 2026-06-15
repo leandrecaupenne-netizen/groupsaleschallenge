@@ -21,6 +21,11 @@
 <meta name="twitter:title" content="Devoteam World Cup — Sales Challenge 2026" />
 <meta name="twitter:description" content="The live leaderboard. Search your name to see your rankings — Grand Final in Paris, 9 July." />
 <meta name="twitter:image" content="https://groupsaleschallenge.vercel.app/og-image.png" />
+<!-- Fonts: Montserrat (UI/body) + Anton (display headlines), loaded with swap so text
+     paints immediately on the system fallback and upgrades when the webfont arrives. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;500;600;700;800;900&display=swap" />
 <!-- PWA / installable -->
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#1E2A78" />
@@ -95,7 +100,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--cream); color: var(--ink);
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
