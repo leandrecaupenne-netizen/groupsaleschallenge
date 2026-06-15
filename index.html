@@ -21,11 +21,14 @@
 <meta name="twitter:title" content="Devoteam World Cup — Sales Challenge 2026" />
 <meta name="twitter:description" content="The live leaderboard. Search your name to see your rankings — Grand Final in Paris, 9 July." />
 <meta name="twitter:image" content="https://groupsaleschallenge.vercel.app/og-image.png" />
-<!-- Fonts: Montserrat (UI/body) + Anton (display headlines), loaded with swap so text
-     paints immediately on the system fallback and upgrades when the webfont arrives. -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;500;600;700;800;900&display=swap" />
+<!-- Fonts: Montserrat (UI/body) + Anton (display headlines), self-hosted (no CDN) so
+     the app stays self-contained and works on networks that block Google Fonts. Latin
+     woff2 only; Montserrat is the variable file (one weight range). display:swap paints
+     immediately on the system fallback, then upgrades. -->
+<style>
+@font-face { font-family: 'Montserrat'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('fonts/montserrat-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Anton'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/anton-latin.woff2') format('woff2'); }
+</style>
 <!-- PWA / installable -->
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#1E2A78" />
@@ -1223,6 +1226,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
     radial-gradient(60% 50% at 50% 0%, rgba(255,255,255,0.12), transparent 70%);
 }
 .pc-card > * { position: relative; z-index: 1; }
+/* Lift the avatar (and its floating 🟨 badge) above the name, so the badge stays
+   tappable where the large display name's line-box rides up into it. */
+.pc-card > .pc-avatar { z-index: 4; }
 .pc-card-top { display: flex; align-items: center; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.85); }
 .pc-period-line { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-top: 4px; }
 /* Sorare-style rarity tier badge */
@@ -1432,17 +1438,19 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-talk-text b { color: var(--usa-red); }
 
 /* Nation of the Week */
-.mag-nation { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, var(--tc, var(--navy)) 0%, var(--navy) 78%); border: 1px solid rgba(255,255,255,0.12); }
-.mag-nation-flag { flex: none; display: flex; width: 64px; height: 44px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 3px 10px rgba(0,0,0,0.4); }
-.mag-nation-body { flex: 1; min-width: 0; }
+.mag-nation { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 16px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, var(--tc, var(--navy)) 0%, var(--navy) 80%); border: 1px solid rgba(255,255,255,0.12); }
+.mag-nation-flag { flex: none; display: flex; width: 72px; height: 50px; border-radius: 8px; overflow: hidden; border: 2px solid rgba(255,255,255,0.6); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.mag-nation-body { flex: 1 1 150px; min-width: 0; }
 .mag-nation-tag { font-family: ui-monospace, monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
-.mag-nation-name { font-family: 'Anton', Impact, sans-serif; font-size: 24px; line-height: 1.05; letter-spacing: 0.02em; }
-.mag-nation-stats { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.03em; color: rgba(255,255,255,0.8); margin-top: 3px; }
-.mag-nation-cap { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; padding: 4px 11px 4px 4px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; }
-.mag-nation-cap:hover { background: rgba(255,255,255,0.2); }
-.mag-nation-cap-av { width: 24px; height: 24px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy-2); display: inline-flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 9px; }
-.mag-nation-go { flex: none; align-self: flex-start; background: var(--gold); color: #3a2c00; border: none; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 10px; border-radius: 999px; cursor: pointer; }
-.mag-nation-go:hover { filter: brightness(1.08); }
+.mag-nation-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 5vw, 30px); line-height: 1.02; letter-spacing: 0.02em; margin-top: 1px; }
+.mag-nation-stats { font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.03em; color: rgba(255,255,255,0.82); margin-top: 4px; }
+.mag-nation-cap { flex: none; display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); color: #fff; cursor: pointer; transition: background 0.12s, transform 0.12s; }
+.mag-nation-cap:hover { background: rgba(255,255,255,0.22); transform: translateY(-1px); }
+.mag-nation-cap-av { width: 44px; height: 44px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy-2); display: inline-flex; align-items: center; justify-content: center; font-family: 'Anton', Impact, sans-serif; font-size: 14px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25); }
+.mag-nation-cap-txt { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+.mag-nation-cap-role { font-family: ui-monospace, monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.mag-nation-cap-name { font-size: 13.5px; font-weight: 800; }
+@media (max-width: 520px) { .mag-nation-cap { flex-basis: 100%; justify-content: flex-start; } }
 
 /* Edition stamp in the masthead — like a real issue number */
 .mag-edition { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 10px; transform: rotate(-7deg); background: var(--gold); color: #3a2c00; font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
@@ -1579,7 +1587,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
    disc clips it to a circle. Scaled up a touch so the face isn't tiny. */
 .has-photo { overflow: hidden; }
 .av-photo { width: 132%; height: 132%; object-fit: cover; object-position: center top; display: block; }
-.pc-cards { position: absolute; bottom: -4px; right: -4px; font-size: 16px; }
+.pc-cards { position: absolute; bottom: -4px; right: -4px; font-size: 16px; z-index: 5; }
 /* On photo cards the portrait (head + jersey) fills the disc, so the badge sat on
    the shirt. Drop it lower and nudge it right so it clears the jersey. */
 .pc-avatar-photo .pc-cards { bottom: -13px; right: -11px; }
@@ -8522,8 +8530,11 @@ function recapNation() {
         <div class="mag-nation-tag">🌍 Nation of the Week</div>
         <div class="mag-nation-name">${escapeHtml(teamShortLabel(t.country))}</div>
         <div class="mag-nation-stats">${fmtMoney(t.avg_ps)} avg PS / rep${members}</div>
-        ${cap ? `<button class="mag-nation-cap" data-jump="${escapeHtml(cap.name)}" title="View ${escapeHtml(baseName(cap.name))}'s card"><span class="mag-nation-cap-av">${avatarInner(cap.name)}</span>Captain ${escapeHtml(baseName(cap.name))}</button>` : ''}
       </div>
+      ${cap ? `<button class="mag-nation-cap" data-jump="${escapeHtml(cap.name)}" title="View ${escapeHtml(baseName(cap.name))}'s card">
+        <span class="mag-nation-cap-av">${avatarInner(cap.name)}</span>
+        <span class="mag-nation-cap-txt"><span class="mag-nation-cap-role">⭐ Captain</span><span class="mag-nation-cap-name">${escapeHtml(baseName(cap.name))}</span></span>
+      </button>` : ''}
     </section>`;
 }
 function renderRecapMagazine(d) {
