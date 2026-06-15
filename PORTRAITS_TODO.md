@@ -13,17 +13,15 @@
   question — dont **3 déjà présents** sous un slug légèrement différent (correction rapide) et
   **2 réellement manquants** (à générer).
 
-## 🟠 À corriger — portrait existant mais slug qui ne matche pas
-Le fichier existe déjà ; le nom dans la Sheet diffère légèrement → le slug ne tombe pas dessus.
-Fix possible : **renommer le fichier** vers le slug attendu (ou corriger l'orthographe côté Sheet).
+## ✅ Corrigé — slugs alignés (fait le 2026-06-15)
+Les portraits existaient sous un slug proche ; copiés vers le slug attendu (full + thumb) et
+ajoutés à `CARD_PHOTOS`, `CARD_VER` bumpé à `9`. Ces 3 vedettes affichent maintenant leur photo :
 
-| Joueur (Sheet) | Slug attendu | Fichier présent | Action |
-|---|---|---|---|
-| Alejandro Rubio Fabian (ES Enterprise) | `alejandro-rubio-fabian` | `alejandro-rubio.webp` | renommer `alejandro-rubio` → `alejandro-rubio-fabian` (full + thumb) |
-| Lucas FEMENIA (FR - Regions 2) | `lucas-femenia` | `lucas-femina.webp` | renommer `lucas-femina` → `lucas-femenia` (full + thumb) |
-| Simon DHONDT (BELGIUM) | `simon-dhondt` | `simon-dhont.webp` | renommer `simon-dhont` → `simon-dhondt` (full + thumb) |
-
-> ⚠️ À confirmer que c'est bien la même personne avant de renommer (très probable vu les noms).
+| Joueur (Sheet) | Slug attendu | Source copiée |
+|---|---|---|
+| Alejandro Rubio Fabian (ES Enterprise) | `alejandro-rubio-fabian` | `alejandro-rubio` |
+| Lucas FEMENIA (FR - Regions 2) | `lucas-femenia` | `lucas-femina` |
+| Simon DHONDT (BELGIUM) | `simon-dhondt` | `simon-dhont` |
 
 ## 🔴 À générer — aucun portrait
 | Joueur | Équipe | Slug cible |
