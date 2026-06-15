@@ -106,6 +106,38 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Recap v2 : cartes Panini + catégories cliquables (cover image-rich)
+Suite directe de la refonte recap ci-dessous. Fast-forward sur `main`. Commit `4dddc52`.
+
+**❓ Retour Léandre.** La v1 « magazine » manquait **cruellement d'images** → demande : ajouter
+des **cartes Panini de joueurs**, rendre les **catégories cliquables** (pour comprendre ce qui
+est mis en avant), s'inspirer des **couvertures de magazine**.
+
+**🃏 Cartes Panini (`index.html`, `recapPanini`).**
+- **Hero** = grand **portrait Panini** teinté à la couleur de l'équipe (`colorForTeam`), photo
+  plein cadre (`photoFor`, fallback initiales), **drapeau** en coin (`flagBars`), dégradé bas
+  pour la lisibilité. Quand le lead est une **équipe** (nouveau #1 Team Ranking), on met le
+  **visage du capitaine** = top contributeur PS Total de l'équipe (`teamCaptain`).
+- **3 cartes Panini** des leaders de catégorie : 🥇 Golden Boot (rank #, dorée), 🎩 Playmaker,
+  🏆 Top Team (visage du capitaine + drapeau + avg/rep). Photos + drapeaux partout, ruban de
+  rang, foil dégradé, hover lift. Grille responsive `auto-fit minmax(150px)`.
+
+**🖱️ Catégories cliquables (`data-goboard` → `statGoto`).** Le **kicker** du hero, le **tag** de
+chaque carte, et chaque **titre de rubrique** (ticker) sont des liens qui **basculent vers le
+board correspondant** (Golden Boot/Playmaker/Team Ranking ; climbers & new-top-10 → *Players of
+the Moment* `spotlight` ; VAR Report → `var`) et **scrollent au classement** (`statGoto`). Le
+clic sur la carte ouvre le **joueur** ; le clic sur le tag fait `stopPropagation` pour ne pas
+ouvrir la carte en même temps.
+
+**🐛 Bug corrigé.** `flagForTeam()` renvoie un **tableau de couleurs**, pas un emoji — la v1
+affichait donc le tableau brut sur la carte « Top Team ». Désormais tous les drapeaux passent
+par `flagBars()`.
+
+**Nettoyage / vérifs.** Anciennes classes `.mag-card*` / `.mag-hero-media` et `recapHeroMedia`
+**supprimées** (0 référence). 3 scripts JS OK, accolades CSS équilibrées, test runtime sur
+données live : hero + 3 `mp-card`, 7 liens `data-goboard` corrects, capitaine résolu, drapeaux
+rendus via `flagBars`, rubans `#1`.
+
 ### 2026-06-15 — Weekly recap refait en « une » de magazine sportif (style L'Équipe)
 Session chat pilotée par Léandre, **fast-forward sur `main`**. Commit `b3dcd24`.
 
