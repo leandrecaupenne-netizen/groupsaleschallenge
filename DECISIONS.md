@@ -106,6 +106,35 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Tri VAR par défaut = PS New Business + toggle « par infraction »
+Session chat pilotée par Léandre. Développé sur `claude/clever-cori-vs8s31` puis **fast-forward
+sur `main`** (accord explicite → prod redéployée). Commit `7c4a12e`.
+
+**❓ Question de départ.** « Pourquoi Lucas Femenia est-il #1 dans VAR Room ? » Les cartes VAR
+(VAR Room **public** et VAR TIME **admin**) étaient triées par **PS Total** (= New Business
+**+ renouvellements**). Lucas a un PS Total énorme (**1,97 M€**) mais surtout porté par des
+**renouvellements** — son **New Business n'est que de ~326 K€**. Il remontait donc artificiellement
+en tête alors que, sur la métrique qui **score** le challenge individuel (le New Business), il est
+loin derrière.
+
+**🥇 Nouveau tri par défaut = PS Bookings New Business (desc).** Les deux colonnes d'infraction
+(Low activity / Low margin) de VAR Room **et** VAR TIME s'ordonnent désormais par `ps_nb` décroissant
+(au lieu de `ps_total`). `varBreakers()` (VAR TIME) trie par `ps_nb` desc → nb de strikes → meetings
+asc. Avec les données du 15/06, la colonne *Low activity* devient #1 Erjona GURINA (NB 1,27 M€),
+#2 Ivan Bergendorff, #3 Luis FOLGOSO ; Lucas Femenia n'est plus en tête.
+
+**⚠️ Toggle « Sort by ».** Ajout d'une barre de tri (chips `.var-sort` / `.vt-sort`, état
+`varSort` / `vartimeSort`, défaut `'nb'`) dans les deux vues, avec deux options :
+- **🥇 New Business** (défaut) — PS NB desc.
+- **⚠️ Infraction severity** — chaque colonne par sa **propre gravité** : *Low activity* →
+  **meetings croissants** (le moins assidu en tête), *Low margin* → **GM croissant** (pire marge
+  en tête). Tri sur `meetings` / `ps_nb_gm`. Les joueurs `yellow_gm` ont tous `ps_nb>0` donc pas
+  de GM null à gérer.
+
+**Notes.** La colonne *Clean sheet* (VAR Room) reste triée par **PS Total desc** (c'est la valeur
+qu'elle affiche, et la notion « infraction » ne s'y applique pas). Handlers câblés dans les blocs
+`currentTab === 'var'` et `=== 'vartime'`. Vérifs : 3 scripts JS OK, accolades CSS équilibrées.
+
 ### 2026-06-15 — Période auto « Week N of 5 » (plus d'édition hebdo manuelle)
 Session chat pilotée par Léandre. Développé sur `claude/clever-cori-vs8s31` puis **fast-forward
 sur `main`** (accord explicite → prod redéployée).
