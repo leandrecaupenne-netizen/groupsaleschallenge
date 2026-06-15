@@ -1309,6 +1309,28 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-dateline { font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 7px; border-top: 1px solid var(--line); padding-top: 7px; }
 
 .mag { display: flex; flex-direction: column; gap: 18px; }
+/* Staggered entrance — the paper "prints" section by section when you open it. */
+@media (prefers-reduced-motion: no-preference) {
+  .mag > * { animation: magIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .mag > *:nth-child(1) { animation-delay: 0.02s; }
+  .mag > *:nth-child(2) { animation-delay: 0.08s; }
+  .mag > *:nth-child(3) { animation-delay: 0.15s; }
+  .mag > *:nth-child(4) { animation-delay: 0.22s; }
+  .mag > *:nth-child(5) { animation-delay: 0.29s; }
+  .mag > *:nth-child(6) { animation-delay: 0.36s; }
+  .mag > *:nth-child(7) { animation-delay: 0.43s; }
+}
+@keyframes magIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* Edition stamp in the masthead — like a real issue number */
+.mag-edition { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 10px; transform: rotate(-7deg); background: var(--gold); color: #3a2c00; font-family: 'Anton', Impact, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 7px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+
+/* Overline banner + closing teaser */
+.mag-overline { text-align: center; font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding-bottom: 2px; border-bottom: 2px solid var(--gold); }
+.mag-overline b { color: var(--ink); }
+.mag-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--cream); border: 1px dashed var(--line); font-family: ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+:root[data-theme="dark"] .mag-foot { background: rgba(255,255,255,0.04); }
+.mag-foot b { color: var(--usa-red); }
 
 /* HERO / lead story — big magazine cover with a Panini portrait */
 .mag-hero { position: relative; display: grid; grid-template-columns: 168px 1fr; gap: 18px; align-items: stretch; cursor: pointer; overflow: hidden; border-radius: 18px; padding: 16px; color: #fff; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); border: 1px solid rgba(255,255,255,0.1); }
@@ -1370,7 +1392,7 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .mag-sotw-tile:last-child { border-right: none; }
 .mag-sotw-tile:hover { background: rgba(255,255,255,0.06); }
 .mag-sotw-ico { font-size: 18px; }
-.mag-sotw-val { font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1.1; margin-top: 2px; }
+.mag-sotw-val { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 26px; color: var(--gold); line-height: 1.1; margin-top: 2px; }
 .mag-sotw-lbl { font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-top: 3px; }
 .mag-sotw-who { font-size: 11px; font-weight: 700; color: #fff; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -8023,6 +8045,32 @@ function recapLead(d) {
   }
   return null;
 }
+// Roll every [data-cv] number up from 0 to its target on open — the little bit of
+// motion that makes the figures feel alive. Final value is restored exactly at the
+// end, and the whole thing is skipped under prefers-reduced-motion.
+function animateRecapCounts(root) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const fmts = { money: fmtMoney, pct: fmtPct, int: n => String(Math.round(n)) };
+  root.querySelectorAll('[data-cv]').forEach(elm => {
+    const target = parseFloat(elm.getAttribute('data-cv'));
+    const f = fmts[elm.getAttribute('data-cf')] || fmts.int;
+    if (!isFinite(target)) return;
+    const dur = 950, t0 = performance.now(), ease = t => 1 - Math.pow(1 - t, 3);
+    const step = now => {
+      const t = Math.min(1, (now - t0) / dur);
+      elm.textContent = f(target * ease(t));
+      if (t < 1) requestAnimationFrame(step); else elm.textContent = f(target);
+    };
+    requestAnimationFrame(step);
+  });
+}
+// A number that rolls up from 0 on open (see animateRecapCounts). The element
+// always renders its final formatted value first, so no-JS / reduced-motion users
+// see the right figure immediately; the animation only enriches it.
+function countSpan(cls, text, raw, fmt) {
+  const ok = raw != null && isFinite(raw);
+  return `<span class="${cls}"${ok ? ` data-cv="${raw}" data-cf="${fmt}"` : ''}>${text}</span>`;
+}
 // A collectible Panini-style card: team-tinted foil, big portrait, flag, rank
 // ribbon and headline stat. The whole card opens the player; the category tag is
 // a separate link that jumps to that board so it's clear what's being showcased.
@@ -8043,17 +8091,17 @@ function recapPanini(p, opts) {
       </div>
       <div class="mp-name">${escapeHtml(p.name)}</div>
       <div class="mp-team">${escapeHtml(teamShortLabel(team))}</div>
-      <div class="mp-statbar"><span class="mp-stat">${opts.stat}</span><span class="mp-statlabel">${opts.statLabel}</span></div>
+      <div class="mp-statbar">${countSpan('mp-stat', opts.stat, opts.statRaw, opts.statFmt)}<span class="mp-statlabel">${opts.statLabel}</span></div>
     </article>`;
 }
 function recapStarCards(d) {
   const cards = [];
   const g = sortedGoldenBoot[0];
-  if (g) cards.push(recapPanini(g, { tagText: '🥇 Golden Boot', tab: 'golden', stat: fmtMoney(g.ps_nb), statLabel: 'PS New Business', rank: rankGolden[g.name] || 1, gold: true }));
+  if (g) cards.push(recapPanini(g, { tagText: '🥇 Golden Boot', tab: 'golden', stat: fmtMoney(g.ps_nb), statRaw: g.ps_nb, statFmt: 'money', statLabel: 'PS New Business', rank: rankGolden[g.name] || 1, gold: true }));
   const pm = sortedPlaymaker[0];
-  if (pm) cards.push(recapPanini(pm, { tagText: '🎩 Playmaker', tab: 'playmaker', stat: String(Math.round(pm.opps || 0)), statLabel: 'Opportunities created', rank: rankPlaymaker[pm.name] || 1 }));
+  if (pm) cards.push(recapPanini(pm, { tagText: '🎩 Playmaker', tab: 'playmaker', stat: String(Math.round(pm.opps || 0)), statRaw: pm.opps, statFmt: 'int', statLabel: 'Opportunities created', rank: rankPlaymaker[pm.name] || 1 }));
   const t = sortedTeams[0], cap = t && teamCaptain(t.country);
-  if (t && cap) cards.push(recapPanini(cap, { tagText: '🏆 Top Team', tab: 'teams', stat: fmtMoney(t.avg_ps), statLabel: `${teamShortLabel(t.country)} · avg per rep`, teamName: t.country }));
+  if (t && cap) cards.push(recapPanini(cap, { tagText: '🏆 Top Team', tab: 'teams', stat: fmtMoney(t.avg_ps), statRaw: t.avg_ps, statFmt: 'money', statLabel: `${teamShortLabel(t.country)} · avg per rep`, teamName: t.country }));
   if (!cards.length) return '';
   return `<div class="mag-grid">${cards.join('')}</div>`;
 }
@@ -8095,20 +8143,20 @@ function recapStatOfWeek() {
   const sharp = people
     .filter(p => (p.ps_nb || 0) >= 100000 && indivGm(p) != null)
     .sort((a, b) => indivGm(b) - indivGm(a))[0];
-  if (sharp) tiles.push({ icon: '🎯', value: fmtPct(indivGm(sharp)), label: 'Sharpest margin', name: sharp.name, sub: fmtMoney(sharp.ps_nb) + ' NB' });
+  if (sharp) tiles.push({ icon: '🎯', value: fmtPct(indivGm(sharp)), raw: indivGm(sharp), fmt: 'pct', label: 'Sharpest margin', name: sharp.name, sub: fmtMoney(sharp.ps_nb) + ' NB' });
   // Tightest race at the top of the Golden Boot (closest non-zero gap on podium).
   const race = tightRace(sortedGoldenBoot, p => p.ps_nb || 0, 'money');
-  if (race && race.leader && race.chaser) tiles.push({ icon: '🔥', value: fmtMoney(race.gap), label: `Photo finish · #${race.rankA} vs #${race.rankB}`, name: race.leader.name, sub: 'ahead of ' + baseName(race.chaser.name) });
+  if (race && race.leader && race.chaser) tiles.push({ icon: '🔥', value: fmtMoney(race.gap), raw: race.gap, fmt: 'money', label: `Photo finish · #${race.rankA} vs #${race.rankB}`, name: race.leader.name, sub: 'ahead of ' + baseName(race.chaser.name) });
   // The week's biggest opportunity creator (the Playmaker headline number).
   const pm = sortedPlaymaker[0];
-  if (pm && (pm.opps || 0) > 0) tiles.push({ icon: '🅰️', value: String(Math.round(pm.opps)), label: 'Most assists', name: pm.name, sub: 'opportunities created' });
+  if (pm && (pm.opps || 0) > 0) tiles.push({ icon: '🅰️', value: String(Math.round(pm.opps)), raw: pm.opps, fmt: 'int', label: 'Most assists', name: pm.name, sub: 'opportunities created' });
   if (!tiles.length) return '';
   return `<section class="mag-sotw">
       <div class="mag-sotw-head">📊 Stat of the Week</div>
       <div class="mag-sotw-grid">${tiles.map(tt => `
         <div class="mag-sotw-tile" data-jump="${escapeHtml(tt.name)}" title="View ${escapeHtml(baseName(tt.name))}'s card">
           <div class="mag-sotw-ico">${tt.icon}</div>
-          <div class="mag-sotw-val">${tt.value}</div>
+          ${countSpan('mag-sotw-val', tt.value, tt.raw, tt.fmt)}
           <div class="mag-sotw-lbl">${tt.label}</div>
           <div class="mag-sotw-who">${escapeHtml(baseName(tt.name))} · ${escapeHtml(tt.sub)}</div>
         </div>`).join('')}</div>
@@ -8146,7 +8194,16 @@ function renderRecapMagazine(d) {
         </div>
       </article>`;
   }
-  return `<div class="mag">${hero}${recapStarCards(d)}${recapStatOfWeek()}${recapTicker(d)}</div>`;
+  // Closing teaser — keeps the "living paper" feel: a new issue every Monday, and
+  // a countdown to the grand final in Paris.
+  const finalMs = new Date('2026-07-09T00:00:00').getTime() - Date.now();
+  const jminus = Math.max(0, Math.ceil(finalMs / 86400000));
+  const overline = `<div class="mag-overline">⚽ Matchday Report · <b>The Race to Paris</b> 🇫🇷</div>`;
+  const footer = `<div class="mag-foot">
+      <span>🗞️ New edition every Monday</span>
+      <span>🏆 Grand Final · Paris · 9 Jul · <b>J-${jminus}</b></span>
+    </div>`;
+  return `<div class="mag">${overline}${hero}${recapStarCards(d)}${recapStatOfWeek()}${recapTicker(d)}${footer}</div>`;
 }
 
 // === Weekly recap modal ("what changed since last update") ===
@@ -8154,6 +8211,7 @@ function openDigest() {
   if (document.getElementById('digest-overlay')) return;
   markDigestSeen();
   const d = weekDigest;
+  const editionNo = (/(\d+)/.exec(period || '') || [])[1] || '';
   let body;
   if (sortedGoldenBoot.length) {
     body = renderRecapMagazine(d);
@@ -8167,7 +8225,7 @@ function openDigest() {
     <div class="modal digest-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div class="modal-title-block">
-          <h2 class="modal-title mag-nameplate">DEVOTEAM WORLD CUP TIMES</h2>
+          <h2 class="modal-title mag-nameplate">DEVOTEAM WORLD CUP TIMES${editionNo ? `<span class="mag-edition">N°${editionNo}</span>` : ''}</h2>
           <div class="modal-subtitle mag-dateline">📰 This Week's Recap${d && d.prevPeriod ? ' · since ' + escapeHtml(d.prevPeriod) : ''}${period ? ' · ' + escapeHtml(period) : ''}</div>
         </div>
         <button class="modal-close" id="digest-close" aria-label="Close">×</button>
@@ -8176,6 +8234,7 @@ function openDigest() {
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
+  animateRecapCounts(el); // roll the big gold numbers up from 0 (skipped if reduced-motion)
   syncOverlayHistory(); // arm the Back-button guard for this body-level overlay
   const close = () => { el.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
