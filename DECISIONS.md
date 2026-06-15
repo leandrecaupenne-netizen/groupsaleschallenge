@@ -106,6 +106,16 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-15 — Police : Montserrat (UI) + Anton (display) en webfonts
+Léandre : « pour la police, mets du Montserrat ». Commit `0e302ea`.
+Avant : `Inter`/`Anton` étaient juste **nommés** (jamais chargés → fallback système/Impact). Ajout
+`<link>` Google Fonts **Montserrat 400-900 + Anton** (`display=swap`). `body` → **Montserrat**
+(Anton conservé pour les gros titres, désormais **vraiment rendu**). **CSP mise à jour**
+(`vercel.json`) : `style-src` + `https://fonts.googleapis.com`, `font-src 'self'
+https://fonts.gstatic.com data:`. **Service worker** : bypass des requêtes cross-origin (fonts/
+analytics passent direct, pas de cache opaque) + cache `v37`. ⚠️ entorse assumée au « tout inline /
+no CDN » du brief (demande explicite ; fallback gracieux si réseau bloque Google Fonts).
+
 ### 2026-06-15 — Recap v10 : AUCUN lien ne sort du journal + valeurs unitées + fix scroll
 Léandre (3 retours) : « les liens (Golden Boots, Licence…) me **font sortir** du journal — pas
 ce que je veux, vérifie TOUS les liens » ; « les valeurs des classements = quoi ? **NB ?** » ;
