@@ -25,29 +25,34 @@ const SETTINGS = {
 
 // Map target field -> the column header to look for (matched case/space/newline
 // insensitive). Listed fields with numeric:true are coerced to numbers.
+// Each field tries its exact header(s) first, then — if the OneBI wording has drifted —
+// falls back to its `match` keyword regex (run against the actual headers). The regexes
+// are deliberately specific (lookaheads keep Total vs NB vs GM apart) so a fallback can't
+// grab a sibling column. Matching is case/space/newline-insensitive (see normHeader).
 const TEAM_MAP = [
-  { field: 'country',       header: 'Country' },
+  { field: 'country',       header: 'Country',               match: /country|pays|team name|nation/ },
   // Optional nickname column (Jose is still filling these in). Several header
   // spellings accepted; missing → empty string, no warning.
-  { field: 'nickname',      headers: ['Team Nickname', 'Team Nicknames', 'Nickname', 'Nicknames', 'Surnom', 'Surnom équipe'], optional: true },
-  { field: 'members',       header: 'Team Members',          numeric: true },
-  { field: 'total_ps',      header: 'Total PS Booking',      numeric: true },
-  { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },
-  { field: 'avg_gm',        header: 'Average GM',            numeric: true, pct: true },
-  { field: 'avg_meetings',  header: 'Average Meetings',      numeric: true },
+  { field: 'nickname',      headers: ['Team Nickname', 'Team Nicknames', 'Nickname', 'Nicknames', 'Surnom', 'Surnom équipe'], match: /nick|surnom/, optional: true },
+  { field: 'members',       header: 'Team Members',          match: /member|effectif|head ?count/, numeric: true },
+  { field: 'total_ps',      header: 'Total PS Booking',      match: /total.*(ps|booking)|total.*business/, numeric: true },
+  { field: 'avg_ps',        header: 'Average PS Bookings',   match: /(average|avg|moyenne).*(ps|booking)/, numeric: true },
+  { field: 'avg_gm',        header: 'Average GM',            match: /(average|avg|moyenne).*gm|marge/, numeric: true, pct: true },
+  { field: 'avg_meetings',  header: 'Average Meetings',      match: /meeting|rdv|rendez/, numeric: true },
   { field: 'avg_opps',      header: 'Average Opportunities', match: /opportunit/, numeric: true }
 ];
 
 const PEOPLE_MAP = [
-  { field: 'name',          header: 'Full name' },
-  { field: 'team',          header: 'TEAM' },
-  { field: 'tenure',        header: 'Tenure' },
-  { field: 'ps_total',      header: 'PS Booking Total',     numeric: true },
-  { field: 'ps_total_gm',   header: 'PS Booking Total GM',  numeric: true, pct: true },
-  { field: 'ps_nb',         header: 'PS Booking NB',        numeric: true },
-  { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     numeric: true, pct: true },
-  { field: 'licence_gm',    header: 'Licence GM Amount',    numeric: true },
-  { field: 'meetings',      header: 'Meetings',             numeric: true },
+  { field: 'name',          header: 'Full name',            match: /full ?name|nom complet|salesperson|consultant/ },
+  { field: 'team',          header: 'TEAM',                 match: /^team$|\bteam\b|équipe|entity/ },
+  { field: 'tenure',        header: 'Tenure',               match: /tenure|ancien|seniority/ },
+  // Total vs NB vs their GM variants — lookaheads keep them from grabbing each other.
+  { field: 'ps_total',      header: 'PS Booking Total',     match: /ps.*total(?!.*gm)|total.*business(?!.*gm)/, numeric: true },
+  { field: 'ps_total_gm',   header: 'PS Booking Total GM',  match: /ps.*total.*gm|total.*business.*gm/, numeric: true, pct: true },
+  { field: 'ps_nb',         header: 'PS Booking NB',        match: /ps.*nb(?!.*gm)|new business(?!.*gm)/, numeric: true },
+  { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     match: /ps.*nb.*gm|new business.*gm|nb gm/, numeric: true, pct: true },
+  { field: 'licence_gm',    header: 'Licence GM Amount',    match: /licen[cs]e/, numeric: true },
+  { field: 'meetings',      header: 'Meetings',             match: /meeting|rdv|rendez/, numeric: true },
   // Header wording drifts in OneBI (e.g. "Opportunities", "NB Opportunities Created",
   // "Opportunités créées"). Accept several spellings, then fall back to any header that
   // contains "opportunit" so a rename doesn't flatline the Playmaker board to 0.

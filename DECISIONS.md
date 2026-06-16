@@ -19,10 +19,16 @@
       (field opps) » → header dérivé dans `Challenge Ranking` → tout le monde à 0, Playmaker sans
       leader. **Fix appliqué (Léandre, 16-06)** : colonne **renommée** vers l'ancien/attendu nom
       `Opportunities Created` → données revenues à la normale (confirmé par Léandre). Aucun
-      redéploiement nécessaire. Fix **durable** présent dans le repo (`6a2a001` : mapping
-      `opps`/`avg_opps` tolérant + fallback `/opportunit/` + warning qui liste les headers vus) →
-      s'appliquera au prochain recollage/redéploiement du `.gs` si la colonne re-dérive un jour.
-      Garde-fou app (`877cc45`) : un leader « 0 » n'est jamais mis en avant dans le journal.
+      redéploiement nécessaire. Garde-fou app (`877cc45`) : un leader « 0 » n'est jamais mis en
+      avant dans le journal.
+- [ ] **(Optionnel, quand pratique) Redéployer le `.gs` — mapping TOTAL tolérant** : depuis le
+      16-06, **tous** les champs de `TEAM_MAP`/`PEOPLE_MAP` ont un fallback regex par mot-clé (en
+      plus du nom exact essayé d'abord) — lookaheads pour séparer Total/NB/GM, donc pas de
+      collision (testé : headers canoniques = tout en exact ; headers dérivés = tout résolu sur la
+      bonne colonne, 0 collision). Le warning liste aussi les headers réellement vus. **Pour
+      l'activer** : recoller `apps_script_backend.gs` dans l'éditeur Apps Script → **Nouvelle
+      version** (même URL `/exec`). Non urgent (données OK), mais ça blinde toute dérive future de
+      n'importe quelle colonne. Commit repo : voir ci-dessous.
 - [x] **Redéployer l'Apps Script** : ✅ confirmé le **07-06**. Léandre a recollé la dernière
       version de `apps_script_backend.gs` (via Gérer les déploiements → Modifier → **Nouvelle
       version**, donc **même URL `/exec`** → rien à toucher côté `index.html`) et
