@@ -17,16 +17,15 @@
 - [ ] **⚡ Colonne `opps` introuvable (Challenge Ranking) — Playmaker à 0** (repéré 15-06, le soir) :
       le bandeau admin affiche « column not found for "Opportunities Created" (field opps) ». Le
       header de la colonne opportunités a **dérivé** dans `Challenge Ranking` → tout le monde à 0
-      → le Playmaker n'a plus de leader. **Deux fixes (au choix) :**
-      1. **Immédiat (sans redéploiement)** : renommer la colonne de `Challenge Ranking` en exactement
-         **`Opportunities Created`** (regarder le header actuel — il a été reworké/typoté).
-      2. **Durable (recoller + redéployer le `.gs`)** : `apps_script_backend.gs` rendu **tolérant**
-         (accepte plusieurs orthographes : Opportunities / NB Opportunities Created / Opportunités
-         créées / Opps… + **fallback regex `/opportunit/`**) et le warning liste désormais les
-         **headers réellement vus** pour diagnostiquer la dérive. ⚠️ Rappel : le `.gs` du repo ≠
-         projet Apps Script → **recoller dans l'éditeur + Nouvelle version** (même URL `/exec`).
-      Côté app, garde-fou déjà en place (commit `877cc45`) : on **ne met plus en avant** un leader
-      à 0 dans le journal, donc pas d'UI gênante en attendant.
+      → le Playmaker n'a plus de leader.
+      **→ Décision 16-06 : fix IMMÉDIAT** = renommer la colonne de `Challenge Ranking` en exactement
+      **`Opportunities Created`** (aucun redéploiement ; le backend déployé matche ce nom exact).
+      Après renommage, vérifier : le bandeau admin disparaît + le Playmaker se repeuple (prochain
+      poll ~2 min / refresh admin). **À confirmer par Léandre une fois fait.**
+      Fix **durable** déjà committé (`6a2a001` : mapping `opps`/`avg_opps` tolérant + fallback
+      `/opportunit/` + warning listant les headers vus) — **s'appliquera au prochain redéploiement**
+      du `.gs` (recoller éditeur → Nouvelle version), non urgent vu le rename.
+      Garde-fou app en place (`877cc45`) : aucun leader « 0 » mis en avant entre-temps.
 - [x] **Redéployer l'Apps Script** : ✅ confirmé le **07-06**. Léandre a recollé la dernière
       version de `apps_script_backend.gs` (via Gérer les déploiements → Modifier → **Nouvelle
       version**, donc **même URL `/exec`** → rien à toucher côté `index.html`) et
