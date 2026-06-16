@@ -8453,11 +8453,12 @@ function recapPanini(p, opts) {
 function recapStarCards(d) {
   const cards = [];
   const g = sortedGoldenBoot[0];
-  if (g) cards.push(recapPanini(g, { tagText: '🥇 Golden Boot', tab: 'golden', stat: fmtMoney(g.ps_nb), statRaw: g.ps_nb, statFmt: 'money', statLabel: 'PS New Business', rank: rankGolden[g.name] || 1, gold: true }));
+  if (g && (g.ps_nb || 0) > 0) cards.push(recapPanini(g, { tagText: '🥇 Golden Boot', tab: 'golden', stat: fmtMoney(g.ps_nb), statRaw: g.ps_nb, statFmt: 'money', statLabel: 'PS New Business', rank: rankGolden[g.name] || 1, gold: true }));
   const pm = sortedPlaymaker[0];
-  if (pm) cards.push(recapPanini(pm, { tagText: '🎩 Playmaker', tab: 'playmaker', stat: String(Math.round(pm.opps || 0)), statRaw: pm.opps, statFmt: 'int', statLabel: 'Opportunities created', rank: rankPlaymaker[pm.name] || 1 }));
+  // Only feature a Playmaker if there are real opportunities — never crown a "0 opps" leader.
+  if (pm && (pm.opps || 0) > 0) cards.push(recapPanini(pm, { tagText: '🎩 Playmaker', tab: 'playmaker', stat: String(Math.round(pm.opps)), statRaw: pm.opps, statFmt: 'int', statLabel: 'Opportunities created', rank: rankPlaymaker[pm.name] || 1 }));
   const t = sortedTeams[0], cap = t && teamCaptain(t.country);
-  if (t && cap) cards.push(recapPanini(cap, { tagText: '🏆 Top Team', tab: 'teams', stat: fmtMoney(t.avg_ps), statRaw: t.avg_ps, statFmt: 'money', statLabel: `${teamShortLabel(t.country)} · avg per rep`, teamName: t.country }));
+  if (t && cap && (t.avg_ps || 0) > 0) cards.push(recapPanini(cap, { tagText: '🏆 Top Team', tab: 'teams', stat: fmtMoney(t.avg_ps), statRaw: t.avg_ps, statFmt: 'money', statLabel: `${teamShortLabel(t.country)} · avg per rep`, teamName: t.country }));
   if (!cards.length) return '';
   return `<div class="mag-grid">${cards.join('')}</div>`;
 }
