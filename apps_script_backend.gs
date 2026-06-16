@@ -35,7 +35,7 @@ const TEAM_MAP = [
   { field: 'avg_ps',        header: 'Average PS Bookings',   numeric: true },
   { field: 'avg_gm',        header: 'Average GM',            numeric: true, pct: true },
   { field: 'avg_meetings',  header: 'Average Meetings',      numeric: true },
-  { field: 'avg_opps',      header: 'Average Opportunities', numeric: true }
+  { field: 'avg_opps',      header: 'Average Opportunities', match: /opportunit/, numeric: true }
 ];
 
 const PEOPLE_MAP = [
@@ -48,7 +48,10 @@ const PEOPLE_MAP = [
   { field: 'ps_nb_gm',      header: 'PS Booking NB GM',     numeric: true, pct: true },
   { field: 'licence_gm',    header: 'Licence GM Amount',    numeric: true },
   { field: 'meetings',      header: 'Meetings',             numeric: true },
-  { field: 'opps',          header: 'Opportunities Created',numeric: true }
+  // Header wording drifts in OneBI (e.g. "Opportunities", "NB Opportunities Created",
+  // "Opportunités créées"). Accept several spellings, then fall back to any header that
+  // contains "opportunit" so a rename doesn't flatline the Playmaker board to 0.
+  { field: 'opps',          headers: ['Opportunities Created', 'Opportunities', 'Opportunities Created (Stage 2+)', 'NB Opportunities Created', 'Opps Created', 'Opps', 'Opportunités créées', 'Opportunités'], match: /opportunit/, numeric: true }
 ];
 // -------------------------------------------------------------------------
 
@@ -110,14 +113,19 @@ function readMapped(tab, map, warnings) {
     const cands = (m.headers || [m.header]).map(normHeader);
     let idx = -1;
     for (let k = 0; k < cands.length; k++) { idx = headerRow.indexOf(cands[k]); if (idx >= 0) break; }
+    // Last resort: a keyword regex (m.match) against the actual headers, so a reworded
+    // column ("Opportunities Created" → "NB Opportunities") still resolves.
+    if (idx < 0 && m.match) idx = headerRow.findIndex(h => m.match.test(h));
     return { field: m.field, numeric: !!m.numeric, pct: !!m.pct, optional: !!m.optional, idx: idx };
   });
 
   // Flag any required column we couldn't locate by header (optional ones stay quiet).
+  // Include the headers actually present so an admin can see the real (drifted) name.
   if (warnings) {
+    const seen = headerRow.filter(function (h) { return h; }).join(' | ');
     map.forEach((m, i) => {
       if (cols[i].idx < 0 && !m.optional) {
-        warnings.push(tab.name + ': column not found for "' + (m.headers ? m.headers[0] : m.header) + '" (field ' + m.field + ')');
+        warnings.push(tab.name + ': column not found for "' + (m.headers ? m.headers[0] : m.header) + '" (field ' + m.field + '). Headers seen: ' + seen);
       }
     });
   }
