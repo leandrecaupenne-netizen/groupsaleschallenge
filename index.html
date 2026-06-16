@@ -539,6 +539,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .movers-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-right: 4px; }
 .mover { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; cursor: pointer; transition: filter 0.12s, transform 0.12s; }
 .mover:hover { filter: brightness(1.08); transform: translateY(-1px); }
+/* Inline team labels (from playerTeamHTML) are clickable → open the team's squad. */
+.team-link { cursor: pointer; }
+.team-link:hover { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
 .mover.up { background: rgba(22,163,74,0.12); color: var(--green); }
 .mover.down { background: rgba(200,16,46,0.10); color: var(--usa-red); }
 .mover b { font-variant-numeric: tabular-nums; }
@@ -3813,8 +3816,13 @@ function playerTeamHTML(teamName, realClass, suffix) {
   if (!nick) nick = nicknameOverride(teamName); // same stopgap as teamNameHTML, so overrides show in player lists too
   const suf = suffix || '';
   // No nickname, or a nickname identical to the team name → single line (no double print).
-  if (!nick || sameTeam(nick, teamName)) return escapeHtml(teamName) + suf;
-  return `${escapeHtml(nick)}${suf}<span class="${realClass || 'team-realname'}">${escapeHtml(teamName)}</span>`;
+  const inner = (!nick || sameTeam(nick, teamName))
+    ? escapeHtml(teamName)
+    : `${escapeHtml(nick)}<span class="${realClass || 'team-realname'}">${escapeHtml(teamName)}</span>`;
+  if (!teamName) return inner + suf;
+  // Wrap in a clickable link → opens that team's squad. A delegated handler stops the
+  // click bubbling, so tapping the team inside a player row opens the team, not the player.
+  return `<span class="team-link" data-team="${escapeHtml(teamName)}" title="View ${escapeHtml(teamName)}'s squad">${inner}</span>${suf}`;
 }
 
 // True if a leader change of `type` happened recently (drives the gold flash).
@@ -7812,11 +7820,26 @@ function render() {
     });
   });
 
-  // "Movers since the last update" chips → open that team's squad.
+  // "Movers since the last update" chips → open that team's squad. preventDefault
+  // because the chip is upgraded to a real <a> by upgradeClickablesToLinks().
   document.querySelectorAll('.mover[data-team]').forEach(chip => {
-    chip.addEventListener('click', () => {
+    chip.addEventListener('click', e => {
+      e.preventDefault();
       setModalTrigger(chip);
       openTeamModal = chip.dataset.team;
+      render();
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  // Any inline team label (player rows, board heroes, awards, coach room, player card)
+  // → open that team's squad. stopPropagation so a team inside a player row opens the
+  // team (not the player); preventDefault so the surrounding <a> deep-link doesn't navigate.
+  document.querySelectorAll('.team-link[data-team]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.stopPropagation(); e.preventDefault();
+      setModalTrigger(link);
+      openTeamModal = link.dataset.team;
       render();
       document.body.style.overflow = 'hidden';
     });
