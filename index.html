@@ -539,9 +539,11 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 .movers-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-right: 4px; }
 .mover { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; cursor: pointer; transition: filter 0.12s, transform 0.12s; }
 .mover:hover { filter: brightness(1.08); transform: translateY(-1px); }
-/* Inline team labels (from playerTeamHTML) are clickable → open the team's squad. */
-.team-link { cursor: pointer; }
-.team-link:hover { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+/* Inline team labels (from playerTeamHTML) are clickable → open the team's squad. A
+   persistent faint dotted underline (currentColor, works on light & dark) signals the
+   tappable sub-zone on touch where there's no hover; solid on hover. */
+.team-link { cursor: pointer; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+.team-link:hover { text-decoration-style: solid; text-decoration-color: currentColor; }
 .mover.up { background: rgba(22,163,74,0.12); color: var(--green); }
 .mover.down { background: rgba(200,16,46,0.10); color: var(--usa-red); }
 .mover b { font-variant-numeric: tabular-nums; }
@@ -3810,7 +3812,7 @@ function bindCardsTallyPopover() {
 // show it big with the official entity small underneath (optional trailing suffix,
 // e.g. a rookie tag, stays on the nickname line). No nickname -> just the entity,
 // so teams without one are byte-for-byte unchanged. Used across the player lists.
-function playerTeamHTML(teamName, realClass, suffix) {
+function playerTeamHTML(teamName, realClass, suffix, noLink) {
   const t = (teams || []).find(x => x.country === teamName);
   let nick = (t && typeof t.nickname === 'string') ? t.nickname.trim() : '';
   if (!nick) nick = nicknameOverride(teamName); // same stopgap as teamNameHTML, so overrides show in player lists too
@@ -3819,7 +3821,9 @@ function playerTeamHTML(teamName, realClass, suffix) {
   const inner = (!nick || sameTeam(nick, teamName))
     ? escapeHtml(teamName)
     : `${escapeHtml(nick)}<span class="${realClass || 'team-realname'}">${escapeHtml(teamName)}</span>`;
-  if (!teamName) return inner + suf;
+  // noLink → plain text (e.g. inside a team modal where every member's team is the
+  // SAME already-open team, so a link would just reopen the same modal).
+  if (!teamName || noLink) return inner + suf;
   // Wrap in a clickable link → opens that team's squad. A delegated handler stops the
   // click bubbling, so tapping the team inside a player row opens the team, not the player.
   return `<span class="team-link" data-team="${escapeHtml(teamName)}" title="View ${escapeHtml(teamName)}'s squad">${inner}</span>${suf}`;
@@ -4879,7 +4883,7 @@ function renderTeamRanking() {
                   <span class="member-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>
                   <div>
                     <div class="member-name">${escapeHtml(p.name)}</div>
-                    <div class="member-tenure">${playerTeamHTML(p.team, 'tnk-real-muted', p.is_rookie ? ' · 🎓 Rookie' : '')}</div>
+                    <div class="member-tenure">${playerTeamHTML(p.team, 'tnk-real-muted', p.is_rookie ? ' · 🎓 Rookie' : '', p.team === openTeamModal)}</div>
                     ${memberMetaMobile(p)}
                   </div>
                 </div>
@@ -7446,7 +7450,11 @@ function render() {
   // Keyboard accessibility: the clickable rows/cards are <div>/<span>, so make them
   // focusable and let Enter/Space trigger the same click (one central pass, not 16
   // templates). Buttons/links are already accessible and skipped.
-  document.querySelectorAll('[data-player],[data-team],[data-nteam],[data-nation],.th-sort,.th-psort,.th-nsort').forEach(el => {
+  // Exclude inline .team-link spans: they live INSIDE an already-interactive player row
+  // (often linkified to <a>), so giving them role=button+tabindex would nest an interactive
+  // inside an interactive (invalid + double Tab stop). They stay mouse/touch targets; the
+  // row is the keyboard/AT target, and teams are reachable via the team boards/Movers.
+  document.querySelectorAll('[data-player],[data-team]:not(.team-link),[data-nteam],[data-nation],.th-sort,.th-psort,.th-nsort').forEach(el => {
     if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.dataset.kbd) return;
     el.dataset.kbd = '1';
     el.tabIndex = 0;
