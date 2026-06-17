@@ -125,6 +125,16 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-16 — Indicateurs d'évolution « depuis la dernière MAJ » désactivés (peu fiables)
+Retour stakeholder (relayé par Léandre) : Italy affichait **▲4** alors qu'elle était **déjà #1** →
+deltas faussés. Cause : comparaison à un instantané `prevRanks` **non fiable** pendant la montée
+en charge (colonne opportunités déplacée, 32→34 équipes, lignes `#DIV/0!`). **Décision Léandre :
+retirer « lignes + bandeau Movers » (le journal reste).** Implémenté via un flag
+`const MOVEMENT_BADGES_ENABLED = false` qui court-circuite `movementBadge()` (badges ▲n/▼n/NEW des
+lignes Team Ranking — seul appelant) **et** `moversStrip()` (bandeau « Movers since the last
+update »). Logique conservée → **repasser à `true`** quand la base hebdo sera stable. Journal
+(recap hebdo) **intact**. Commit `32f91e2`. CI verte.
+
 ### 2026-06-16 — Repasse UX (équipes cliquables, fiche équipe, a11y) + fix popover carton
 Revue UX (agent) sur les modifs récentes. Correctifs sûrs appliqués ; CI verte (ESLint + smoke +
 e2e). Commits `975eb95` (popover) + `90c6209` (équipes/a11y).
