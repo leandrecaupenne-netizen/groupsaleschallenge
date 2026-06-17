@@ -14,21 +14,25 @@
 
 ## ⚠️ Actions en attente (à faire par Léandre / humains)
 
-- [x] **⚡ Colonne `opps` introuvable (Challenge Ranking) — Playmaker à 0** (repéré 15-06 ;
-      **résolu 16-06**) : le bandeau admin affichait « column not found for "Opportunities Created"
-      (field opps) » → header dérivé dans `Challenge Ranking` → tout le monde à 0, Playmaker sans
-      leader. **Fix appliqué (Léandre, 16-06)** : colonne **renommée** vers l'ancien/attendu nom
-      `Opportunities Created` → données revenues à la normale (confirmé par Léandre). Aucun
-      redéploiement nécessaire. Garde-fou app (`877cc45`) : un leader « 0 » n'est jamais mis en
-      avant dans le journal.
-- [ ] **(Optionnel, quand pratique) Redéployer le `.gs` — mapping TOTAL tolérant** : depuis le
-      16-06, **tous** les champs de `TEAM_MAP`/`PEOPLE_MAP` ont un fallback regex par mot-clé (en
-      plus du nom exact essayé d'abord) — lookaheads pour séparer Total/NB/GM, donc pas de
-      collision (testé : headers canoniques = tout en exact ; headers dérivés = tout résolu sur la
-      bonne colonne, 0 collision). Le warning liste aussi les headers réellement vus. **Pour
-      l'activer** : recoller `apps_script_backend.gs` dans l'éditeur Apps Script → **Nouvelle
-      version** (même URL `/exec`). Non urgent (données OK), mais ça blinde toute dérive future de
-      n'importe quelle colonne. Commit repo : voir ci-dessous.
+- [ ] **⚡ Opportunités à 0 (Playmaker vide) — cause racine identifiée 16-06** : diagnostic fait
+      sur le **vrai .xlsx** envoyé par Léandre. Dans `Challenge Ranking` il y a **3 colonnes
+      opportunités** : **P « Opportunities Created » = VIDE (0)**, **R « Oppies OneBI »** (93 reps
+      >0, total 262, max 13), **S « Opportunities Salesforce »** (129 reps >0, total 301, max 9 ;
+      formule `COUNTUNIQUEIFS('SF Opportunities'…)`). La plateforme lit **P** (mapping exact, donc
+      **0 warning**) → 0 partout ; et la Sheet calcule `Team Ranking!I (Average Opportunities)` par
+      `=SUMIFS(Challenge Ranking!P:P…)/D` → somme la colonne **vide P** → équipes à `0.0` aussi.
+      Ce matin (06:55) P avait encore des valeurs (Pablo 22) ; un **remaniement OneBI** a **vidé P**
+      et déplacé la donnée vers R/S. → **Ni backend ni mapping en cause : colonne source vide.**
+      **Décision Léandre 16-06 : « on laisse tomber, on fait comme avant »** → la plateforme
+      continue de lire `Opportunities Created` (P) ; **dès que Jose re-remplit P** (comme ce matin),
+      opps + Playmaker reviennent **tout seuls**, sans toucher au code. Garde-fou app (`877cc45`) :
+      aucun leader « 0 » mis en avant dans le journal entre-temps.
+- [x] **Mapping backend 100% tolérant — déployé 16-06** : tous les champs `TEAM_MAP`/`PEOPLE_MAP`
+      ont un fallback regex par mot-clé (nom exact essayé d'abord ; lookaheads pour séparer
+      Total/NB/GM → 0 collision, testé) + le warning liste les headers réellement vus. Recollé +
+      redéployé par Léandre (même URL `/exec`). `test/run-live.sh` : ping/auth/données OK, **0
+      warning de mapping**. (N.B. ça ne ressuscite PAS les opps : P est trouvée mais vide — c'est
+      une question de donnée, voir ci-dessus, pas de mapping.)
 - [x] **Redéployer l'Apps Script** : ✅ confirmé le **07-06**. Léandre a recollé la dernière
       version de `apps_script_backend.gs` (via Gérer les déploiements → Modifier → **Nouvelle
       version**, donc **même URL `/exec`** → rien à toucher côté `index.html`) et
