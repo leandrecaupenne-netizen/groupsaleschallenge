@@ -125,6 +125,32 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-17 — Validation chiffres app ↔ Google Sheet (Team Ranking + individus)
+Léandre (capture `Team Ranking` à l'appui) : « on est bon au niveau des chiffres ici, et chiffres
+sur l'app — vérifie ». Pull **live** du backend déployé (POST `{action:'data', password}`,
+`updated_at` 2026-06-17 13:31, **0 warning de mapping**) et **diff numérique automatique** contre
+la capture. **Aucune écriture sur la donnée**, vérif read-only.
+
+- **Team Ranking : 34 équipes des deux côtés** (32 actives + Indonesia + Saudi Arabia ;
+  Morocco/Serbia/Tunisia bien exclues). **0 écart** sur les 5 colonnes (members, Total PS, Avg PS,
+  Avg GM, Avg Meetings). Seul « écart » apparent = OCR de la capture sur **FR - Cyber Trust**
+  (`…,92` lu pour `…,62` ; l'Avg PS identique `165 579,97` confirme que l'app a raison). **App fidèle.**
+- **Opportunités = 0 partout** (Team Ranking *et* `people`) : colonne source `Opportunities
+  Created` (P) vide → **Playmaker reste vide**. Conforme à la décision actée 16-06 (« on laisse
+  tomber, ça revient seul quand Jose re-remplit P »). Pas un bug.
+- **Classements individuels** (calculés sur `people` = `Challenge Ranking`, mapping 1:1) **OK** :
+  Golden Boot #1 **Erjona GURINA** (PS NB **€1,49M**), Licence #1 Nuria Martinez (€93,9K),
+  Rookie #1 Luis FOLGOSO (€462,9K). Cartons : 🏃 140 low-activity, 🥅 29 low-margin.
+- **⚠️ Constat data (PAS un bug à corriger)** : le **`Total PS Booking` d'une équipe ≠ la somme des
+  `PS Total` de ses membres** (Σ individuelle systématiquement **≥** total équipe ; ni Σps_total ni
+  Σps_nb ne le reconstituent). Les **effectifs**, eux, matchent **partout** (le join people↔team est
+  bon). Cause la plus probable : **déduplication OneBI des deals partagés** (un deal porté par 2
+  commerciaux compte 1× pour l'équipe, 2× dans la somme individuelle). L'app affiche **fidèlement
+  les deux onglets** tels quels ; la non-réconciliation est une propriété de la **source**, pas de
+  la plateforme. → Ne PAS « corriger » en re-sommant les individus (ça gonflerait les totaux
+  équipe). Point de vigilance UX seulement : sur la fiche équipe, additionner à la main les
+  membres visibles donne un nombre > au total d'équipe affiché ailleurs (normal).
+
 ### 2026-06-16 — Indicateurs d'évolution « depuis la dernière MAJ » désactivés (peu fiables)
 Retour stakeholder (relayé par Léandre) : Italy affichait **▲4** alors qu'elle était **déjà #1** →
 deltas faussés. Cause : comparaison à un instantané `prevRanks` **non fiable** pendant la montée
