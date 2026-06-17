@@ -500,9 +500,9 @@ a:where([data-player], [data-team], [data-nteam], [data-nation], .tab-btn) { col
 }
 #cards-pop[hidden] { display: none; }
 .cards-pop-h { font-weight: 800; letter-spacing: 0.02em; margin-bottom: 6px; }
-.cards-pop-row { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.cards-pop-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 6px; }
 .cards-pop-row b { font-weight: 800; }
-.cards-pop-sub { color: rgba(255,255,255,0.6); font-size: 10.5px; margin-left: auto; padding-left: 8px; }
+.cards-pop-sub { color: rgba(255,255,255,0.6); font-size: 10.5px; flex: 1 0 100%; }
 /* Stat explanation popover (tap a stat to learn what it measures + the rule). */
 .cards-pop-b { font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.92); }
 .cards-pop-b b { color: #fff; font-weight: 800; }
