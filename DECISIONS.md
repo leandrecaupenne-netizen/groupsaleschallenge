@@ -125,6 +125,24 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-16 — Repasse UX (équipes cliquables, fiche équipe, a11y) + fix popover carton
+Revue UX (agent) sur les modifs récentes. Correctifs sûrs appliqués ; CI verte (ESLint + smoke +
+e2e). Commits `975eb95` (popover) + `90c6209` (équipes/a11y).
+- **Popover « Yellow card »** : `.cards-pop-row` était `white-space:nowrap` dans une boîte 240px →
+  le détail (« under 5 meetings/wk · 3.0 ») était **coupé**. Passé en `flex-wrap` + sous-ligne
+  pleine largeur → plus de troncature (vérifié 390px, overflow 0).
+- **Affordance des liens équipe** (`.team-link`) : soulignement **pointillé persistant**
+  (currentColor → marche clair/sombre), plein au survol → repère tactile visible (avant : cue
+  hover desktop-only) et distingue la zone « équipe » dans une ligne joueur.
+- **Fiche équipe** : le « team » d'un membre (= équipe déjà ouverte) s'affiche en **texte simple**
+  (`playerTeamHTML(..., p.team===openTeamModal)`) → fini le re-open inutile du même modal ; la
+  modale **nation** garde le lien (équipes différentes).
+- **A11y nesting** : `.team-link` exclu de la passe clavier (`[data-team]:not(.team-link)`) → plus
+  de `role=button`+`tabindex` imbriqué dans une ligne joueur déjà interactive (souvent `<a>`) →
+  fin du double arrêt Tab / interactif-dans-interactif. Souris/tactile ouvre toujours l'équipe.
+- Laissé volontairement : redondance « répétition du leader » dans le journal (P2, voulu « max de
+  joueurs ») ; double accès équipe sur la fiche joueur (P2, inoffensif).
+
 ### 2026-06-15 — Suite revue : 4 chantiers choisis par Léandre appliqués
 Léandre a tranché les sujets « laissés au choix ». Commits `d4bd0d3` (accordéon) + `d2e8d39`
 (a11y/scroll/header). CI verte (ESLint + smoke + e2e).
