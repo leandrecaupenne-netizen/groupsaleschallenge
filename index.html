@@ -3427,6 +3427,11 @@ let suppressAnim = false;  // true during background poll re-renders (no replaye
 let leaders = null;        // last-seen #1s (team / golden / playmaker), to detect changes
 let flash = {};            // leader type -> expiry timestamp for the gold "new #1" flash
 let prevRanks = null;      // ranks from the previous visit (for ▲▼ movement)
+// Week-over-week movement indicators (row ▲n/▼n/NEW badges + the "Movers" strip) are
+// OFF for now: during the data ramp-up the baseline snapshot is unreliable (opportunities
+// column moved, team count 32→34, #DIV/0! rows), so deltas were misleading (e.g. Italy
+// showed ▲4 while already #1). Flip to true to re-enable once the weekly baseline is stable.
+const MOVEMENT_BADGES_ENABLED = false;
 let snapshotPeriod = undefined; // the period initSnapshotOnce last processed (re-run when it changes — fresh fetch can carry a newer period than the instant-paint snapshot)
 
 // === UTILS ===
@@ -4164,6 +4169,7 @@ function tightRaceBanner(race, label) {
 
 // Small ▲n / ▼n / NEW badge comparing current rank to the previous visit.
 function movementBadge(kind, key, curRank) {
+  if (!MOVEMENT_BADGES_ENABLED) return '';
   if (!prevRanks || !prevRanks[kind]) return '';
   const prev = prevRanks[kind][key];
   if (prev === undefined) return `<span class="mv mv-new" title="New entry since the last update">NEW</span>`;
@@ -4779,6 +4785,7 @@ function renderNationsTable() {
 }
 
 function moversStrip() {
+  if (!MOVEMENT_BADGES_ENABLED) return '';
   if (!prevRanks || !prevRanks.teams) return '';
   const movers = sortedTeams.map((t, i) => ({ c: t.country, delta: (prevRanks.teams[t.country] || (i + 1)) - (i + 1) }))
     .filter(m => m.delta !== 0);
