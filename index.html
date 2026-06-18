@@ -2527,7 +2527,7 @@ img, table { max-width: 100%; }
 .tv-name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 40px); line-height: 1.05; }
 /* Team always on its own line under the name — cleaner than trailing inline,
    especially with long names on a big screen. */
-.tv-name em { display: block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.62em; color: var(--gold); letter-spacing: 0.06em; margin-top: 4px; text-transform: uppercase; }
+.tv-name em { display: block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.7em; color: var(--gold); letter-spacing: 0.06em; margin-top: 4px; text-transform: uppercase; }
 .tv-name small { display: block; font-family: 'Inter', sans-serif; font-size: 0.42em; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; margin-top: 4px; }
 .tv-val { flex: 0 0 auto; white-space: nowrap; font-family: 'Anton', Impact, sans-serif; font-size: clamp(22px, 4vmin, 48px); color: var(--gold); font-variant-numeric: tabular-nums; }
 /* VAR reason value: a bit smaller (it can carry two metrics) with the target
@@ -2562,7 +2562,7 @@ img, table { max-width: 100%; }
 .tv-hero-avatar.tv-hero-avatar-photo { width: clamp(110px, 20vmin, 220px); height: clamp(110px, 20vmin, 220px); border: none; background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.28), rgba(255,255,255,0.05) 62%, transparent 72%); overflow: visible; }
 .tv-hero-photo { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 0.8vmin 1.4vmin rgba(0,0,0,0.4)); }
 .tv-hero-name { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 4vmin, 46px); line-height: 1.05; }
-.tv-hero-team { font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(14px, 2.4vmin, 24px); letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); margin-top: 0.8vmin; }
+.tv-hero-team { font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(16px, 2.8vmin, 28px); letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); margin-top: 0.8vmin; }
 /* The official entity name, shown small under the team nickname (TV player lists). */
 .tv-real { display: block; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.72em; letter-spacing: 0.05em; color: rgba(255,255,255,0.55); margin-top: 2px; text-transform: uppercase; }
 .tv-hero-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(30px, 7vmin, 76px); color: var(--gold); line-height: 1; margin-top: 1.4vmin; text-shadow: 0 2px 16px rgba(0,0,0,0.35); }
@@ -2582,11 +2582,11 @@ img, table { max-width: 100%; }
 .tv-ms-row { display: flex; align-items: center; gap: 2vmin; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.4vmin; padding: 1.3vmin 2vmin; }
 .tv-ms-pos { font-family: 'Anton', Impact, sans-serif; font-size: clamp(20px, 3.4vmin, 40px); min-width: 1.6em; text-align: center; }
 .tv-ms-name { flex: 1; min-width: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(16px, 2.8vmin, 34px); line-height: 1.05; }
-.tv-ms-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.6em; color: var(--gold); letter-spacing: 0.05em; margin-left: 0.5em; text-transform: uppercase; vertical-align: middle; }
+.tv-ms-name em { display: inline-block; font-style: normal; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.68em; color: var(--gold); letter-spacing: 0.05em; margin-left: 0.5em; text-transform: uppercase; vertical-align: middle; }
 /* Official entity name nested under the team nickname in chasing-pack rows: give
    it an absolute clamp so it stays readable on a projector (the em-relative size
    would otherwise compound down to a few px). */
-.tv-ms-name em small.tv-real { font-size: clamp(11px, 1.5vmin, 18px); }
+.tv-ms-name em small.tv-real { font-size: clamp(12px, 1.7vmin, 20px); }
 .tv-ms-figure { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex: 0 0 auto; min-width: 0; }
 .tv-ms-val { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 42px); color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
 .tv-ms-unit { font-family: ui-monospace, monospace; font-size: clamp(8px, 1.2vmin, 12px); letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.62); margin-top: 0.4vmin; white-space: nowrap; }
@@ -3246,7 +3246,7 @@ img, table { max-width: 100%; }
 
 // Visible build tag — lets us tell at a glance whether a device is on the latest
 // deploy or stuck on a stale cache / old preview URL. Bump it with each release.
-const BUILD = 'v36';
+const BUILD = 'v37';
 
 // === LIVE CONFIG ===
 const CONFIG = {
