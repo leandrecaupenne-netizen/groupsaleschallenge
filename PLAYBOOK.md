@@ -19,7 +19,8 @@
 >    actions humaines en attente) et tiens-les à jour (cf. §12).
 > 7. Respecte les **invariants** : single-file / no-build, données en **POST** (jamais GET),
 >    mot de passe **côté serveur**, polling jitter + pause onglet caché, **rien de hover-only**,
->    **rien de clippé** dans une carte. Voir §0 (les 12 points) et §15 (pièges déjà payés).
+>    **rien de clippé** dans une carte. Voir §0 (les 12 points), §8 (sécurité), §14 (performance)
+>    et §16 (pièges déjà payés).
 >
 > *Si une seule chose : ce fichier seul suffit à démarrer. Commence par poser les 3 questions du point 1.*
 
@@ -41,9 +42,10 @@
 - [11. Pipeline d'assets](#11-pipeline-dassets-portraits--images)
 - [12. Mémoire inter-sessions & process](#12-mémoire-inter-sessions--process-le-plus-important-pour-aller-vite)
 - [13. Checklist de pré-lancement](#13-checklist-de-pré-lancement-avant-de-diffuser-lurl)
-- [14. Évolutions futures](#14-évolutions-futures-hors-mvp-gardées-en-tête)
-- [15. Pièges déjà payés](#15-pièges-déjà-payés-anti-patterns-à-éviter)
-- [16. Kit de démarrage pour la prochaine app](#16-kit-de-démarrage-pour-la-prochaine-app-copie-ce-qui-suit)
+- [14. Performance & budget de perf (consolidé)](#14-performance--budget-de-perf-consolidé)
+- [15. Évolutions futures](#15-évolutions-futures-hors-mvp-gardées-en-tête)
+- [16. Pièges déjà payés](#16-pièges-déjà-payés-anti-patterns-à-éviter)
+- [17. Kit de démarrage pour la prochaine app](#17-kit-de-démarrage-pour-la-prochaine-app-copie-ce-qui-suit)
 
 **Les annexes**
 - [A. Catalogue exhaustif UX / interactions](#annexe-a--catalogue-exhaustif-ux--interactions-ne-jamais-re-découvrir) — chaque bug payé + sa règle
@@ -371,12 +373,63 @@ Le conteneur est jetable → **la mémoire vit dans le repo** :
 
 ---
 
-## 14. Évolutions futures (hors MVP, gardées en tête)
+## 14. Performance & budget de perf (consolidé)
+
+> La perf est traitée *partout* dans le doc ; cette section la **rassemble** pour qu'aucun levier
+> ne soit oublié. Objectif : **first paint < 1 s** et **interaction fluide même sur vieux mobile**,
+> avec ~400 utilisateurs en simultané sur un backend Apps Script à quotas.
+
+**Poids & premier rendu**
+- **Un seul fichier statique** servi par le CDN Vercel, **gzip/brotli automatique** (~676 Ko brut
+  → **~220 Ko compressé** dans notre cas). Surveille ce ratio : du JS/CSS répétitif compresse très
+  bien, mais **les assets base64 inline (logo, images) gonflent le HTML non-cacheable séparément** →
+  garde en base64 seulement le strict nécessaire (petit logo), tout le reste en fichiers `/cards`,
+  `/icons` **cacheables à part** (headers longs, cf. §8).
+- **Stale-while-revalidate** (snapshot localStorage) : au retour, l'app **peint la dernière donnée
+  connue instantanément** pendant que le fetch frais tourne → pas d'écran blanc sur cold start.
+- **Service worker** précache le shell → relance/offline peint tout de suite (§9).
+
+**Fonts**
+- **woff2 latin self-hosted** (~56 Ko les deux) + **`font-display: swap`** sur chaque `@font-face`
+  → texte visible immédiatement en fallback puis swap, **jamais de FOIT** (texte invisible) ni de
+  render-blocking sur un CDN tiers. Cache **1 an `immutable`**.
+
+**Images**
+- **webp** partout ; **deux résolutions** : thumb **256px** pour les petits ronds (listes, rails),
+  full **1024px** réservé au héros/modale → on évite de charger ~5 Mo de portraits sur une vue dense
+  HiDPI. **`loading="lazy"` + `decoding="async"`** systématiques ; **fallback initiales** si 404.
+  **Versioning `?v=N`** (nom de fichier stable) pour défaire le cache HTTP quand l'art change.
+
+**Coût par render (le poll reconstruit le DOM)**
+- **Pré-calcul une fois par chargement** des agrégats coûteux (`cardsByTeam`, `cardsByRegion`,
+  lookups de rang) → un render **ne re-filtre pas** toute la population par ligne (≈12k
+  normalisations de chaîne/render économisées dans notre cas).
+- **Classements triés une fois** après chaque fetch (`sortedX`), pas à chaque accès.
+- **`debounce`** sur les entrées qui filtrent (recherche, chips) → pas de render par frappe.
+- **Animations via `requestAnimationFrame`** + **`will-change`** sur les éléments animés (ticker,
+  confetti, count-up), et **tout coupé sous `prefers-reduced-motion`** (perf + accessibilité).
+- **Éviter le layout shift (CLS)** : re-snapper le scroll **après** stabilisation du layout
+  (images/portraits chargés) plutôt qu'avant (cf. A.9).
+
+**Réseau & quota (le vrai facteur d'échelle ici)**
+- **Polling lent (120 s) + jitter ±25 %** → évite le *thundering herd* de 400 clients synchronisés ;
+  **pause onglet caché + après inactivité** ; **timeout de fetch** (20 s) pour ne pas pendre sur un
+  cold start. Math de quota : Apps Script gratuit ≈ 20k req/jour ; 400 users × 120 s × 4 h ≈ 48k →
+  d'où le **cache (chunké, TTL ~60 s) côté Apps Script** qui absorbe le reste (et fait office
+  d'anti-DoS), + `keepWarm` contre les cold starts. Si ça déborde : allonger le poll, renforcer le
+  cache (PropertiesService), ou passer aux **SSE** (§15).
+
+**Mesure**
+- **Vercel Speed Insights/Analytics en first-party** (§8) pour suivre LCP/CLS réels sans script tiers.
+
+---
+
+## 15. Évolutions futures (hors MVP, gardées en tête)
 Push refresh (SSE/Pusher) au lieu du polling · Google SSO `@domaine` · stats d'évolution graphiques (snapshots historiques déjà capturés par le cron) · animations count-up sur les scores qui changent · notifications Slack sur nouveau #1 · **mode TV/projection** plein écran (`/projection`) · domaine custom via DNS de l'IT.
 
 ---
 
-## 15. Pièges déjà payés (anti-patterns à éviter)
+## 16. Pièges déjà payés (anti-patterns à éviter)
 - **Ne renomme pas** les onglets/headers de la Sheet sans prévenir : ça flatline un classement. Le mapping tolérant amortit, mais surveille les `warnings`.
 - **Ne sers jamais la donnée en GET** : le code partagé fuiterait dans l'URL/historique.
 - **Ne fais pas confiance à un check d'overflow document-level** : le clipping intra-carte (`overflow:hidden`) est invisible pour lui. Teste *dans* les cartes, sur mobile.
@@ -390,7 +443,7 @@ Push refresh (SSE/Pusher) au lieu du polling · Google SSO `@domaine` · stats d
 
 ---
 
-## 16. Kit de démarrage pour la PROCHAINE app (copie ce qui suit)
+## 17. Kit de démarrage pour la PROCHAINE app (copie ce qui suit)
 
 Fichiers à reprendre **tels quels puis adapter** :
 ```
