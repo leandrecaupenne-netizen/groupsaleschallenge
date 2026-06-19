@@ -17,5 +17,11 @@ Thumbs.db
 dist/
 *.log
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Claude Code local settings
 .claude/settings.local.json

@@ -18,6 +18,8 @@ For the Google Sheet structure to hand to Jose, see [`SHEET_SPEC.md`](./SHEET_SP
 | `apps_script_backend.gs` | Google Apps Script code — the read-only JSON API over the Sheet. |
 | `SHEET_SPEC.md` | Spec for the Google Sheet (4 tabs) — give this to Jose. |
 | `CLAUDE.md` | Full project brief and architecture. |
+| `PLAYWRIGHT_PLAYBOOK.md` | End-to-end testing guide (setup, CLI reference, writing tests, CI). |
+| `tests/` | Playwright E2E suite (mocks the Apps Script backend — no live data needed). |
 
 ---
 
@@ -108,6 +110,22 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
 The login and data load require a reachable `APPS_SCRIPT_URL`.
+
+---
+
+## Testing (Playwright)
+
+End-to-end tests live in `tests/` and mock the Apps Script backend, so they run
+fast, offline, and without secrets:
+
+```bash
+npm install && npm run pw:install   # one-time (downloads browsers — needs open egress)
+npm test                            # run the whole suite
+npm run test:ui                     # interactive UI mode
+```
+
+Full guide — setup, **CLI reference**, selectors, writing tests, CI — in
+[`PLAYWRIGHT_PLAYBOOK.md`](./PLAYWRIGHT_PLAYBOOK.md).
 
 ---
 

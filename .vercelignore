@@ -1,0 +1,12 @@
+# Keep the Vercel deploy purely static — exclude all dev/test tooling.
+# The platform is just index.html + assets; none of the below ships to prod.
+node_modules
+tests
+playwright.config.js
+package.json
+package-lock.json
+.github
+test-results
+playwright-report
+blob-report
+PLAYWRIGHT_PLAYBOOK.md
