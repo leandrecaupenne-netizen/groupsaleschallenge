@@ -224,6 +224,7 @@ Conventions retenues :
 - **Variables CSS de thème** en `:root` (palette, couleurs d'accent) → re-thémer une nouvelle app = changer ~6 variables.
 - **`render()` idempotent** : on peut le rappeler à chaque poll. Il **sauvegarde/restaure `window.scrollY`** et l'**état des modales** ouvertes.
 - **Pré-calculs une fois par chargement** (ex. `cardsByTeam`, lookups de rang) pour ne pas re-filtrer 377 personnes par ligne à chaque render.
+- **Tous les textes passent par un helper i18n** : un dictionnaire `const I18N = { en: { 'key': '…' } }` + une fonction `t('key', vars)` (fallback = la clé). Avantages : un seul endroit pour le wording, prêt pour d'autres langues, et une **garde de test** (chaque `t('…')` utilisé doit exister dans `I18N.en`, sinon la clé brute fuit à l'écran). Mets ce helper en place dès le début même si tu n'as qu'une langue — le retrofit est pénible.
 
 ---
 
@@ -294,6 +295,7 @@ C'est **un portail interne, pas du contrôle d'accès réel**. À écrire noir s
 - **CSP stricte** : `default-src 'self'`, `script-src 'self' 'unsafe-inline' <analytics>`, `connect-src 'self' https://script.google.com https://script.googleusercontent.com <analytics>`, `object-src 'none'`, `base-uri 'none'`. ⚠️ Pense à **lister le domaine de l'API et de l'analytics** dans `connect-src`/`script-src`, sinon le fetch est bloqué.
 - `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `X-Robots-Tag: noindex,nofollow`.
 - **Cache par type** : HTML `max-age=0, must-revalidate` (toujours frais après deploy), images/webp/woff2 longs (`immutable` pour les fonts), service worker non caché.
+- **Analytics en first-party uniquement** : ne charge **jamais** un script d'analytics (ou autre) depuis un **CDN tiers** — un paquet compromis pourrait lire le `localStorage` (donc le code d'accès). Utilise la variante same-origin (ici Vercel `/_vercel/…`), ce qui évite aussi d'élargir la CSP à un domaine tiers. *(Leçon payée : un bot avait branché Speed Insights via `jsdelivr` → refait en first-party.)*
 - `robots.txt` + `<meta name="robots" noindex>` (outil interne). Les bots d'unfurl ignorent robots.txt → les **link previews** Slack/Teams/WhatsApp marchent quand même (meta `og:` conservées).
 
 ---
@@ -364,6 +366,8 @@ Le conteneur est jetable → **la mémoire vit dans le repo** :
 - [ ] `node test/ux-smoke.cjs` et `node test/ux-e2e.cjs` au vert ; ESLint au vert.
 - [ ] `bash test/run-live.sh` (smoke du backend réel) au vert.
 - [ ] Test de charge minimal : ~10 personnes ouvrent en même temps.
+- [ ] **Distribution du lien prête** : URL publique courte/mémorisable + **QR code** généré (affiches, Teams), et le code d'accès communiqué par un canal séparé. Vérifier que le **link-preview** (og:image) s'affiche bien dans Slack/Teams/WhatsApp.
+- [ ] Safe-areas OK sur un téléphone à encoche (rien sous la home-bar) ; états loading/erreur/Retry vérifiés en coupant le réseau.
 
 ---
 
@@ -377,6 +381,8 @@ Push refresh (SSE/Pusher) au lieu du polling · Google SSO `@domaine` · stats d
 - **Ne sers jamais la donnée en GET** : le code partagé fuiterait dans l'URL/historique.
 - **Ne fais pas confiance à un check d'overflow document-level** : le clipping intra-carte (`overflow:hidden`) est invisible pour lui. Teste *dans* les cartes, sur mobile.
 - **N'oublie pas `connect-src`/`script-src` dans la CSP** quand tu ajoutes un domaine (API, analytics) : symptôme = "Failed to load data" + erreur CSP en console.
+- **Apps Script répond par une redirection 302** vers un domaine de contenu : mets **`https://script.googleusercontent.com` dans `connect-src`** (en plus de `script.google.com`), sinon le `fetch` casse après le redirect. Côté curl (snapshot/test), utilise `-L` **sans** `-X` pour que le POST se rejoue en GET sur le 302.
+- **Pas de `<script>` depuis un CDN tiers** (analytics, libs) : risque supply-chain (lecture du code d'accès en localStorage) → first-party only.
 - **N'ajoute pas de `package.json` runtime** : tu casserais le "no build" et le déploiement statique. Installe les outils *à la volée*.
 - **Le `.gs` du repo n'est pas le script déployé** : recolle + redéploie après chaque modif backend.
 - **N'affiche pas d'indicateurs d'évolution tant que la donnée n'est pas stabilisée** (au début ils mentent).
@@ -565,6 +571,7 @@ C'est le point le plus piégeux. Le pattern validé :
 - ≤600px : les en-têtes "titre + pastille" passent la **pastille pleine largeur sous le titre**
   (`min-width:0` sur le conteneur flex), avec une marge sup pour ne pas chevaucher le tableau au-dessus.
 - ≤360px : masquer la ⓘ ; valeurs de stats en `clamp`.
+- **Encoches / safe-areas (iPhone & co.)** : `<meta name="viewport" content="…, viewport-fit=cover">` **+** padding via `env(safe-area-inset-*)` sur les éléments fixés en bas/haut (bouton scroll-top, bannière install, barres collantes) → rien ne passe sous l'encoche ou la barre d'accueil. *(Sans ça, un CTA fixé en bas est mangé par la home-bar.)*
 - **Aucun overflow horizontal** à ces largeurs, **toutes modales ouvertes comprises**.
 
 ## A.9 Scroll (ne jamais le faire sauter)
@@ -657,6 +664,23 @@ C'est le point le plus piégeux. Le pattern validé :
   fonctions clés** (dont le journal). Une fois vu, **flag localStorage** → ne réapparaît pas.
   Il **overlay et intercepte les clics** → les tests doivent le *dismisser* avant d'interagir.
 
+## A.19 Feedback de célébration & états transitoires (le "vivant")
+
+- **Célébration mesurée** : un **nouveau #1** déclenche un **flash doré** (`flash-gold`, 3 cycles)
+  + un **toast** (`#toast-root`, auto-dismiss) ; confetti sur les moments forts. **Tout sous
+  `prefers-reduced-motion`** (animations coupées) et **non bloquant** (pointer-events:none sur le
+  toast). C'est ce qui donne l'impression que "ça bouge" sans gêner la lecture.
+- **Compare l'ancien et le nouvel état au poll** pour savoir *quoi* célébrer (le #1 a-t-il changé
+  depuis le dernier render ?) — d'où l'intérêt des snapshots de rang en localStorage.
+- **État loading brandé** (pas un spinner nu) : un écran de chargement aux couleurs/au thème de
+  l'app pendant le premier fetch (et masqué instantanément si un snapshot est hydraté, cf. §7).
+- **État erreur + Retry explicite** : si le tout premier fetch échoue (et aucun snapshot), montre
+  un message clair **avec un bouton Retry**, pas un écran blanc. En polling, ne casse rien : badge
+  discret "⚠ sync failed" (cf. A.1/§7).
+- **Copier-le-lien / actions de partage** avec **retour visuel** : un bouton qui passe en état
+  `.copied` (✓) après copie presse-papier, ou un toast "✅ Shared!". L'utilisateur doit *voir* que
+  l'action a marché.
+
 ---
 
 # ANNEXE B — La liste de non-régression (chaque ligne = un test à reprendre)
@@ -725,7 +749,11 @@ qui spinne (admin).
 la modale.
 **Overflow** — [ ] rien de clippé *dans* les cartes (flex-wrap) · [ ] polices `clamp` · [ ] tester
 APRÈS chargement des fonts.
-**Responsive** — [ ] 320/360/375/768 sans overflow horizontal, modales ouvertes comprises.
+**Responsive** — [ ] 320/360/375/768 sans overflow horizontal, modales ouvertes comprises · [ ]
+safe-areas (`viewport-fit=cover` + `env(safe-area-inset-*)`) sur les éléments fixés.
+**Feedback/états** — [ ] loading brandé · [ ] erreur + Retry (jamais d'écran blanc) · [ ] célébration
+nouveau #1 (flash/toast) sous reduced-motion · [ ] actions de partage/copie avec retour visuel · [ ]
+i18n via `t()` (aucune clé brute qui fuit).
 **Scroll** — [ ] `scrollY` préservé à chaque render/poll · [ ] "View full ranking" atterrit sur le
 board, re-snap après layout shift · [ ] `scroll-margin-top` sous les barres sticky.
 **Sticky** — [ ] empilement masthead+quicknav mesuré en JS · [ ] section active surlignée · [ ]
