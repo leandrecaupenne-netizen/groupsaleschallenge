@@ -1,5 +1,59 @@
 # PLAYBOOK.md — Transmission de savoir : construire une app "leaderboard live" production-ready
 
+> ## 🟢 À LIRE EN PREMIER — instructions pour Claude Code (nouvelle session)
+> Tu démarres une **nouvelle app** et l'utilisateur t'a donné ce document. Il **fait foi** :
+> il condense tout le savoir-faire d'une app live single-file déjà livrée en production.
+> **Ne re-découvre rien de ce qui est ici.** Marche à suivre :
+> 1. **Demande d'abord** à l'utilisateur les 3 choses qui changent d'un projet à l'autre :
+>    le **thème/métaphore**, la **source de données** (Google Sheet ? autre ?) et ses **colonnes**,
+>    et les **surfaces voulues** (mobile seul ? + projection/TV ? + outil admin ?). Une seule salve
+>    de questions, puis agis.
+> 2. **Scaffolde** le repo en copiant l'**Annexe E** (configs verbatim + squelettes), puis adapte
+>    `CONFIG`, le `SETTINGS`+mapping du backend, et le `mockData()` des tests à la nouvelle donnée.
+> 3. **Conçois le produit** avec l'**Annexe D** (métaphore tenue jusqu'au bout, chiffres qui
+>    s'expliquent, visages, match-sheet, couche éditoriale…).
+> 4. **Construis chaque vue** en respectant l'**Annexe C** (checklist UX) dès le départ.
+> 5. **Garde chaque comportement par un test** (Annexe B) — *tout bug UX corrigé devient une
+>    assertion Playwright*. Lance le smoke test avant chaque push (le hook pre-push le fait).
+> 6. **Initialise la mémoire** : crée `CLAUDE.md` (état cible) + `DECISIONS.md` (journal daté +
+>    actions humaines en attente) et tiens-les à jour (cf. §12).
+> 7. Respecte les **invariants** : single-file / no-build, données en **POST** (jamais GET),
+>    mot de passe **côté serveur**, polling jitter + pause onglet caché, **rien de hover-only**,
+>    **rien de clippé** dans une carte. Voir §0 (les 12 points) et §15 (pièges déjà payés).
+>
+> *Si une seule chose : ce fichier seul suffit à démarrer. Commence par poser les 3 questions du point 1.*
+
+---
+
+## 🗺️ Sommaire
+**La méthode**
+- [0. TL;DR — la recette en 12 points](#0-tldr--la-recette-en-12-points)
+- [1. Philosophie & décisions structurantes](#1-philosophie--décisions-structurantes)
+- [2. Architecture cible](#2-architecture-cible-vue-densemble)
+- [3. Environnement de dev & outillage Claude Code](#3-environnement-de-dev--outillage-claude-code) *(superpowers, lint, agents, Chromium, CI, hooks)*
+- [4. Organisation du fichier monolithe](#4-organisation-du-fichier-monolithe-discipline-interne)
+- [5. Le backend Apps Script](#5-le-backend-apps-script-patterns-à-reprendre)
+- [6. Le contrat de données (shape JSON)](#6-le-contrat-de-données-shape-json)
+- [7. Patterns front "live"](#7-patterns-front-live-le-cœur-de-la-robustesse)
+- [8. Sécurité](#8-sécurité-modèle-gate-interne-léger-à-dimensionner-honnêtement)
+- [9. PWA & service worker](#9-pwa--service-worker)
+- [10. Les deux lois mobile/touch](#10-les-deux-lois-mobiletouch-non-négociables-testées)
+- [11. Pipeline d'assets](#11-pipeline-dassets-portraits--images)
+- [12. Mémoire inter-sessions & process](#12-mémoire-inter-sessions--process-le-plus-important-pour-aller-vite)
+- [13. Checklist de pré-lancement](#13-checklist-de-pré-lancement-avant-de-diffuser-lurl)
+- [14. Évolutions futures](#14-évolutions-futures-hors-mvp-gardées-en-tête)
+- [15. Pièges déjà payés](#15-pièges-déjà-payés-anti-patterns-à-éviter)
+- [16. Kit de démarrage pour la prochaine app](#16-kit-de-démarrage-pour-la-prochaine-app-copie-ce-qui-suit)
+
+**Les annexes**
+- [A. Catalogue exhaustif UX / interactions](#annexe-a--catalogue-exhaustif-ux--interactions-ne-jamais-re-découvrir) — chaque bug payé + sa règle
+- [B. Liste de non-régression](#annexe-b--la-liste-de-non-régression-chaque-ligne--un-test-à-reprendre) — les tests à reprendre
+- [C. Checklist d'acceptation UX](#annexe-c--checklist-dacceptation-ux-à-appliquer-dès-le-départ-prochaine-app) — à cocher par vue
+- [D. Principes de conception produit](#annexe-d--ce-qui-rend-lapp-géniale--principes-de-conception-transférables-pas-à-cloner) — ce qui rend l'app géniale
+- [E. Fichiers de référence prêts à copier](#annexe-e--fichiers-de-référence-prêts-à-copier-le-playbook-est-auto-suffisant) — le scaffolding complet
+
+---
+
 > **À quoi sert ce document.** Il capture *tout* le savoir-faire accumulé sur la plateforme
 > *Devoteam World Cup Sales Challenge 2026* (un leaderboard live, single-file, alimenté par une
 > Google Sheet) pour qu'une **prochaine application du même genre soit livrée beaucoup plus vite,
