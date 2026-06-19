@@ -1,333 +1,233 @@
 # Playwright Playbook — Devoteam World Cup Sales Challenge 2026
 
-> Guide complet pour tester la plateforme avec **Playwright** : mise en place,
-> structure, **focus CLI**, écriture de tests, CI, et dépannage.
+> Guide de test de la plateforme : comment marche la suite `test/` existante,
+> comment l'exécuter / la déboguer / l'étendre, et un **mémo CLI Playwright**.
 > Cible : Léandre et tout futur intervenant sur le repo.
 
 ---
 
-## 1. C'est quoi, et pourquoi ici
+## 1. C'est quoi, et comment c'est branché ici
 
-[Playwright](https://playwright.dev/) est le framework d'automatisation de
-navigateur de Microsoft. On l'utilise ici pour des **tests end-to-end (E2E)** :
-on pilote un vrai navigateur (Chromium, Firefox, WebKit + émulation mobile) qui
-ouvre la plateforme, se connecte, clique sur les onglets, ouvre les modals, etc.,
-exactement comme un commercial Devoteam le ferait.
+[Playwright](https://playwright.dev/) pilote un vrai navigateur (Chromium) par
+programmation. Sur ce projet, on l'utilise pour des **tests UX headless** qui
+ouvrent la vraie `index.html`, **mockent le back-end Apps Script** (aucun appel
+réseau vers Google) et cliquent à travers l'app comme un commercial Devoteam.
 
-**Ce qu'on gagne**, branché sur la checklist de validation du `CLAUDE.md` (section 9) :
-
-| Item checklist | Test Playwright |
-|---|---|
-| Login bon/mauvais mot de passe | `tests/login.spec.js` |
-| Session persiste après refresh | `tests/login.spec.js` |
-| Timestamp `Last updated` = valeur API | `tests/live-data.spec.js` |
-| Modal détail équipe + membres triés | `tests/leaderboard.spec.js` |
-| Golden Boot / Playmaker / VAR | `tests/leaderboard.spec.js` |
-| Recherche My Position avec noms réels | `tests/my-position.spec.js` |
-| Responsive mobile (iPhone + Android) | `tests/responsive.spec.js` |
-| Gestion d'erreur (backend down) | `tests/live-data.spec.js` |
-
-**Principe clé : on ne touche JAMAIS au vrai backend Apps Script.** Chaque test
-intercepte les appels vers `script.google.com` et répond avec une fixture
-(`tests/fixtures/mock-data.js`). Résultat : la suite est **rapide, déterministe,
-et tourne hors-ligne / en CI sans secret ni quota Apps Script**.
-
-La promesse « vanilla, no build » du projet est intacte : Playwright est la seule
-dépendance de dev, et il vit dans `devDependencies` (jamais déployé sur Vercel).
+> ⚠️ **Point clé sur la stack.** Ce repo utilise la **librairie `playwright`
+> brute** (`require('playwright')`) dans des runners Node `.cjs`, **pas** le test
+> runner `@playwright/test`. C'est un choix délibéré : **aucun `package.json`
+> racine** n'est commité, donc le déploiement Vercel reste un site statique pur
+> (les deps de test/lint s'installent à la volée en CI et via le hook pre-push).
+> Les commandes `npx playwright test …` ne s'appliquent donc **pas** ici — on
+> lance `node test/<runner>.cjs`.
 
 ---
 
-## 2. Mise en place (une fois)
+## 2. La suite de tests (`test/`)
 
-```bash
-# 1. Installer la dépendance de dev (@playwright/test)
-npm install
+| Fichier | Couvre | Deps | Quand le lancer |
+|---|---|---|---|
+| `test/backend-contract.js` | logique back-end `apps_script_backend.gs`, hors-ligne (Apps Script mocké dans une sandbox `vm`) | aucune | avant de redéployer l'Apps Script |
+| `test/run-live.sh` | l'API **déployée** réelle sur le réseau (shape + intégrité du payload) | `curl` | check quotidien / debug « Failed to load data » |
+| `test/ux-smoke.cjs` | **rapide** : login, onglets, CTA « Find your position », modals, recherche + fuzzy, overflow responsive @320/375/768, rien de clippé dans une carte sur mobile | Playwright + Chromium | à chaque changement UI |
+| `test/ux-e2e.cjs` | **profond** : admin (VAR TIME / Coach Room / VAR review), mode TV, partage de carte, ticker cliquable, compare, sous-vues, dark mode, popover « tap-the-tally » mobile | Playwright + Chromium | avant un lancement / après une grosse refonte |
+| `test/e2e/run.js` | **parcours complet en navigateur** contre le **back-end live** (Puppeteer, sous-projet autonome avec son propre `node_modules`) | Puppeteer + Chromium | avant un lancement / après un gros changement UI |
 
-# 2. Télécharger les navigateurs (Chromium/Firefox/WebKit) + leurs libs système
-npm run pw:install        # alias de: playwright install --with-deps
-```
+Code de sortie `0` = tout vert ; `1` = un check a échoué ou une erreur JS a été levée.
 
-> ⚠️ **Sandbox Claude Code web** : l'environnement d'exécution distant a une
-> *network egress policy* restreinte qui **bloque le téléchargement des
-> navigateurs** (`cdn.playwright.dev` n'est pas dans l'allowlist). Les tests s'y
-> **valident** (`npx playwright test --list`) mais ne s'y **exécutent** pas.
-> Lance la suite **en local** (machine de Léandre) ou **en CI** (GitHub Actions,
-> egress ouvert) — voir §6. Pour autoriser l'exécution dans une session web,
-> ajouter `cdn.playwright.dev` à l'allowlist réseau de l'environnement.
-
-Pré-requis : **Node 18+** (testé sur Node 20/22).
+Les runners `ux-*.cjs` lancent **leur propre serveur statique** pour servir le
+repo, bloquent le service worker, et **interceptent les requêtes vers
+`script.google.com`** pour répondre avec des données mockées (login + payload) —
+donc zéro secret, zéro réseau Google, déterministe.
 
 ---
 
-## 3. Structure des fichiers
+## 3. Pré-requis & installation
 
-```
-groupsaleschallenge/
-├── playwright.config.js          Config: projets (5 navigateurs), webServer, reporters
-├── package.json                  devDependency + scripts npm
-├── tests/
-│   ├── server.js                 Serveur statique 0-dépendance (sert index.html en http)
-│   ├── helpers.js                mockBackend(), seedSession(), gotoApp()
-│   ├── fixtures/
-│   │   └── mock-data.js          Payload API mocké (teams/people/period/...)
-│   ├── login.spec.js             Écran de login (form réel)
-│   ├── leaderboard.spec.js       Onglets, classements, modal équipe, VAR
-│   ├── my-position.spec.js       Recherche joueur
-│   ├── live-data.spec.js         Timestamp, polling, backend down
-│   └── responsive.spec.js        Viewport mobile
-└── .github/workflows/playwright.yml   CI
+Playwright + Chromium sont **pré-installés dans les sessions cloud Claude Code**
+(et le hook `SessionStart` s'en assure — voir §7). En local :
+
+```bash
+npm i -D playwright && npx playwright install chromium   # pour ux-smoke / ux-e2e
+npm i -D eslint eslint-plugin-html globals               # pour le lint
+# le test Puppeteer est à part :
+cd test/e2e && npm install                               # puppeteer-core + Chromium
 ```
 
-Le `webServer` de la config démarre `tests/server.js` (port **4173**) avant la
-suite et l'arrête après. On sert en **http://localhost** (et pas `file://`) parce
-que le service worker, `fetch` et le mocking de routes se comportent alors comme
-en production.
+Pas de `package.json` racine : ces `npm i -D` créent un `node_modules/` local
+**non commité** (ignoré par `.gitignore`). C'est voulu.
 
 ---
 
-## 4. 🎯 Focus CLI — la commande `playwright`
-
-Tout passe par le binaire `playwright` (via `npx playwright …` ou les scripts
-`npm run …`). Voici le pense-bête complet, **adapté à ce projet**.
-
-### 4.1 Lancer les tests — `playwright test`
+## 4. Lancer les tests
 
 ```bash
-npx playwright test                       # toute la suite, tous les navigateurs (headless)
-npm test                                  # idem (alias)
+# Tests UX headless (mockent le back-end — pas de réseau)
+node test/ux-smoke.cjs        # rapide (~login, tabs, modals, responsive)
+node test/ux-e2e.cjs          # profond (admin, TV, share, compare, dark…)
 
-# Cibler un fichier / un test
-npx playwright test tests/login.spec.js   # un seul fichier
-npx playwright test -g "wrong access"     # filtre par titre (grep)
-npx playwright test login                 # filtre par chemin partiel
+# Contrat back-end (hors-ligne, sandbox vm)
+node test/backend-contract.js
 
-# Cibler un navigateur (« projet »)
-npx playwright test --project=chromium
-npm run test:mobile                       # Mobile Chrome + Mobile Safari
+# Lint (les mêmes règles que la CI)
+npx eslint .
 
-# Voir le navigateur (debug visuel)
-npx playwright test --headed              # fenêtre visible
-npm run test:headed
+# Smoke live contre l'Apps Script déployé
+bash test/run-live.sh
+APPS_SCRIPT_URL=https://script.google.com/macros/s/…/exec PASSWORD=… bash test/run-live.sh
 
-# Vitesse / robustesse
-npx playwright test --workers=4           # parallélisme (défaut: nb de cœurs)
-npx playwright test --workers=1           # série (debug d'un état partagé)
-npx playwright test --repeat-each=5       # détecter un test « flaky »
-npx playwright test --retries=2           # retenter les échecs
-npx playwright test --max-failures=1      # stopper au 1er échec
-
-# Sélection intelligente
-npx playwright test --last-failed         # rejouer uniquement les échecs précédents
-npx playwright test --only-changed        # tests liés aux fichiers modifiés (git)
+# Parcours complet en navigateur contre le back-end live (Puppeteer)
+cd test/e2e && node run.js
 ```
-
-### 4.2 Mode UI — le plus utile au quotidien — `--ui`
-
-```bash
-npx playwright test --ui
-npm run test:ui
-```
-
-Ouvre le **Playwright UI Mode** : time-travel sur chaque action, watch mode,
-sélection des tests à la souris, DOM snapshot à chaque étape. À privilégier pour
-développer/déboguer des tests.
-
-### 4.3 Débogage — `--debug`
-
-```bash
-npx playwright test --debug                       # ouvre l'Inspector, pas-à-pas
-npx playwright test tests/login.spec.js --debug   # cibler un fichier
-PWDEBUG=console npx playwright test               # expose `playwright` dans la console du navigateur
-```
-
-Dans le code, on peut aussi poser un point d'arrêt : `await page.pause();`.
-
-### 4.4 Générer des tests par enregistrement — `codegen`
-
-```bash
-# 1. Démarrer le serveur local dans un terminal
-npm run serve                              # http://localhost:4173
-
-# 2. Enregistrer ses clics → génère le code de test
-npm run codegen                            # = playwright codegen http://localhost:4173
-npx playwright codegen --device="iPhone 14" http://localhost:4173   # en émulation mobile
-```
-
-Playwright ouvre un navigateur ; chaque interaction est transcrite en code
-(avec des sélecteurs robustes). Idéal pour démarrer un nouveau spec.
-
-> Note : le codegen part de l'**écran de login**. Tape le mot de passe
-> (`devoteam2026`) pour atteindre le leaderboard, puis enregistre la suite. Ou
-> pré-remplis la session via les helpers (voir §5) une fois le squelette généré.
-
-### 4.5 Rapport & traces — `show-report` / `show-trace`
-
-```bash
-npx playwright show-report                 # ouvre le rapport HTML du dernier run
-npm run report
-
-# Trace = enregistrement rejouable (DOM, réseau, console, captures) d'un test
-npx playwright show-trace test-results/<...>/trace.zip
-npm run trace -- test-results/<...>/trace.zip
-```
-
-La config capture une trace **au 1er retry** (`trace: 'on-first-retry'`), une
-capture **à l'échec**, et une vidéo **conservée à l'échec**. Pour forcer la trace
-sur tous les tests : `npx playwright test --trace on`.
-
-### 4.6 Navigateurs — `install`
-
-```bash
-npx playwright install                     # tous les navigateurs
-npx playwright install chromium            # un seul
-npx playwright install --with-deps         # + dépendances système (Linux/CI)
-npx playwright install --dry-run           # voir ce qui serait téléchargé
-```
-
-### 4.7 Divers utiles
-
-```bash
-npx playwright test --list                 # lister les tests SANS les exécuter (valide config+specs, aucun navigateur requis)
-npx playwright --version                   # version
-npx playwright merge-reports ./blob-report # fusionner des rapports (CI shardée)
-npx playwright test --reporter=line        # changer de reporter ad hoc (line|dot|list|html|json|github)
-```
-
-### 4.8 Variables d'environnement
-
-| Variable | Effet |
-|---|---|
-| `CI=1` | Active le profil CI de la config (retries=2, workers=1, reporter `github`) |
-| `PORT=5000` | Change le port du serveur de test (config + `npm run serve`) |
-| `PWDEBUG=1` | Lance l'Inspector (équivalent `--debug`) |
-| `PLAYWRIGHT_HTML_OPEN=never` | N'ouvre pas le rapport automatiquement |
 
 ---
 
-## 5. Écrire un test pour CETTE app
+## 5. 🎯 Mémo CLI Playwright
 
-### 5.1 Les helpers (à connaître)
+Avec la **librairie `playwright`**, la CLI sert surtout à **installer les
+navigateurs** et à **écrire/déboguer des sélecteurs** (le « run » des tests passe
+par `node test/<runner>.cjs`, pas par un test runner).
 
-`tests/helpers.js` expose trois fonctions :
+### 5.1 Navigateurs — `playwright install`
 
-```js
-const { gotoApp, mockBackend, seedSession } = require('./helpers');
-
-// Le plus simple : mocke le backend, ouvre une session valide, charge l'app,
-// attend que le leaderboard soit affiché.
-await gotoApp(page);
-
-// Variantes (pour tester le login lui-même, ou un backend en panne) :
-await mockBackend(page);                  // intercepte script.google.com → fixture
-await mockBackend(page, { fail: true });  // toutes les requêtes data renvoient 500
-await mockBackend(page, { onData: () => hits++ });  // compter les appels (polling)
-await seedSession(page);                  // pré-remplit localStorage (skip login)
+```bash
+npx playwright install                 # tous les navigateurs
+npx playwright install chromium        # juste Chromium (ce dont les runners ont besoin)
+npx playwright install --with-deps chromium   # + libs système (Linux/CI ; nécessite apt)
+npx playwright install --dry-run       # voir ce qui serait téléchargé
+npx playwright --version               # version installée
 ```
 
-Comment ça marche : `mockBackend` fait un `page.route('**/macros/s/**', …)` qui
-répond au prewarm (`GET ?action=ping`), valide le mot de passe sur les
-`POST {action:'data'}`, et renvoie `mock-data.js`. C'est **l'unique point de
-contact réseau** simulé.
+> Les binaires viennent de **`cdn.playwright.dev`**. En session Claude Code web,
+> cet hôte doit être dans l'allowlist réseau (Network access → **Custom** +
+> `cdn.playwright.dev`, ou niveau **Full**), sinon le download renvoie `403`.
 
-### 5.2 Sélecteurs stables de la plateforme
+### 5.2 Écrire des tests par enregistrement — `playwright codegen`
+
+Le plus utile pour **trouver des sélecteurs robustes** quand tu étends un runner.
+
+```bash
+# 1. Servir l'app en local (un terminal)
+python3 -m http.server 8000           # → http://localhost:8000
+
+# 2. Enregistrer ses clics → code + sélecteurs générés
+npx playwright codegen http://localhost:8000
+npx playwright codegen --device="iPhone 14" http://localhost:8000   # en émulation mobile
+```
+
+Codegen démarre sur l'**écran de login** : tape le code d'accès
+(`devoteam2026`) pour atteindre le leaderboard, puis enregistre. Récupère les
+sélecteurs générés (`getByRole`, `getByText`, `[data-team]`, `[data-player]`…)
+et reporte-les dans le runner `.cjs`.
+
+### 5.3 Inspecter / capturer — `open`, `screenshot`
+
+```bash
+npx playwright open http://localhost:8000          # ouvre l'app + l'inspecteur de sélecteurs
+npx playwright screenshot --device="iPhone 14" http://localhost:8000 shot.png
+npx playwright open --device="Pixel 7" http://localhost:8000
+```
+
+### 5.4 Déboguer un runner — `PWDEBUG`
+
+Les runners tournent en `headless: true`. Pour voir ce qui se passe :
+
+```bash
+PWDEBUG=1 node test/ux-smoke.cjs       # ouvre le Playwright Inspector (pas-à-pas, sélecteurs)
+```
+
+Pour voir la fenêtre du navigateur en continu, passe ponctuellement
+`headless: true` → `false` (et éventuellement `slowMo: 250`) dans le
+`chromium.launch({…})` du runner concerné — à ne pas committer.
+
+### 5.5 Sélecteurs stables de la plateforme
 
 | Élément | Sélecteur |
 |---|---|
-| Champ mot de passe | `#login-pwd` |
-| Bouton login | `#login-btn` |
-| Message d'erreur login | `.login-error` |
-| Barre d'onglets | `#tabs-bar` |
-| Un onglet | `.tab-btn[data-tab="golden"]` (`teams`/`spotlight`/`golden`/`playmaker`/`awards`/`var`/`position`) |
+| Champ mot de passe / bouton login | `#login-pwd` / `#login-btn` |
+| Erreur login | `.login-error` |
+| Barre d'onglets / onglet | `#tabs-bar` / `.tab-btn[data-tab="golden"]` (`teams`/`spotlight`/`golden`/`playmaker`/`awards`/`var`/`position`) |
 | Onglet actif | `.tab-btn.active` |
-| Ligne équipe | `.teams-table-row[data-team="LUXEMBOURG"]` |
-| Carte podium | `.podium-card[data-team="…"]` |
+| Ligne équipe / carte podium | `.teams-table-row[data-team="…"]` / `.podium-card[data-team="…"]` |
 | Ligne / carte joueur | `[data-player="Louis MASSON"]` |
-| Modal squad équipe | `#cd-overlay` (fermer : `#cd-close`) |
+| Modal squad / fermeture | `#cd-overlay` / `#cd-close` |
 | Modal carte joueur | `#player-overlay` |
 | Timestamp live | `#last-update` |
 | Recherche My Position | `#position-search` |
 | Bouton refresh (admin) | `#refresh-btn` (caché sauf `?admin=leandre-refresh-2026`) |
 
-Privilégier les locators **par rôle / texte** quand c'est possible
-(`page.getByRole`, `page.getByText`) — plus résistants aux refactors CSS.
-
-### 5.3 Squelette type
-
-```js
-const { test, expect } = require('@playwright/test');
-const { gotoApp } = require('./helpers');
-
-test('Golden Boot met Louis MASSON en tête', async ({ page }) => {
-  await gotoApp(page);
-  await page.locator('.tab-btn[data-tab="golden"]').click();
-  await expect(page.locator('.tab-btn.active')).toHaveText(/Golden Boot/);
-  await expect(page.getByText('Louis MASSON').first()).toBeVisible();
-});
-```
-
-### 5.4 Adapter la fixture
-
-`tests/fixtures/mock-data.js` est volontairement **petit et déterministe**
-(3 équipes, 5 joueurs) pour pouvoir affirmer un ordre exact. Les flags dérivés
-(`is_rookie`, `yellow_meetings`, `yellow_gm`) sont calculés comme dans
-`apps_script_backend.gs`. Pour tester un nouveau cas (ex. un award rempli),
-ajoute-le dans `dataPayload.special_awards` et écris l'assertion.
+Privilégier `getByRole` / `getByText` quand possible (résistant aux refactors CSS).
 
 ---
 
-## 6. CI — GitHub Actions
+## 6. CI & garde-fous
 
-`.github/workflows/playwright.yml` exécute la suite sur **push** et **pull
-request**. Les runners GitHub ont un egress ouvert : `npx playwright install
---with-deps` y fonctionne (contrairement à la sandbox web). Le rapport HTML est
-uploadé en **artifact** (`playwright-report`, 14 j de rétention).
-
-Étapes : checkout → setup Node 20 → `npm ci` → install navigateurs → `npx
-playwright test` → upload report.
-
-> Astuce PR : en cas d'échec CI, télécharger l'artifact `playwright-report`,
-> dézipper, ouvrir `index.html` (ou `npx playwright show-report chemin/`) pour
-> revoir traces, captures et vidéos.
+- **`.github/workflows/ux-tests.yml`** — sur chaque push/PR : job **lint**
+  (`npx eslint .`) puis job **ux** (installe Playwright+Chromium, lance
+  `ux-smoke.cjs` puis `ux-e2e.cjs`, commente en cas d'échec). Les runners GitHub
+  ont un egress ouvert : `playwright install --with-deps chromium` y passe.
+- **`.github/workflows/snapshot.yml`** — snapshots planifiés.
+- **Pre-push hook** `.githooks/pre-push` — lance ESLint + le smoke test avant
+  chaque `git push` (skip gracieux si Node/Playwright absents). À activer une fois
+  par clone :
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+  Contourner ponctuellement : `git push --no-verify`.
 
 ---
 
-## 7. Dépannage
+## 7. Sessions Claude Code on the web
 
-**`Executable doesn't exist … run "playwright install"`**
-Les navigateurs ne sont pas téléchargés : `npm run pw:install`. En sandbox web,
-c'est attendu (egress bloqué) — lance en local ou en CI.
+Chaque session web démarre dans un conteneur neuf. Le hook
+**`.claude/hooks/session-start.sh`** (enregistré dans `.claude/settings.json`)
+installe automatiquement, en remote uniquement, ce qu'il faut pour faire tourner
+la suite : **Playwright + Chromium** et **ESLint + plugins**. Il est idempotent,
+non-interactif, et **ne casse jamais le démarrage** : si `cdn.playwright.dev`
+n'est pas autorisé, il l'indique et la session démarre quand même.
+
+> Pré-requis réseau : ajouter `cdn.playwright.dev` à l'allowlist **Custom** de
+> l'environnement (ou niveau **Full**), puis **démarrer une nouvelle session**
+> (le changement de policy ne s'applique pas au conteneur déjà lancé).
+
+Une fois en place : `node test/ux-smoke.cjs` tourne directement.
+
+---
+
+## 8. Dépannage
+
+**`Playwright not found` / `Executable doesn't exist`**
+`npm i -D playwright && npx playwright install chromium` (ou attendre le hook en
+session web). En CI c'est géré par `ux-tests.yml`.
 
 **`Host not in allowlist: cdn.playwright.dev` (403)**
-La policy réseau de l'environnement bloque le download. Ajouter
-`cdn.playwright.dev` à l'allowlist, ou exécuter ailleurs (local/CI).
+La policy réseau bloque le download. Mets l'environnement en **Custom +
+`cdn.playwright.dev`** (ou **Full**) et démarre une **nouvelle** session.
 
-**Le test attend indéfiniment `#tabs-bar`**
-Le mock backend n'est pas posé avant `page.goto`, ou le mot de passe seedé ne
-matche pas la fixture. Toujours `mockBackend()` **avant** `goto`, et utiliser
-`gotoApp()` qui ordonne tout correctement.
+**Un test UX échoue / « flaky »**
+`PWDEBUG=1 node test/ux-smoke.cjs` pour rejouer pas-à-pas ; vérifie les
+sélecteurs (cf. §5.5) et préfère les attentes auto (`waitForSelector`) aux délais
+fixes.
 
-**Le port 4173 est déjà pris**
-`PORT=4180 npx playwright test` (la config lit `PORT`). En local, le webServer
-réutilise un serveur déjà lancé (`reuseExistingServer: true`).
+**`run-live.sh` renvoie une erreur**
+Vérifie `APPS_SCRIPT_URL` (test direct `?action=ping`), l'accès « Anyone » du
+déploiement Apps Script, et le `PASSWORD`.
 
-**Test « flaky »**
-`npx playwright test -g "le test" --repeat-each=10` pour reproduire ; préférer
-les locators auto-attendus (`expect(locator).toBeVisible()`) aux `waitForTimeout`.
-
-**Voir ce qui s'est passé**
-`npx playwright test --trace on` puis `npx playwright show-report`.
+**ESLint casse la CI après un changement**
+`npx eslint .` en local avant de pousser ; la config est dans `eslint.config.mjs`
+(règles « vrais bugs = erreurs, style = warnings »).
 
 ---
 
-## 8. Aide-mémoire express
+## 9. Aide-mémoire express
 
 ```bash
-npm install && npm run pw:install   # setup (navigateurs : local/CI seulement)
-npm test                            # tout
-npm run test:ui                     # mode UI (recommandé pour développer)
-npm run test:headed                 # voir le navigateur
-npx playwright test --debug         # pas-à-pas
-npm run codegen                     # enregistrer un test (serveur via npm run serve)
-npm run report                      # rapport du dernier run
-npx playwright test --list          # valider sans exécuter (aucun navigateur requis)
+node test/ux-smoke.cjs        # tests UX rapides
+node test/ux-e2e.cjs          # tests UX profonds
+node test/backend-contract.js # contrat back-end (hors-ligne)
+npx eslint .                  # lint
+bash test/run-live.sh         # smoke live de l'API
+npx playwright codegen http://localhost:8000   # écrire des sélecteurs (servir l'app d'abord)
+PWDEBUG=1 node test/ux-smoke.cjs               # debug pas-à-pas
+git config core.hooksPath .githooks            # activer le pre-push
 ```

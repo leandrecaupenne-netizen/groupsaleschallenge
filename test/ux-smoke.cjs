@@ -1,0 +1,319 @@
+/* ============================================================================
+ * UX interaction smoke test — Devoteam World Cup platform
+ * ----------------------------------------------------------------------------
+ * Drives the REAL app in a headless browser: mocks the Apps Script login/data
+ * (no network to Google needed), dismisses the onboarding tour, then clicks
+ * through every tab, the "Find your position" CTA, player/team modals, search +
+ * fuzzy search, TV/dark-mode buttons — asserting expected behaviour and catching
+ * uncaught JS errors and horizontal overflow at mobile widths.
+ *
+ * Run:  node test/ux-smoke.cjs
+ * Prereqs: Playwright + Chromium (pre-installed in Claude Code cloud sessions;
+ *          locally: `npm i -D playwright && npx playwright install chromium`).
+ * Exit code 0 = all green, 1 = a check failed or a JS error was thrown.
+ * ========================================================================== */
+'use strict';
+const http = require('http'), fs = require('fs'), path = require('path');
+const { execSync } = require('child_process');
+
+// Resolve Playwright whether it's a local dep or the global install.
+let PW;
+try { PW = require('playwright'); }
+catch {
+  try { PW = require(path.join(execSync('npm root -g').toString().trim(), 'playwright')); }
+  catch { console.error('❌ Playwright not found. Install: npm i -D playwright && npx playwright install chromium'); process.exit(2); }
+}
+
+const ROOT = path.resolve(__dirname, '..');
+const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.webp':'image/webp',
+  '.png':'image/png', '.json':'application/json', '.webmanifest':'application/manifest+json', '.svg':'image/svg+xml' };
+
+// Mock dataset in the Apps Script JSON shape (varied: yellow cards, rookies, licence).
+function mockData() {
+  const teams = [['DENMARK',4],['FR - M CLOUD',5],['ES ENTERPRISE',4],['BELGIUM',3],['PORTUGAL 2',4],['UK',3]]
+    .map(([country, members], i) => ({ country, members, total_ps: 9e6 - i*1e6, avg_ps: 2.2e6 - i*2e5,
+      avg_gm: 0.27 - i*0.01, avg_meetings: 6 - i*0.4, avg_opps: 7 - i }));
+  const people = [['Claus Thorsager','DENMARK'],['Thomas Vinther','DENMARK'],['Mael Gaudichon','FR - M CLOUD'],
+    ['Juan Carlos Nieto','ES ENTERPRISE'],['Leen Verelst','BELGIUM'],['Rui Passinhas','PORTUGAL 2'],
+    ['Amelia Giallella','FR - M CLOUD'],['Sara Garcia','ES ENTERPRISE'],['Sean Foster','UK'],['Ines Mejri','FR - M CLOUD']]
+    .map((n, i) => ({ name: n[0], team: n[1], tenure: i % 3 === 0 ? '<6 months' : 'Over a year',
+      ps_total: 5e6 - i*3e5, ps_total_gm: i === 2 ? 0.18 : 0.30, ps_nb: 4e6 - i*3e5, ps_nb_gm: 0.28,
+      licence_gm: i < 5 ? 5e5 - i*5e4 : 0, meetings: i % 4 === 0 ? 3 : 6, opps: 15 - i }));
+  return { teams, people, updated_at: new Date().toISOString(), period: 'Week 1 of 5',
+    challenge_dates: { start: '2026-06-01', end: '2026-07-03' }, special_awards: {}, warnings: [] };
+}
+
+(async () => {
+  // 1) Static server for the repo on an ephemeral port.
+  const server = http.createServer((req, res) => {
+    let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html';
+    fs.readFile(path.join(ROOT, p), (e, buf) => {
+      if (e) { res.writeHead(404); return res.end('not found'); }
+      res.writeHead(200, { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' });
+      res.end(buf);
+    });
+  });
+  await new Promise(r => server.listen(0, r));
+  const BASE = `http://localhost:${server.address().port}/index.html`;
+
+  const results = [], errors = [];
+  const log = (name, ok, extra = '') => results.push({ ok, line: `${ok ? '✅' : '❌'} ${name}${extra ? ' — ' + extra : ''}` });
+
+  // Static i18n integrity: every t('key') used must exist in I18N.en, otherwise the
+  // raw key string leaks to users (t() falls back to the key). The dynamic `tab.`
+  // prefix has a code-level fallback to the tab's label, so it's exempted.
+  {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const enStart = html.indexOf('en: {', html.indexOf('const I18N'));
+    const enBlock = html.slice(enStart, html.indexOf('\n  },', enStart));
+    const defined = new Set([...enBlock.matchAll(/'([^']+)'\s*:/g)].map(m => m[1]));
+    const used = new Set([...html.matchAll(/\bt\(\s*['"]([^'"]+)['"]/g)].map(m => m[1]));
+    const missing = [...used].filter(k => k !== 'tab.' && !defined.has(k));
+    log('i18n: every t() key is defined (no raw key leaks)', missing.length === 0, missing.length ? 'missing: ' + missing.join(', ') : `${used.size} keys ok`);
+  }
+
+  const browser = await PW.chromium.launch({ headless: true, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage'] });
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
+  ctx.setDefaultTimeout(5000);
+  await ctx.route('**script.google.com**', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockData()) }));
+  // Vercel Speed Insights script is served only on Vercel (/_vercel/…) — no-op it here
+  // so it doesn't 404 and log a console error off-platform.
+  await ctx.route('**/_vercel/**', route =>
+    route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });
+
+  try {
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+    if (await page.$('#login-pwd')) { await page.fill('#login-pwd', 'test'); await page.click('#login-btn'); }
+    await page.waitForSelector('.tab-btn', { timeout: 10000 }).catch(() => {});
+    log('App renders after login', !!(await page.$('.tab-btn')));
+
+    // Dismiss first-visit onboarding tour (it overlays and intercepts clicks).
+    if (await page.$('#tour-ov')) {
+      const skip = await page.$('#tour-skip'); if (skip) await skip.click().catch(() => {});
+      for (let i = 0; i < 8 && await page.$('#tour-ov'); i++) { const n = await page.$('#tour-next'); if (n) await n.click().catch(() => {}); await page.waitForTimeout(120); }
+      log('Onboarding tour dismissed', !(await page.$('#tour-ov')));
+    }
+
+    for (const t of await page.$$eval('.tab-btn', els => els.map(e => e.dataset.tab))) {
+      await page.click(`.tab-btn[data-tab="${t}"]`).catch(() => {});
+      await page.waitForTimeout(120);
+      const active = await page.$eval('.tab-btn.active', e => e.dataset.tab).catch(() => null);
+      log(`Tab "${t}" switches`, active === t, active !== t ? `active=${active}` : '');
+    }
+
+    // "Find your position" CTA (regression guard for the inline-onclick bug).
+    await page.click('.tab-btn[data-tab="golden"]').catch(() => {});
+    await page.waitForTimeout(120);
+    if (await page.$('#find-me-btn')) {
+      await page.click('#find-me-btn');
+      await page.waitForTimeout(250);
+      const active = await page.$eval('.tab-btn.active', e => e.dataset.tab).catch(() => null);
+      log('CTA "Find your position" switches to My Position', active === 'position' && !!(await page.$('#position-search')), `active=${active}`);
+      const inView = await page.evaluate(() => { const e = document.getElementById('position-search'); if (!e) return false; const r = e.getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; });
+      log('CTA reveals the search field in view (not stuck on the hero)', inView);
+    } else log('CTA "Find your position" present', false);
+
+    // My Position search + fuzzy + graceful no-match.
+    await page.click('.tab-btn[data-tab="position"]').catch(() => {});
+    if (await page.$('#position-search')) {
+      await page.fill('#position-search', 'thorsager'); await page.waitForTimeout(220);
+      log('My Position resolves a card', !!(await page.$('.position-card-wrap, .pc-card')));
+      await page.fill('#position-search', 'garcia'); await page.waitForTimeout(220);
+      log('Fuzzy/accent-insensitive search finds Garcia', !!(await page.$('.position-card-wrap, .suggestion-item, .pc-card')));
+      await page.fill('#position-search', 'zzxqw'); await page.waitForTimeout(220);
+      const msg = (await page.textContent('.position-result').catch(() => '')) || '';
+      log('No-match shows a graceful message', /did you mean|No salesperson|No exact/i.test(msg));
+    }
+
+    // Player + team modals.
+    await page.click('.tab-btn[data-tab="golden"]').catch(() => {});
+    await page.waitForTimeout(120);
+    const pl = await page.$('[data-player]');
+    if (pl) { await pl.click(); await page.waitForTimeout(250); log('Player card modal opens', !!(await page.$('#player-overlay')));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(150); log('Player card closes on Esc', !(await page.$('#player-overlay'))); }
+    await page.click('.tab-btn[data-tab="teams"]').catch(() => {});
+    await page.waitForTimeout(120);
+    const tm = await page.$('[data-team]');
+    if (tm) { await tm.click(); await page.waitForTimeout(250); log('Team modal opens', !!(await page.$('#modal-overlay'))); await page.keyboard.press('Escape'); await page.waitForTimeout(120); }
+
+    // Weekly recap / magazine: opens, a player jump opens their card, and Back
+    // returns to the journal (not the menu). Guards the recap's core interactions.
+    await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(100);
+    await page.evaluate(() => { if (typeof window.openDigest === 'function') window.openDigest(); });
+    await page.waitForTimeout(250);
+    log('Recap journal opens', !!(await page.$('#digest-overlay .mag')));
+    const jump = await page.$('#digest-overlay [data-jump]');
+    if (jump) {
+      await jump.click(); await page.waitForTimeout(280);
+      log('Recap → player card opens', !!(await page.$('#player-overlay')));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+      log('Recap is restored after closing the card (not the menu)', !!(await page.$('#digest-overlay')));
+      await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+    } else log('Recap journal has a tappable player', false);
+    await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+
+    // Global search.
+    if (await page.$('#search-btn')) {
+      await page.click('#search-btn'); await page.waitForTimeout(220);
+      const si = await page.$('#search-input, .search-modal input');
+      log('Search modal opens', !!si);
+      if (si) { await si.fill('vinther'); await page.waitForTimeout(220); log('Search returns a result', !!(await page.$('.search-result'))); }
+      await page.keyboard.press('Escape'); await page.waitForTimeout(120);
+    }
+
+    // Theme + TV buttons (no crash), then exit any overlay.
+    for (const id of ['#theme-btn', '#tv-btn']) if (await page.$(id)) { await page.click(id).catch(() => {}); await page.waitForTimeout(180); log(`Button ${id} (no crash)`, true); }
+    await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+
+    // Responsive: no horizontal overflow at mobile widths.
+    for (const w of [320, 375, 768]) {
+      await page.setViewportSize({ width: w, height: 780 }); await page.waitForTimeout(180);
+      const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      log(`No horizontal overflow @ ${w}px`, o <= 1, `overflow=${o}px`);
+    }
+
+    // Deeper than document overflow: catch content clipped INSIDE a box that has
+    // overflow:hidden — the podium-tally bug (a 🟨 (N) cut off at the card edge),
+    // which scrollWidth-of-document can't see. Scan every tab at a phone width.
+    // Allowlist boxes that are *meant* to be wider than their frame: the scrolling
+    // ticker marquee, circular cover-cropped avatars, and the hero's decorative bg.
+    {
+      const ALLOW = ['ticker', 'has-photo', 'hero', 'marquee', 'sr-only'];
+      const scan = (allow) => {
+        const bad = [];
+        document.querySelectorAll('body *').forEach(el => {
+          const s = getComputedStyle(el);
+          if (s.overflowX !== 'hidden' && s.overflowX !== 'clip') return;
+          if (s.display === 'none' || s.visibility === 'hidden') return;
+          if (el.clientWidth <= 0) return;
+          const over = el.scrollWidth - el.clientWidth;
+          if (over <= 4) return;
+          const r = el.getBoundingClientRect(); if (r.height < 6) return;
+          const cls = typeof el.className === 'string' ? el.className : '';
+          if (allow.some(a => cls.includes(a) || (el.id && el.id.includes(a)))) return;
+          bad.push((el.id ? '#' + el.id : '.' + (cls.trim().split(/\s+/)[0] || el.tagName.toLowerCase())) + ' +' + over + 'px');
+        });
+        return [...new Set(bad)];
+      };
+      await page.setViewportSize({ width: 360, height: 800 }); await page.waitForTimeout(150);
+      const allClipped = [];
+      for (const t of await page.$$eval('.tab-btn', els => els.map(e => e.dataset.tab))) {
+        await page.click(`.tab-btn[data-tab="${t}"]`).catch(() => {});
+        await page.waitForTimeout(150);
+        const bad = await page.evaluate(scan, ALLOW);
+        if (bad.length) allClipped.push(`${t}: ${bad.join(', ')}`);
+      }
+      log('No content clipped inside a box on mobile (360px, all tabs)', allClipped.length === 0, allClipped.slice(0, 4).join(' | '));
+    }
+
+    // Board hero text never clips or runs under the #1 portrait. The generic clip
+    // scan above allowlists `hero` (decorative bg can overflow), so this targets the
+    // hero's actual TEXT: a nowrap label that overflows its column and slides under
+    // the avatar (the "New Business déborde" bug) is caught here.
+    {
+      const heroBad = [];
+      await page.setViewportSize({ width: 360, height: 800 }); await page.waitForTimeout(120);
+      for (const t of ['golden', 'playmaker', 'rookies', 'licence', 'spotlight']) {
+        if (!(await page.$(`.tab-btn[data-tab="${t}"]`))) continue;
+        await page.click(`.tab-btn[data-tab="${t}"]`).catch(() => {});
+        await page.waitForTimeout(160);
+        const bad = await page.evaluate(() => {
+          const out = [];
+          document.querySelectorAll('.ms-hero').forEach(h => {
+            const av = h.querySelector('.ms-hero-avatar');
+            const avL = av ? av.getBoundingClientRect().left : Infinity;
+            h.querySelectorAll('.ms-hero-name, .ms-hero-stat, .ms-hero-stat-label, .ms-hero-team').forEach(el => {
+              const cls = (typeof el.className === 'string' ? el.className.split(/\s+/)[0] : 'el');
+              if (el.scrollWidth > el.clientWidth + 2) out.push(cls + ' clipped+' + (el.scrollWidth - el.clientWidth));
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.right > avL + 1) out.push(cls + ' under-portrait');
+            });
+          });
+          return [...new Set(out)];
+        });
+        if (bad.length) heroBad.push(`${t}: ${bad.join(', ')}`);
+      }
+      log('Board hero text fits & clears the portrait (no overflow under avatar)', heroBad.length === 0, heroBad.slice(0, 4).join(' | '));
+    }
+
+    // Text fits inside the Panini card AND the journal cards. Flags any leaf text that
+    // is horizontally clipped (scrollWidth > clientWidth) WITHOUT an ellipsis affordance
+    // — i.e. content genuinely cut off, not deliberately truncated. Skips ellipsis nodes.
+    {
+      const scan = sels => {
+        const bad = [];
+        sels.forEach(sel => document.querySelectorAll(sel).forEach(el => {
+          if (getComputedStyle(el).textOverflow === 'ellipsis') return; // intentional truncation
+          if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) {
+            const cls = (typeof el.className === 'string' ? el.className.split(/\s+/)[0] : 'el');
+            bad.push(cls + '+' + (el.scrollWidth - el.clientWidth));
+          }
+        }));
+        return [...new Set(bad)];
+      };
+      await page.setViewportSize({ width: 360, height: 800 }); await page.waitForTimeout(120);
+      // Panini player card (rendered inline in My Position).
+      await page.click('.tab-btn[data-tab="position"]').catch(() => {});
+      await page.fill('#position-search', 'thorsager').catch(() => {});
+      await page.waitForTimeout(300);
+      const pcBad = await page.evaluate(scan, ['.pc-name', '.pc-stat-val', '.pc-stat-label', '.pc-rating b', '.pc-rating span', '.pc-total-note']);
+      log('Panini card text fits (no non-ellipsis overflow)', pcBad.length === 0, pcBad.slice(0, 5).join(' | '));
+      // Weekly journal cards (hero headline, Duel, Team of the Week, Stat of the Week,
+      // pull-quote, leaderboard values).
+      await page.evaluate(() => { if (typeof window.openDigest === 'function') window.openDigest(); });
+      await page.waitForTimeout(300);
+      const magBad = await page.evaluate(scan, ['.mag-headline', '.mp-stat', '.mp-statlabel', '.mag-duel-name', '.mag-duel-val', '.mag-duel-unit', '.mag-totw-name', '.mag-totw-stat', '.mag-sotw-val', '.mag-sotw-who', '.mag-lb-val', '.mag-quote-text']);
+      log('Journal card text fits (no non-ellipsis overflow)', magBad.length === 0, magBad.slice(0, 6).join(' | '));
+      await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+    }
+
+    // Player card at the smallest phone width (320px): the 4-up hero stat row must
+    // fit (no overflow), and tapping a stat must open an explainer that stays on
+    // screen. Guards the responsive regression from adding the ⓘ affordances.
+    {
+      await page.setViewportSize({ width: 320, height: 640 }); await page.waitForTimeout(150);
+      await page.click('.tab-btn[data-tab="position"]').catch(() => {});
+      await page.fill('#position-search', 'thorsager').catch(() => {});
+      await page.waitForTimeout(300);
+      const heroOver = await page.evaluate(() => { const r = document.querySelector('.pc-rating-row'); return r ? r.scrollWidth - r.clientWidth : 0; });
+      log('Player card hero stat row fits at 320px', heroOver <= 1, `over=${heroOver}px`);
+      const st = await page.$('[data-explain="nb_rank"]');
+      if (st) {
+        await st.click(); await page.waitForTimeout(150);
+        const fits = await page.evaluate(() => { const p = document.getElementById('cards-pop'); if (!p || p.hidden) return false; const r = p.getBoundingClientRect(); return r.left >= -1 && r.top >= -1 && r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1; });
+        log('Stat explainer popover stays on screen at 320px', fits);
+      }
+    }
+
+    // Mobile info parity: the member tables hide their stat columns on phones, so a
+    // compact summary line under each name (NB / GM / meetings / opps) must be visible.
+    {
+      await page.setViewportSize({ width: 360, height: 780 }); await page.waitForTimeout(120);
+      await page.click('.tab-btn[data-tab="teams"]').catch(() => {});
+      await page.waitForTimeout(150);
+      const tm = await page.$('[data-team]');
+      if (tm) {
+        await tm.click(); await page.waitForTimeout(250);
+        const metaShown = await page.evaluate(() => { const m = document.querySelector('.member-meta'); return !!(m && m.offsetParent !== null && /opps|mtg/.test(m.textContent || '')); });
+        log('Mobile member rows show the summary meta line', metaShown);
+        await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(120);
+      }
+    }
+  } catch (e) {
+    errors.push('HARNESS: ' + e.message);
+  } finally {
+    await browser.close(); server.close();
+  }
+
+  console.log('\n===== UX SMOKE TEST =====');
+  results.forEach(r => console.log(r.line));
+  console.log(`\nJS errors: ${errors.length}`);
+  errors.slice(0, 20).forEach(e => console.log('  ' + e));
+  const failed = results.filter(r => !r.ok).length;
+  console.log(`\n${failed === 0 && errors.length === 0 ? '✅ ALL GREEN' : `❌ ${failed} check(s) failed, ${errors.length} JS error(s)`}`);
+  process.exit(failed === 0 && errors.length === 0 ? 0 : 1);
+})();

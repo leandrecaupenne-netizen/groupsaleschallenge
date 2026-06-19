@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# ----------------------------------------------------------------------------
+# Pre-push hook: run the headless UX smoke test to catch UI regressions before
+# code leaves the machine (e.g. the "Find your position" CTA / tabs / modals /
+# mobile overflow). Aborts the push if a check fails or a JS error is thrown.
+#
+# Skips gracefully (exit 0) if Node / Playwright / Chromium aren't available, so
+# it never hard-blocks a push in a bare environment or CI without the browser.
+# Bypass once with:  git push --no-verify
+#
+# Enable in a fresh clone:  git config core.hooksPath .githooks
+# ----------------------------------------------------------------------------
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+command -v node >/dev/null 2>&1 || { echo "[pre-push] node not found — skipping checks."; exit 0; }
+
+# ESLint (skips gracefully if not installed: npm i -D eslint eslint-plugin-html globals).
+if [ -x "$ROOT/node_modules/.bin/eslint" ]; then
+  echo "[pre-push] Running ESLint…"
+  "$ROOT/node_modules/.bin/eslint" "$ROOT" || {
+    echo "[pre-push] ❌ ESLint found errors — push aborted. Fix them, or bypass once with: git push --no-verify"; exit 1; }
+else
+  echo "[pre-push] ESLint not installed — skipping lint (npm i -D eslint eslint-plugin-html globals)."
+fi
+
+# Playwright resolvable (local dep or global install)?
+node -e "try{require('playwright')}catch(e){require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright')}" >/dev/null 2>&1 || {
+  echo "[pre-push] Playwright not installed — skipping UX test (npm i -D playwright && npx playwright install chromium)."; exit 0; }
+
+echo "[pre-push] Running UX smoke test (test/ux-smoke.cjs)…"
+node "$ROOT/test/ux-smoke.cjs"
+code=$?
+[ $code -ne 0 ] && echo "[pre-push] ❌ UX smoke test failed — push aborted. Fix it, or bypass once with: git push --no-verify"
+exit $code

@@ -1,0 +1,13 @@
+{
+  "name": "devoteam-wc-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end browser test for the Devoteam World Cup platform (real browser, live back-end).",
+  "scripts": {
+    "test": "node run.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
+    "puppeteer-core": "^25.1.0"
+  }
+}

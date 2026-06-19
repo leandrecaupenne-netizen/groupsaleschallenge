@@ -1,0 +1,56 @@
+name: Weekly history snapshot
+
+# Captures a point-in-time snapshot of the live data into /history so the platform
+# can show week-over-week evolution. Runs every Monday morning (the weekly sync), and
+# can also be triggered by hand right before a sync via "Run workflow".
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # every Monday 06:00 UTC (08:00 Paris)
+  workflow_dispatch: {}
+
+# Needs to commit the new snapshot file back to the repo.
+permissions:
+  contents: write
+
+concurrency:
+  group: history-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      APPS_SCRIPT_URL: https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch live data
+        env:
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: |
+          if [ -z "$APP_PASSWORD" ]; then
+            echo "::error::Missing APP_PASSWORD secret (Settings → Secrets and variables → Actions). Add it = the platform access code."
+            exit 1
+          fi
+          # POST without -X so curl downgrades to GET on the Apps Script 302 (the
+          # one-time content URL then serves the JSON) — same as test/run-live.sh.
+          curl -sS -L --max-time 60 "$APPS_SCRIPT_URL" \
+            -H 'Content-Type: application/json' \
+            --data "$(APP_PASSWORD="$APP_PASSWORD" python3 -c 'import os,json;print(json.dumps({"action":"data","password":os.environ["APP_PASSWORD"]}))')" \
+            -o live.json
+
+      - name: Write trimmed snapshot
+        run: python3 scripts/snapshot.py live.json history
+
+      - name: Commit the snapshot (if new or changed)
+        run: |
+          rm -f live.json
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add history/
+          if git diff --staged --quiet; then
+            echo "No snapshot change this run — nothing to commit."
+          else
+            git commit -m "history: weekly snapshot $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+          fi

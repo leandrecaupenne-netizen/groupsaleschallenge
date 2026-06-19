@@ -2,6 +2,10 @@
 
 > Brief technique complet pour passer la maquette HTML en application production-ready.
 > Document destiné à Claude Code (Anthropic) pour piloter l'implémentation.
+>
+> 🧠 **Mémoire inter-sessions** : lire [`DECISIONS.md`](./DECISIONS.md) en début de session
+> (historique des décisions, actions humaines en attente, TODO). Le mettre à jour en fin de
+> session. Ce `CLAUDE.md` = état cible ; `DECISIONS.md` = historique + ce qui reste à faire.
 
 ---
 
@@ -93,8 +97,8 @@ Transformer cette maquette en application production-ready, hébergée publiquem
 ┌──────────────────────────────────────┐
 │  Plateforme HTML (hébergée Vercel)   │
 │  - Auth par mot de passe             │
-│  - Polling toutes les 30 secondes    │
-│  - Bouton refresh manuel             │
+│  - Polling toutes les ~2 min (jitter)│
+│  - Refresh manuel (admin only)       │
 │  - Last updated timestamp visible    │
 └──────────┬───────────────────────────┘
            │ accédée par
@@ -126,9 +130,9 @@ Léandre crée le script (code prêt fourni dans ce brief, section 6), le déplo
 Claude Code se charge de :
 - Ajouter écran de login par mot de passe (simple, avec localStorage)
 - Remplacer le bloc JSON statique par un fetch vers `APPS_SCRIPT_URL`
-- Implémenter polling toutes les 30 secondes
+- Implémenter polling toutes les ~2 minutes (base 120 s, jitter ±25 %, pause après 15 min d'inactivité et en arrière-plan)
 - Connecter le timestamp `Last updated` au champ `updated_at` de l'API
-- Ajouter un bouton refresh manuel à côté du timestamp
+- Ajouter un bouton refresh manuel à côté du timestamp (réservé admin via `?admin=`)
 - Gérer les états : loading, error, retry
 - Garantir que l'UX reste fluide pendant les refresh (pas de flash, pas de scroll perdu)
 
@@ -230,138 +234,15 @@ Si pas rempli, la plateforme affiche "To be selected after the challenge" comme 
 > [`apps_script_backend.gs`](./apps_script_backend.gs)** : il lit les onglets existants
 > `Team Ranking` / `Challenge Ranking`, mappe les colonnes par nom (insensible à la
 > casse/espaces/retours ligne), exclut Morocco/Serbia/Tunisia, et porte le mot de passe /
-> période / dates dans un bloc `SETTINGS`. C'est ce fichier qui fait foi. Le bloc ci-dessous
-> est conservé pour mémoire.
+> période / dates dans un bloc `SETTINGS`. C'est ce fichier qui fait foi. Le bloc de code
+> d'origine a été **retiré** d'ici (voir la note ci-dessous) pour éviter tout copier-coller.
 
-```javascript
-// ============================================
-// Devoteam World Cup 2026 — Backend API
-// ============================================
-
-const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
-
-// CORS-friendly JSON response
-function jsonResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// Read a sheet as array of objects (headers from row 1)
-function readSheetAsObjects(sheetName) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(sheetName);
-  if (!sheet) return [];
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return [];
-  const headers = data[0];
-  return data.slice(1)
-    .filter(row => row.some(cell => cell !== '' && cell !== null))
-    .map(row => {
-      const obj = {};
-      headers.forEach((h, i) => {
-        let v = row[i];
-        // Convert numeric strings to numbers if possible, ignore errors
-        if (typeof v === 'string' && v.startsWith('#')) v = 0;
-        obj[h] = v;
-      });
-      return obj;
-    });
-}
-
-// Read config as flat key/value object
-function readConfig() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Config');
-  if (!sheet) return {};
-  const data = sheet.getDataRange().getValues();
-  const config = {};
-  data.slice(1).forEach(row => {
-    if (row[0]) config[row[0]] = row[1];
-  });
-  return config;
-}
-
-// Read special awards (optional sheet)
-function readSpecialAwards() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Special Awards');
-  if (!sheet) return {};
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return {};
-  const headers = data[0];
-  const awards = {};
-  data.slice(1).forEach(row => {
-    if (row[0]) {
-      const obj = {};
-      headers.forEach((h, i) => obj[h] = row[i]);
-      awards[row[0]] = obj;
-    }
-  });
-  return awards;
-}
-
-// Main GET endpoint
-function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || 'data';
-  
-  try {
-    if (action === 'data') {
-      const teams = readSheetAsObjects('Teams');
-      const peopleRaw = readSheetAsObjects('People');
-      const config = readConfig();
-      const specialAwards = readSpecialAwards();
-      
-      // Compute derived fields for people
-      const people = peopleRaw.map(p => {
-        const tenure = String(p.tenure || '');
-        return {
-          ...p,
-          is_rookie: tenure.includes('months') || tenure.includes('<'),
-          yellow_meetings: (p.meetings || 0) < 5,
-          yellow_gm: (p.ps_total_gm || 0) < 0.25 && (p.ps_total || 0) > 0
-        };
-      });
-      
-      return jsonResponse({
-        teams,
-        people,
-        updated_at: config.last_update || new Date().toISOString(),
-        period: config.period || 'Current',
-        challenge_dates: {
-          start: config.challenge_start || '2026-06-01',
-          end: config.challenge_end || '2026-07-03'
-        },
-        special_awards: specialAwards
-      });
-    }
-    
-    if (action === 'ping') {
-      return jsonResponse({ ok: true, time: new Date().toISOString() });
-    }
-    
-    return jsonResponse({ error: 'Unknown action' });
-  } catch (err) {
-    return jsonResponse({ error: err.message, stack: err.stack });
-  }
-}
-
-// Password verification endpoint (POST)
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents);
-    
-    if (data.action === 'verify_password') {
-      const config = readConfig();
-      const correctPassword = config.password || '';
-      return jsonResponse({
-        ok: String(data.password) === String(correctPassword)
-      });
-    }
-    
-    return jsonResponse({ error: 'Unknown action' });
-  } catch (err) {
-    return jsonResponse({ error: err.message });
-  }
-}
-```
+> _Le code complet d'origine (qui lisait des onglets `Teams`/`People` via une API **GET**)
+> a été retiré d'ici : le recopier **casserait le déploiement actuel**. Le code qui **fait
+> foi** est entièrement dans [`apps_script_backend.gs`](./apps_script_backend.gs) — c'est
+> CE fichier qu'on colle dans l'éditeur Apps Script (il lit `Team Ranking` / `Challenge
+> Ranking`, data en **POST**, exclut Morocco/Serbia/Tunisia, `keepWarm`, cache chunké).
+> Voir [`SHEET_SPEC.md`](./SHEET_SPEC.md) pour les onglets réellement lus._
 
 **Déploiement** :
 1. Coller le code dans l'éditeur Apps Script
@@ -388,7 +269,7 @@ Ajouter en tout début de la balise `<script>` (juste après `'use strict';`) :
 ```javascript
 const CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/REPLACE_ME/exec',
-  POLL_INTERVAL_MS: 30000,  // 30 secondes
+  POLL_INTERVAL_MS: 120000,  // 2 min base (jittered ±25%) — données ~hebdo, quota Apps Script confortable
   SESSION_KEY: 'devoteam_wc_session_v1'
 };
 ```
@@ -709,7 +590,7 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - [ ] La session persiste après refresh (localStorage)
 - [ ] Le timestamp `Last updated` affiche bien la valeur de la Sheet
 - [ ] Le bouton refresh manuel fonctionne et anime
-- [ ] Le polling automatique se déclenche toutes les 30 secondes (vérifier dans l'onglet Network du devtools)
+- [ ] Le polling automatique se déclenche toutes les ~2 minutes (vérifier dans l'onglet Network du devtools)
 - [ ] Le modal détail équipe s'ouvre et affiche les membres triés
 - [ ] La recherche My Position fonctionne avec des noms réels
 - [ ] La plateforme est responsive sur mobile (test sur iPhone et Android)
@@ -748,8 +629,9 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - Vérifier que `openTeamModal` est préservé pendant le re-render
 
 **Quota Apps Script dépassé** :
-- Apps Script gratuit autorise 20K requêtes/jour. Pour 400 personnes qui pollent toutes les 30 sec en moyenne 4h/jour = 192K requêtes/jour, on dépasse.
-- Solution : passer le polling à 60-120 secondes, ou implémenter du cache côté Apps Script (PropertiesService), ou passer aux SSE.
+- Apps Script gratuit autorise 20K requêtes/jour. Pour 400 personnes qui pollent toutes les 30 sec en moyenne 4h/jour = 192K requêtes/jour, on dépasserait.
+- C'est pourquoi le polling est réglé à **120 s** (avec jitter ±25 %, pause après 15 min d'inactivité et en arrière-plan) : ~400 users × 120 s × 4h ≈ 48K req/jour, encore au-dessus du quota brut, d'où le **cache chunké côté Apps Script** (voir `apps_script_backend.gs`) qui absorbe le reste.
+- Leviers supplémentaires si besoin : allonger encore le polling, renforcer le cache (PropertiesService), ou passer aux SSE.
 
 **Données qui ne se mettent pas à jour** :
 - Vérifier que Jose a bien updaté `last_update` dans Config (sinon le timestamp ne bouge pas même si les données changent)
@@ -764,7 +646,8 @@ Avant de partager l'URL aux 400 commerciaux, vérifier :
 - **Devoteam IT** (pour DNS domaine custom) : à compléter
 - **URL Apps Script** : `https://script.google.com/macros/s/AKfycbydewCCd2LNmMKACluHC8PAqkzFxfK0u_jQrldoBEbjCyxycTPQjkQL4o-Hf-P_kDOq/exec`
 - **URL Vercel (preview branche)** : https://groupsaleschallenge-git-clau-a93676-leandre-caupenne-s-projects.vercel.app/
-- **URL Vercel (production)** : à définir dans Vercel → Settings → Domains (recommandé pour le lancement)
+- **URL Vercel (production / lien public)** : https://groupsaleschallenge.vercel.app/ ← lien à diffuser aux participants
+- **Lien admin** : https://groupsaleschallenge.vercel.app/?admin=leandre-refresh-2026 (NE PAS diffuser — active VAR TIME / Coach Room / refresh manuel sur l'appareil)
 - **Mot de passe d'accès** : `devoteam2026` (constante `SETTINGS.PASSWORD` dans `apps_script_backend.gs`)
 - **Clé admin (refresh manuel)** : `?admin=leandre-refresh-2026`
 - **Repo GitHub** : leandrecaupenne-netizen/groupsaleschallenge
