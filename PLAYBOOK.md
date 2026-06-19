@@ -294,7 +294,9 @@ Patterns essentiels :
 - **CORS** : l'accès doit être *"Anyone, even anonymous"*, sinon le `fetch` est bloqué.
 
 Procédure de déploiement (à transmettre à l'humain qui a accès au classeur) :
-1. Sheet → Extensions → Apps Script, coller le `.gs`. 2. Sauver, nommer le projet. 3. Déployer → Web app → *Exécuter en tant que : Moi* / *Accès : Tous*. 4. Autoriser. 5. Copier l'URL `/exec`. 6. Tester `?action=ping`.
+1. Sheet → Extensions → Apps Script, coller le `.gs`. 2. Sauver, nommer le projet. 3. Déployer → Web app → *Exécuter en tant que : Moi* / *Accès : Tous*. 4. Autoriser (accepter le scope **Drive** demandé, sinon le timestamp `updated_at` retombe sur "now"). 5. Copier l'URL `/exec`. 6. Tester `?action=ping` → `{ok:true}`. 7. **Installer le trigger `keepWarm`** (sinon le 1er visiteur subit un cold start de plusieurs s) : éditeur Apps Script → ⏰ *Triggers* → *Add Trigger* → fonction `keepWarm` · *Time-driven* · *Minutes timer* · **toutes les 5 min** → Save.
+- **Re-déploiement après modif du `.gs`** : *Gérer les déploiements → Modifier → Nouvelle version* → **l'URL `/exec` ne change pas** (rien à toucher côté front). Ne crée **pas** un *nouveau* déploiement (ça donnerait une nouvelle URL).
+- **Changer le mot de passe sans redéployer** : ajoute un onglet `Config` (clé/valeur) avec une ligne `password` → `getCorrectPassword()` la lit en priorité sur `SETTINGS.PASSWORD`. Idem pour `period`, `last_update`, `challenge_start/end`.
 
 ---
 
@@ -314,6 +316,9 @@ Le front et les tests dépendent d'une **shape stable**. À figer dès le début
 ```
 - Adapte les champs au métier de la nouvelle app, **mais garde** : `updated_at`, `period`, un objet de dates, et **`warnings`**.
 - Les **classements sont recalculés côté client** (`sortedX = [...people].sort(...)`) → l'API reste bête, le front décide du tri/affichage. Facile à faire évoluer sans redéployer le backend.
+- **Définis la sémantique de chaque classement EXPLICITEMENT — elle peut légitimement différer selon le périmètre.** Ici, décision validée avec le métier : le **challenge individuel** (Golden Boot, Rookie) compte le **New Business** ; le **classement d'équipe** (podium, "vainqueur") compte le **Total** (New Business + renouvellements). Ce n'est **pas** une incohérence : c'est un choix produit, écrit noir sur blanc. Note-le dans `DECISIONS.md` pour que personne ne le "corrige" par erreur plus tard.
+- **Gère explicitement le cas "métrique indéfinie"** : une marge (GM) n'a de sens que s'il y a du volume. Quand une personne n'a pas de New Business, son GM individuel est **`null` → affiché "—"** (jamais 0, jamais pénalisé/cardé "low margin"). Décide ça par métrique, dès le contrat.
+- **Quelques flags peuvent être dérivés côté serveur** (ex. `is_rookie` depuis l'ancienneté, `yellow_*` depuis les seuils) **avec une garde "données présentes"** : ne pas flagger tout le monde quand une colonne source est encore vide au démarrage du challenge.
 - Documente cette shape dans un `SHEET_SPEC.md` à donner au data owner (noms d'onglets, colonnes, ordre, types, décimales). C'est le contrat humain de l'autre côté.
 
 ---
@@ -332,6 +337,10 @@ Le front et les tests dépendent d'une **shape stable**. À figer dès le début
 - **Timestamp visible** : "Last updated" branché sur `updated_at` de l'API → la fraîcheur est lisible par l'utilisateur.
 - **Refresh manuel admin-only** : bouton ↻ qui spinne, gated par `?admin=<clé>` (voir §8).
 - **Évolution semaine/semaine** : snapshots de rangs en `localStorage` keyés par `period` + snapshots serveur dans `history/` (cron) → badges ▲▼ et digest hebdo. ⚠️ *Leçon* : on a **désactivé les indicateurs de mouvement pendant la montée en charge des données** car ils étaient trompeurs au démarrage — n'active ce genre de feature qu'une fois la donnée stabilisée.
+- **Préserver le caret pendant un poll** : helpers `captureFocus()` / `restoreFocus()` sauvent l'élément focusé **et** son `selectionStart/End`, restaurés après le re-render → taper dans la recherche **n'est jamais interrompu** par un refresh en arrière-plan. (Indispensable dès qu'il y a un input + du polling.)
+- **Pré-chauffer le backend pendant le login** : `prewarmBackend()` (un `?action=ping`) lancé **pendant que l'utilisateur lit/tape son code** → le cold start Apps Script (plusieurs s) est masqué, le 1er `fetchData` arrive sur un Web App déjà chaud.
+- **États de cold start explicites** : loader "**WARMING UP** — waking the live data…" au tout premier chargement (pas un spinner muet), et un état vide "**Standings warming up**" tant que la donnée n'est pas prête (ex. < 3 entités classées au lancement) — au lieu d'un tableau vide qui a l'air cassé.
+- **Période auto-calculée côté client** : `computeAutoPeriod()` dérive "Week N of N" à partir de `challenge_dates` (si on est dans la fenêtre), avec **fallback** sur le `period` du backend → plus besoin d'éditer un libellé chaque semaine.
 
 ---
 
@@ -405,6 +414,8 @@ Le conteneur est jetable → **la mémoire vit dans le repo** :
 
 ## 13. Checklist de pré-lancement (avant de diffuser l'URL)
 
+**Ordre de mise en place (setup, une fois) :** 1) Sheet prête (onglets/colonnes stables, `SHEET_SPEC.md`) → 2) backend Apps Script collé + déployé (Web app, *Anyone*, scope Drive accepté) + **trigger `keepWarm`** installé → 3) `?action=ping` OK → 4) `APPS_SCRIPT_URL` renseignée dans `index.html` → 5) push → Vercel déploie → 6) tests (smoke/e2e/run-live) verts → 7) **premier snapshot manuel** avant le 1er cron : `curl -sS -L "$URL" --data '{"action":"data","password":"…"}' -o live.json && python3 scripts/snapshot.py live.json history` → 8) diffusion du lien + code.
+
 - [ ] La Sheet a les bons onglets/colonnes (ortho, casse, ordre) — voir `SHEET_SPEC.md`.
 - [ ] Apps Script déployé, accès *Anyone*, `?action=ping` → `{ok:true}`.
 - [ ] `APPS_SCRIPT_URL` du front pointe sur la bonne URL `/exec`.
@@ -455,6 +466,8 @@ Le conteneur est jetable → **la mémoire vit dans le repo** :
   lookups de rang) → un render **ne re-filtre pas** toute la population par ligne (≈12k
   normalisations de chaîne/render économisées dans notre cas).
 - **Classements triés une fois** après chaque fetch (`sortedX`), pas à chaque accès.
+- **Sauter les re-renders no-op** : garde la `updated_at` du dernier paint (`lastRenderedUpdate`) ; si un poll renvoie la **même** valeur, **ne reconstruis pas le DOM** du tout. La donnée changeant ~hebdo, ça élimine la quasi-totalité des renders de polling.
+- **Suspendre les animations pendant un re-render de fond** : un flag `suppressAnim` (vrai pendant un poll) **n'rejoue pas** les cascades d'entrée / count-ups (distinct de `prefers-reduced-motion` : ici on garde les animations pour les paints *intentionnels*, on les coupe juste pour les refresh silencieux).
 - **`debounce`** sur les entrées qui filtrent (recherche, chips) → pas de render par frappe.
 - **Animations via `requestAnimationFrame`** + **`will-change`** sur les éléments animés (ticker,
   confetti, count-up), et **tout coupé sous `prefers-reduced-motion`** (perf + accessibilité).
@@ -701,6 +714,12 @@ C'est le point le plus piégeux. Le pattern validé :
 - **Toggles keyés sur le contenu, pas sur l'identité du nœud** → survivent au re-render du polling.
 - **État des modales ouvertes préservé** pendant un poll (on ne ferme rien sous les doigts de
   l'utilisateur).
+- **Caret/sélection préservés** : avant un re-render de poll, sauver l'`activeElement` **et** son
+  `selectionStart/End` (`captureFocus`), restaurer après (`restoreFocus`) → on ne perd jamais sa
+  place en train de taper dans la recherche. *(Bug payé : un poll en arrière-plan vidait/replaçait le
+  champ pendant la frappe.)*
+- **`suppressAnim` pendant les polls** : ne pas rejouer les cascades/count-ups sur un refresh
+  silencieux (garde-les pour les ouvertures intentionnelles) — voir §14.
 - **Animations d'entrée non rejouées sur un retour** : classe `.mag-instant` → revenir d'une carte
   restaure instantanément à la position mémorisée, sans rejouer la cascade. **Count-up sauté au
   retour** (on n'anime pas deux fois). *(Bug payé : chaque retour relançait toute l'animation.)*
@@ -714,6 +733,10 @@ C'est le point le plus piégeux. Le pattern validé :
   ne pas y mettre un second `role=button`+`tabindex` (ex. `.team-link` **exclu** de la passe clavier
   `[data-team]:not(.team-link)`). *(Bug payé : double arrêt Tab, focus piégé.)*
 - **`aria-hidden`** sur le décoratif (ex. marquee BREAKING), **`aria-label`** sur les médailles/icônes.
+- **`role="status"` + `aria-live="polite"`** sur les zones de feedback transitoire (toast, badge
+  "⚠ sync failed", flash de refresh) → annoncées au lecteur d'écran sans voler le focus.
+- **Rendre le focus à l'ouvreur** : à la fermeture d'un overlay, refocaliser l'élément qui l'avait
+  ouvert (`opener = document.activeElement` mémorisé à l'ouverture).
 
 ## A.13 Formulaires & saisie
 
@@ -724,6 +747,9 @@ C'est le point le plus piégeux. Le pattern validé :
 
 ## A.14 États vides, robustesse & garde-fous data
 
+- **Métrique indéfinie ≠ zéro** : une marge sans volume n'a pas de sens → afficher **"—"** (valeur
+  `null`), pas `0`, et **ne jamais pénaliser/carder** sur une métrique indéfinie. *(cf. §6 : GM
+  individuel `null` quand pas de New Business.)*
 - **Ne jamais mettre en avant un leader à valeur 0** dans une carte "star"/journal (une colonne
   source vide ne doit pas produire un faux champion).
 - **Recherche : message gracieux** quand aucun résultat (pas d'écran vide), et **recherche fuzzy
@@ -1241,9 +1267,14 @@ const TEAM_MAP = [ /* idem côté équipes */ ];
 
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 const json = d => ContentService.createTextOutput(JSON.stringify(d)).setMimeType(ContentService.MimeType.JSON);
+// Header normalisé : minuscules + espaces/retours-ligne collapsés → " Full  Name\n" matche 'Full name'.
 const normHeader = h => String(h == null ? '' : h).toLowerCase().replace(/\s+/g, ' ').trim();
+// Coercition robuste : '', null, #DIV/0!, #N/A, "1 234,56 €" → nombre (ou 0). Indispensable sur du BI.
 function toNumber(v){ if(v===''||v==null) return 0; if(typeof v==='number') return isFinite(v)?v:0;
-  let s=String(v).trim().replace(/[^0-9,.\-]/g,'').replace(',', '.'); const n=parseFloat(s); return isFinite(n)?n:0; }
+  let s=String(v).trim(); if(/#(div|n\/a|ref|value|name|num)/i.test(s)) return 0;
+  s=s.replace(/[^0-9,.\-]/g,'').replace(',', '.'); const n=parseFloat(s); return isFinite(n)?n:0; }
+function lastDataUpdate(){ try{ return DriveApp.getFileById(SS.getId()).getLastUpdated().toISOString(); }
+  catch(e){ return new Date().toISOString(); } }   // ⚠️ nécessite le scope Drive, sinon "now"
 
 function readTab(tab, map, warnings){                 // mappe une feuille → objets, remonte les warnings
   const sh = SS.getSheetByName(tab.name); if(!sh){ warnings.push('missing tab '+tab.name); return []; }
@@ -1252,7 +1283,7 @@ function readTab(tab, map, warnings){                 // mappe une feuille → o
   map.forEach(m => {
     const wanted = (m.headers||[m.header]).map(normHeader);
     let i = head.findIndex(h => wanted.includes(h));
-    if(i<0 && m.match) i = head.findIndex(h => m.match.test(h));   // fallback mot-clé
+    if(i<0 && m.match) i = head.findIndex(h => m.match.test(h));   // fallback mot-clé (regex à lookaheads)
     if(i<0 && !m.optional) warnings.push('header not found: '+m.field+' (seen: '+head.join(' | ')+')');
     idx[m.field] = i;
   });
@@ -1260,23 +1291,62 @@ function readTab(tab, map, warnings){                 // mappe une feuille → o
     map.forEach(m => { let v = idx[m.field]>=0 ? r[idx[m.field]] : (m.optional?'':'');
       if(m.numeric) v=toNumber(v); if(m.pct && v>1.5) v=v/100; o[m.field]=v; }); return o; });
 }
-function payload(){
-  const w=[]; const ex=new Set(SETTINGS.EXCLUDED.map(s=>s.toUpperCase()));
-  const teams=readTab(SETTINGS.TEAMS_TAB, TEAM_MAP, w).filter(t=>t.country && !ex.has(String(t.country).toUpperCase()));
-  const people=readTab(SETTINGS.PEOPLE_TAB, PEOPLE_MAP, w).filter(p=>p.name && !ex.has(String(p.team).toUpperCase()));
-  let updated; try{ updated=DriveApp.getFileById(SS.getId()).getLastUpdated().toISOString(); }catch(e){ updated=new Date().toISOString(); }
-  return { teams, people, updated_at:updated, period:SETTINGS.PERIOD,
-           challenge_dates:{start:SETTINGS.CHALLENGE_START,end:SETTINGS.CHALLENGE_END}, special_awards:{}, warnings:w };
+// Onglets optionnels clé/valeur : override le mot de passe / période / dates SANS redéployer.
+function readConfig(){ const sh=SS.getSheetByName('Config'); if(!sh) return {}; const c={};
+  sh.getDataRange().getValues().slice(1).forEach(r=>{ if(r[0]) c[String(r[0]).trim()]=r[1]; }); return c; }
+function readSpecialAwards(){ const sh=SS.getSheetByName('Special Awards'); if(!sh) return {}; /* … key→{name,team,…} */ return {}; }
+const ex = t => new Set(SETTINGS.EXCLUDED.map(s=>s.toUpperCase())).has(String(t||'').toUpperCase().trim());
+function getCorrectPassword(){ const c=readConfig(); return (c.password!=null && c.password!=='') ? String(c.password) : String(SETTINGS.PASSWORD); }
+const passwordOk = p => String(p==null?'':p) === getCorrectPassword();
+
+// --- Cache chunké : CacheService plafonne à ~100 Ko/clé. 45000 CHARS reste sous la barre
+// même si chaque char est un accent 2 octets (é, ø, þ…) — à 90000 un chunk accentué dépasse
+// et putAll throw, désactivant le cache pour TOUS. Best-effort : le cache ne doit jamais casser la réponse.
+const CACHE_CHUNK = 45000;
+function cacheGetLarge(c, k){ try{ const n=parseInt(c.get(k+'_n'),10); if(!(n>0)) return null;
+  const keys=[]; for(let i=0;i<n;i++) keys.push(k+'_'+i); const parts=c.getAll(keys); let out='';
+  for(let i=0;i<n;i++){ const p=parts[k+'_'+i]; if(p==null) return null; out+=p; } return out; }catch(e){ return null; } }
+function cachePutLarge(c, k, val, ttl){ try{ const o={}; let n=0;
+  for(let i=0;i<val.length;i+=CACHE_CHUNK){ o[k+'_'+n]=val.substring(i,i+CACHE_CHUNK); n++; } o[k+'_n']=String(n);
+  c.putAll(o, ttl); }catch(e){} }
+
+function dataResponse(fresh){
+  const cache=CacheService.getScriptCache(), KEY='data_v1';
+  if(!fresh){ const hit=cacheGetLarge(cache, KEY); if(hit) return ContentService.createTextOutput(hit).setMimeType(ContentService.MimeType.JSON); }
+  const cfg=readConfig(), w=[];
+  const teams=readTab(SETTINGS.TEAMS_TAB, TEAM_MAP, w).filter(t=>t.country && !ex(t.country));
+  const people=readTab(SETTINGS.PEOPLE_TAB, PEOPLE_MAP, w).filter(p=>p.name && !ex(p.team))
+    .map(p => Object.assign({}, p, {                       // flags dérivés CÔTÉ SERVEUR
+      is_rookie: /months|</.test(String(p.tenure||'')),
+      // garde "données présentes" : ne carde pas tout le monde quand une colonne est vide au démarrage
+      yellow_meetings: (p.meetings||0) < 5 && ((p.ps_total||0)>0 || (p.ps_nb||0)>0 || (p.meetings||0)>0),
+      yellow_gm: (p.ps_total_gm||0) < 0.25 && (p.ps_total||0)>0 }));
+  const payload=JSON.stringify({ teams, people,
+    updated_at: cfg.last_update || lastDataUpdate(), period: cfg.period || SETTINGS.PERIOD,
+    challenge_dates:{ start: cfg.challenge_start||SETTINGS.CHALLENGE_START, end: cfg.challenge_end||SETTINGS.CHALLENGE_END },
+    special_awards: readSpecialAwards(), warnings: w });
+  cachePutLarge(cache, KEY, payload, 60);                  // 60s ; le refresh admin ↻ passe fresh=true (bypass)
+  return ContentService.createTextOutput(payload).setMimeType(ContentService.MimeType.JSON);
 }
-const passwordOk = p => String(p||'').trim() === String(SETTINGS.PASSWORD).trim();
-function doGet(e){ if((e.parameter||{}).action==='ping') return json({ok:true,time:new Date().toISOString()}); return json({error:'use POST'}); }
+
+// Data = POST only. doGet ne sert QUE le ping santé ; il REFUSE action=data en GET pour que le
+// code d'accès ne fuite jamais en query string (logs Apps Script / historique / referrer).
+function doGet(e){ const a=(e&&e.parameter&&e.parameter.action)||'data';
+  if(a==='ping') return json({ok:true,time:new Date().toISOString()});
+  return json({error:'unauthorized', hint:'POST {action:"data", password} — pas servi en GET.'}); }
 function doPost(e){ let b={}; try{ b=JSON.parse(e.postData.contents); }catch(_){}
   if(b.action==='verify_password') return json(passwordOk(b.password)?{ok:true}:{error:'unauthorized'});
-  if(b.action==='data') return passwordOk(b.password) ? json(payload()) : json({error:'unauthorized'});
+  if(b.action==='data') return passwordOk(b.password) ? dataResponse(false) : json({error:'unauthorized'});
   return json({error:'unknown action'}); }
-function keepWarm(){ /* trigger time-driven ~5 min pour limiter les cold starts */ payload(); }
+
+// Garde le Web App chaud (sinon 1er visiteur = cold start de plusieurs s) ET primes le cache 60s.
+// TRIGGER (à installer une fois) : éditeur → ⏰ Triggers → Add Trigger → keepWarm · Time-driven ·
+// Minutes timer · toutes les 5 min → Save.
+function keepWarm(){ try{ dataResponse(true); }catch(e){} }
 ```
-> Production : ajoute un **cache chunké** (`CacheService`) sur `payload()` (TTL ~60s) pour tenir le quota à ~400 users.
+> **Tuning quota** (si > ~400 users / quota serré) : allonger le TTL du cache (60→120 s), allonger
+> `POLL_INTERVAL_MS` côté front, ou passer aux **SSE** (§15). Note : un **Google Workspace** a des
+> limites d'exécution plus hautes qu'un compte gratuit — à confirmer avant un gros lancement.
 
 ## E.12 `index.html` — squelette de la couche live (le reste = ton CSS/render thématique)
 ```html
