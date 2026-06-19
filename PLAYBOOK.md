@@ -31,7 +31,7 @@
 - [0. TL;DR — la recette en 12 points](#0-tldr--la-recette-en-12-points)
 - [1. Philosophie & décisions structurantes](#1-philosophie--décisions-structurantes)
 - [2. Architecture cible](#2-architecture-cible-vue-densemble)
-- [3. Environnement de dev & outillage Claude Code](#3-environnement-de-dev--outillage-claude-code) *(superpowers, lint, agents, Chromium, CI, hooks)*
+- [3. Environnement de dev & outillage Claude Code](#3-environnement-de-dev--outillage-claude-code) *(superpowers, lint, agents, Chromium, CI, hooks, **§3.8 pyramide de tests & vérif agentique/live**)*
 - [4. Organisation du fichier monolithe](#4-organisation-du-fichier-monolithe-discipline-interne)
 - [5. Le backend Apps Script](#5-le-backend-apps-script-patterns-à-reprendre)
 - [6. Le contrat de données (shape JSON)](#6-le-contrat-de-données-shape-json)
@@ -209,6 +209,55 @@ Bypass ponctuel : `git push --no-verify`.
 - **`snapshot.yml`** : cron hebdo (lundi matin) — tire la donnée live (avec un secret `APP_PASSWORD`), écrit un **snapshot trimé** dans `history/` et commit `[skip ci]`. C'est ce qui permet plus tard les évolutions semaine/semaine.
 - Le hook local protège les pushs *depuis une machine* ; la CI protège tout le reste (pushs web, PR). Les deux sont nécessaires.
 
+### 3.8 Pyramide de tests & boucle de vérification **agentique** (le point clé)
+La force du projet n'est pas un seul test : c'est une **pyramide à 3 niveaux** + un **agent qui pilote
+la vérification** au lieu de "lire le code et espérer".
+
+**Les 3 niveaux (du plus rapide au plus réel) :**
+1. **Mocké, headless, automatique** — `test/ux-smoke.cjs` (pre-push) + `test/ux-e2e.cjs` (CI) +
+   `test/backend-contract.js`. Pilotent la **vraie app** dans Chromium avec **l'API Google mockée**
+   (`ctx.route('**script.google.com**', …)`) → zéro réseau, déterministe, tourne partout. C'est le
+   filet de non-régression (Annexe B).
+2. **API live, réseau réel** — `test/run-live.sh` (curl + python3) : ping, mauvais mot de passe
+   rejeté, pull authentifié, checks de **shape/compte/intégrité référentielle**. À lancer **après
+   chaque redeploy Apps Script** et pour debugger un "Failed to load data".
+3. **Parcours utilisateur complet contre le backend LIVE** — `test/e2e/run.js` (Puppeteer + vrai
+   Chromium, sous-projet isolé avec son `node_modules`). Simule un vrai utilisateur (login, mauvais/
+   bon code, chargement, chaque onglet, modale squad, VAR, My Position, mobile, dark, persistance au
+   reload), **re-dérive les classements depuis le payload chargé et les compare au DOM** (attrape les
+   régressions de tri côté client), **balaye les erreurs console + requêtes échouées**, et **écrit des
+   screenshots** de chaque état dans `shots/`. C'est le seul test qui prouve **ce que l'utilisateur
+   voit vraiment**. À lancer **avant un lancement** ou après une grosse refonte UI.
+
+**La boucle agentique (comment Claude Code vérifie "en live") :**
+- **Les screenshots sont les yeux de l'agent.** Un script headless qui **capture des PNG** permet à
+  l'agent de **constater visuellement** le résultat (overflow, chevauchement, carte cassée) — pas
+  seulement de croire un assert. Quand tu vérifies une UI, **fais produire des screenshots et
+  regarde-les**.
+- **Déléguer la revue à des agents en parallèle.** Pattern éprouvé : lancer **deux subagents
+  simultanés** — un *code review* (bugs, fuites, code mort) + un *UX review* (parcours, a11y,
+  affordances) — dans **un seul message** pour qu'ils tournent en // ; synthétiser, appliquer les
+  correctifs sûrs, soumettre les gros choix à l'humain. (cf. les entrées "2 agents lancés en //" du
+  journal.) Idem pour balayer un fichier de 10k lignes : un agent `Explore`, tu ne récupères que la
+  conclusion.
+- **Skills de vérification** (via superpowers / harnais) à privilégier quand ils matchent :
+  **`verify`** (lance l'app et observe le comportement réel d'un changement), **`run`** (démarre /
+  screenshot l'app), **`code-review`** et **`security-review`** (revue du diff). Préfère un skill
+  dédié à une vérif manuelle ad hoc.
+- **Tout correctif UX → une assertion** ajoutée au niveau 1 (Annexe B). La boucle se referme :
+  l'agent reproduit le bug en test, le corrige, le test garde la non-régression pour toujours.
+
+**Pièges de test live en environnement managé (cloud/CI) — déjà payés :**
+- **TLS** : certains réseaux managés interceptent le HTTPS avec une CA privée que le Chromium de
+  Puppeteer ne connaît pas → `net::ERR_CERT_AUTHORITY_INVALID` sur **toutes** les requêtes. Relancer
+  avec `E2E_INSECURE=1` (n'affecte en rien la prod, qui sert des certs publics valides).
+- **Apps Script 302** : en curl, `-L` **sans** `-X` (le POST se rejoue en GET sur le redirect) ; en
+  navigateur, `connect-src` doit inclure `script.googleusercontent.com` (cf. §16).
+- **Skip gracieux** : le pre-push et la CI **ne bloquent jamais** si Chromium/Playwright manquent
+  (exit 0 + message) → un environnement nu reste utilisable. (Chromium est **pré-installé** dans les
+  sessions Claude Code cloud.)
+- **Headful pour debug** local : `E2E_HEADFUL=1` montre la fenêtre.
+
 ---
 
 ## 4. Organisation du fichier monolithe (discipline interne)
@@ -367,6 +416,7 @@ Le conteneur est jetable → **la mémoire vit dans le repo** :
 - [ ] CSP n'a rien bloqué (Console propre), HTTPS OK.
 - [ ] `node test/ux-smoke.cjs` et `node test/ux-e2e.cjs` au vert ; ESLint au vert.
 - [ ] `bash test/run-live.sh` (smoke du backend réel) au vert.
+- [ ] `cd test/e2e && node run.js` (parcours utilisateur complet contre le backend **live**, screenshots dans `shots/`) au vert — **regarder les screenshots**, pas seulement le code retour.
 - [ ] Test de charge minimal : ~10 personnes ouvrent en même temps.
 - [ ] **Distribution du lien prête** : URL publique courte/mémorisable + **QR code** généré (affiches, Teams), et le code d'accès communiqué par un canal séparé. Vérifier que le **link-preview** (og:image) s'affiche bien dans Slack/Teams/WhatsApp.
 - [ ] Safe-areas OK sur un téléphone à encoche (rien sous la home-bar) ; états loading/erreur/Retry vérifiés en coupant le réseau.
