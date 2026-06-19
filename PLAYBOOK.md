@@ -690,4 +690,150 @@ valeur finale rendue d'abord · [ ] indicateurs ▲▼ derrière un flag tant qu
 
 ---
 
-*Fin du playbook. Si tu ne retiens que trois choses : (1) single-file + no build, données live via Sheet/Apps Script en POST ; (2) chaque bug UX devient un test Playwright headless ; (3) la mémoire du projet vit dans le repo — `CLAUDE.md` (cible) + `DECISIONS.md` (journal). Et pour l'UX : applique l'Annexe C dès la première vue, ne la re-découvre pas.*
+---
+
+# ANNEXE D — Ce qui rend l'app "géniale" : principes de conception (transférables, pas à cloner)
+
+> **Lis ceci en premier quand tu conçois une nouvelle app.** Le but n'est PAS de refaire le mode
+> TV ou le journal à l'identique — ton prochain projet aura d'autres données et un autre thème.
+> Le but est de **réappliquer les principes** qui ont fait que celle-ci "claque". Chaque section
+> donne *le principe* (réutilisable partout), puis *comment il s'est incarné ici* (exemple concret),
+> puis *les questions à te poser* pour le transposer.
+
+## D.0 Les 8 principes-noyaux (à graver)
+
+1. **Une métaphore unique, appliquée jusqu'au bout.** Le thème n'est pas une déco posée sur un
+   tableau : c'est **l'architecture de l'information**. Ici, le foot/Coupe du Monde structure *tout*
+   le vocabulaire (Golden Boot = volume, Playmaker = opportunités, Yellow Card = règle enfreinte,
+   VAR = revue, World Cup Winner = #1). Résultat : un commercial comprend son classement sans manuel.
+   → *Choisis UNE métaphore qui colle au métier, et décline-la dans chaque libellé, icône, couleur,
+   animation. Une métaphore cohérente vaut dix features.*
+2. **Chaque chiffre s'explique et mène à sa preuve.** Aucun nombre n'est un cul-de-sac : on le tape,
+   une bulle dit *ce que c'est et pourquoi il compte*, et un lien mène au **classement complet** qui
+   le justifie. L'app est sa propre documentation.
+3. **Des visages partout.** Un leaderboard de noms est froid ; des **portraits** le rendent humain et
+   "désirable" (on veut voir sa tête sur la carte). L'identité (photo/initiales/couleur d'équipe) est
+   un fil rouge sur toutes les surfaces.
+4. **Une donnée, plusieurs surfaces selon le contexte.** Le même dataset alimente : le **téléphone
+   perso** (consultation rapide, My Position), la **projection TV** (ambiant, glanceable, dans les
+   locaux), et l'**outil opérateur** (Coach Room / VAR, réservé admin). On ne refait pas la donnée,
+   on **re-cadre l'affichage** pour l'usage.
+5. **Une couche éditoriale qui raconte la donnée.** Au-dessus des tableaux, un **récit auto-généré**
+   (titres, chapôs, "stat de la semaine", duels) transforme des chiffres en **histoire qu'on suit
+   chaque semaine**. C'est ce qui crée l'attachement et le retour.
+6. **Hiérarchie glanceable : un héros + un peloton.** Partout, le pattern "**#1 mis en scène + la
+   chasse classée**" (le *match-sheet*) donne un point focal immédiat et de la lisibilité. On voit
+   l'essentiel en 1 seconde, le détail si on veut.
+7. **Tout est data-driven et conditionnel.** Rien n'est codé en dur : une section n'apparaît que si
+   elle a du contenu, les seuils/libellés viennent d'**une source unique** (`RULES`), les classements
+   se recalculent côté client. Ajouter une photo ou changer un seuil ne touche pas la logique.
+8. **Le plaisir sans nuire à la compréhension.** Animations, foil holographique, confetti, count-up :
+   présents, mais **toujours derrière `prefers-reduced-motion`** et **la valeur exacte rendue
+   d'abord**. Le delight est un bonus, jamais un péage devant l'information.
+
+## D.1 Le pattern "match-sheet" (héros + peloton) — réutilisable pour tout classement
+
+- **Principe** : un classement plat fatigue. Mets **le premier en scène** (grande carte, portrait,
+  stat héroïque = "man of the match") et liste les suivants en **peloton compact** à côté. Deux
+  colonnes en desktop (`minmax(0, .95fr) / minmax(0,1.05fr)`), **empilées en mobile** (≤760px).
+- **Ici** : `renderMatchSheet(list, opts)` sert Golden Boot, Playmaker, Rookie… une seule fonction,
+  réutilisée. Les rangs sont **tie-aware** (ex æquo partagent le rang, et le top-5 est cohérent avec
+  la fiche joueur).
+- **À te poser** : quelle est la "stat héroïque" de ta nouvelle app ? Qui est le "man of the match"
+  d'une catégorie ? Réutilise une **seule** fonction de rendu paramétrée pour tous tes boards.
+
+## D.2 La couche éditoriale / "magazine" — fabriquer du récit à partir de la donnée
+
+- **Principe** : les gens reviennent pour une **histoire**, pas pour un tableau. Génère, **à partir
+  de la donnée elle-même**, une "une" : un gros titre choisi par priorité (frontrunner ? photo
+  finish ? remontée ?), des **chapôs** (deks) sous chaque section, une **stat de la semaine**, un
+  **duel** des deux premiers, une **équipe de la semaine**, une signature de "rédaction". Le ton est
+  éditorial mais **les chiffres restent exacts et cliquables**.
+- **Ce qui l'a rendu bon (itérations payées)** :
+  - **Toujours présent** (pas seulement quand il y a du neuf) → c'est "le journal qu'on achète",
+    avec une **pastille rouge "nouveau numéro"** seulement quand l'édition change (le lundi).
+  - **Riche en images** : la v1 "liste plate" a échoué ; ce sont les **cartes Panini + visages
+    partout** qui l'ont fait décoller. *Leçon : un récit sans visages tombe à plat.*
+  - **Auto-explicable et sans sortie** : les catégories/tags **scrollent vers la section** du numéro
+    plutôt que d'éjecter vers un autre onglet → on **ne quitte jamais le journal** par accident.
+  - **Quick-nav collante** + surbrillance de section active pour un long numéro.
+  - **Partage en image** : générer une "une" PNG partageable (Web Share + fallback download) →
+    viralité interne gratuite.
+  - **Robustesse** : jamais de leader à 0 en vedette ; garde anti-nom périmé sur chaque mention.
+- **À te poser** : quel est le "gros titre" naturel de ta semaine de données ? Quelles 2-3 brèves
+  un humain en tirerait ? Génère-les depuis la donnée, donne-leur un visage, rends-les cliquables.
+
+## D.3 Le mode "projection / ambiant" — une surface glanceable, pas une page web rétrécie
+
+- **Principe** : pour un écran dans les locaux (ou une réunion), il faut une surface **plein écran,
+  sans navigation, lisible à 5 mètres**, qui se suffit en un coup d'œil. Ce n'est pas la page normale
+  agrandie : c'est un **deck de panneaux** au design dédié (gros titres, fond riche, contrastes forts).
+- **Ce qui l'a rendu bon** :
+  - **Ne se met pas en pause idle** (contrairement au polling normal) : un écran de projection doit
+    rester vivant.
+  - **Pas de hover/pointeur** → les infos sont *glanceable only* (le tally 🟨 ( N ) est un indicateur,
+    pas un tooltip).
+  - Reprend le **match-sheet** (#1 héros sticky + peloton) ; quand on déplie une liste, le **#1 reste
+    visible** (sticky) au lieu de disparaître en haut.
+  - **`safe center`** : un panneau est centré s'il tient, sinon il bascule en haut et devient
+    scrollable → jamais clippé en bas de l'écran.
+- **À te poser** : ta nouvelle app sera-t-elle un jour projetée / vue de loin / en réunion ? Si oui,
+  prévois **dès le départ** une surface ambiante dédiée (un mode `?tv=1`), pas un bricolage tardif.
+
+## D.4 Surfaces "opérateur" réservées (admin) — divulgation progressive par rôle
+
+- **Principe** : le grand public (les ~400 commerciaux) ne doit voir qu'une UI simple. Les **outils
+  d'animation/pilotage** (suivi d'objectifs, deep-dive par entité, revue de sanctions) sont des
+  **surfaces séparées débloquées par rôle** — ici via `?admin=` (flag localStorage). Ça **gate de la
+  commodité, pas de la donnée** (cf. modèle de sécurité §8) : la clé est dans le bundle.
+- **Ici** : **Coach Room** (KPIs cliquables → deep-dive par nation/équipe, recherche par nom montrant
+  Total GM *et* NB GM côte à côte, snapshot discipline) et **VAR TIME** (revue des "cartons", verdicts
+  **locaux** non publiés). Onglets admin **ajoutés dynamiquement** à la barre quand le mode est actif.
+- **Ce qui l'a rendu bon** : les KPIs sont des **cartes cliquables** (affordance `.coach-kpi-click`
+  hover/active/on) qui ouvrent un deep-dive — pas des chiffres morts. La recherche évite le parcours
+  pénible nation→équipe→joueur.
+- **À te poser** : qui *pilote* ton challenge/outil ? De quoi a-t-il besoin que le public ne doit pas
+  voir ? Fais-en une surface admin séparée, dynamique, qui ne pollue pas l'UI publique.
+
+## D.5 Identité & cartes "Panini" — humaniser la donnée
+
+- **Principe** : transformer une ligne de tableau en **objet désirable** (une carte à collectionner)
+  crée de l'engagement émotionnel. Portrait teinté à la couleur de l'équipe, rang, stats héroïques,
+  finitions (foil, reflets) **sous reduced-motion**.
+- **Mécanique réutilisable** (déjà décrite §11) : slug déterministe du nom → `cards/<slug>.webp`,
+  **fallback initiales** si pas de photo (donc on ajoute des photos au fil de l'eau **sans toucher au
+  code**), thumb 256px pour les petits ronds, full 1024px pour le héros, versioning `?v=` pour le cache.
+- **À te poser** : peux-tu donner un **visage** (photo, avatar, logo, emoji-totem) à chaque entité de
+  ta donnée ? Si oui, fais-le partout — c'est un multiplicateur d'attachement.
+
+## D.6 Les invariants qui rendent l'ensemble "solide" (pas seulement joli)
+
+Ce qui fait que ça paraît *pro* et tient dans le temps — à reproduire systématiquement :
+- **Source unique des règles métier** (`RULES`) : seuils + libellés + emojis au même endroit → zéro
+  divergence entre une bulle, le glossaire, la prose des règles, et le calcul.
+- **Pré-calcul une fois par chargement** (splits par équipe/nation, rangs) → un re-render coûte zéro
+  re-filtrage de toute la population. Performance perçue irréprochable même sur vieux mobile.
+- **Tout passe par le live + le snapshot** : `stale-while-revalidate` → l'app peint instantanément au
+  retour, jamais d'écran blanc, le timestamp dit la fraîcheur.
+- **Aliases & overrides centralisés** (`TEAM_ALIASES`, `PEOPLE_TEAM_OVERRIDES`) pour absorber une
+  donnée amont imparfaite **sans bloquer l'app** ni harceler le data owner — documentés dans
+  `DECISIONS.md`, avec la reco durable (clé sur un ID stable, pas le nom).
+- **Drapeaux/visuels avec fallback gracieux et anti-confusion** (ex. un visuel dédié plutôt qu'un
+  drapeau de pays voisin trompeur).
+
+## D.7 Comment transposer (mini-protocole pour la prochaine app)
+
+1. **Choisis la métaphore** et écris le **glossaire** (terme thème ↔ métrique réelle) AVANT de coder.
+2. **Liste les surfaces** : public mobile (la base), + éventuellement *ambiant/projection* + *opérateur
+   admin*. Décide lesquelles tu veux dès le MVP.
+3. **Identifie la stat héroïque** de chaque catégorie → réutilise un **seul** match-sheet paramétré.
+4. **Donne un visage** à chaque entité (pipeline slug + fallback).
+5. **Écris la couche éditoriale** : quel gros titre la donnée raconte-t-elle ? 2-3 brèves ? une
+   stat-de-la-semaine ? Génère-les depuis la donnée, cliquables, avec visage.
+6. **Centralise les règles** (`RULES`) et rends **chaque chiffre cliquable → explicable → traçable**.
+7. **Applique l'Annexe C** (UX) à chaque vue, **garde par des tests** (Annexe B), **journalise** dans
+   `DECISIONS.md`.
+
+---
+
+*Fin du playbook. Si tu ne retiens que trois choses : (1) single-file + no build, données live via Sheet/Apps Script en POST ; (2) chaque bug UX devient un test Playwright headless ; (3) la mémoire du projet vit dans le repo — `CLAUDE.md` (cible) + `DECISIONS.md` (journal). Pour l'UX : applique l'Annexe C dès la première vue. Pour le "génie" du produit : pars de l'Annexe D — une métaphore tenue jusqu'au bout, des chiffres qui s'expliquent, des visages partout, et une donnée re-cadrée selon le contexte (poche / projection / pilotage).*
