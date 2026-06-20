@@ -53,7 +53,7 @@
 - [C. Checklist d'acceptation UX](#annexe-c--checklist-dacceptation-ux-à-appliquer-dès-le-départ-prochaine-app) — à cocher par vue
 - [D. Principes de conception produit](#annexe-d--ce-qui-rend-lapp-géniale--principes-de-conception-transférables-pas-à-cloner) — ce qui rend l'app géniale
 - [E. Fichiers de référence prêts à copier](#annexe-e--fichiers-de-référence-prêts-à-copier-le-playbook-est-auto-suffisant) — le scaffolding complet
-- [F. Suite de tests (opérationnel)](#annexe-f--la-suite-de-tests-de-ce-repo-opérationnel--lancer--déboguer--étendre) — **les 5 tests regroupés** + mémo CLI Playwright
+- [F. Suite de tests (opérationnel)](#annexe-f--la-suite-de-tests-de-ce-repo-opérationnel--lancer--déboguer--étendre) — **les 5 tests regroupés** + mémo CLI Playwright + **`playwright-cli`** (vérif agent, F.9)
 
 ---
 
@@ -247,7 +247,9 @@ commandes, dépannage — est regroupé en **Annexe F**.)*
 - **Skills de vérification** (via superpowers / harnais) à privilégier quand ils matchent :
   **`verify`** (lance l'app et observe le comportement réel d'un changement), **`run`** (démarre /
   screenshot l'app), **`code-review`** et **`security-review`** (revue du diff). Préfère un skill
-  dédié à une vérif manuelle ad hoc.
+  dédié à une vérif manuelle ad hoc. Pour piloter un **vrai navigateur pas-à-pas** sur l'URL
+  live/preview (sans écrire de script), **`playwright-cli`** — voir **Annexe F.9** (complément à la
+  suite, pas un test de non-régression).
 - **Tout correctif UX → une assertion** ajoutée au niveau 1 (Annexe B). La boucle se referme :
   l'agent reproduit le bug en test, le corrige, le test garde la non-régression pour toujours.
 
@@ -1649,6 +1651,62 @@ La liste des tests = la liste des régressions déjà payées ; le commit log es
 `codegen`), ajoute un `log('…', condition)` au runner adéquat, et garde le test **déterministe**
 (backend mocké, attentes auto). Les pièges d'environnement (TLS, SW, scripts prod-only) se
 neutralisent **dans le runner**, pas en relâchant l'assertion.
+
+## F.9 Vérif interactive pilotée par agent — `playwright-cli` (hors suite de non-régression)
+
+`playwright-cli` ([microsoft/playwright-cli](https://github.com/microsoft/playwright-cli), npm
+**`@playwright/cli`**) est un binaire qui laisse **un agent** (Claude Code…) piloter un navigateur
+**pas-à-pas** en ligne de commande : `open` → `snapshot` (qui renvoie un arbre d'accessibilité avec
+des **refs** `e10`, `e11`…) → `click e11` / `fill e10 "…"` / `type` → `screenshot` → `close`. C'est
+une **alternative économe en tokens à MCP** (pas de gros schémas d'outils ni d'arbres a11y verbeux
+chargés en contexte).
+
+> **Ce n'est PAS un test de la suite.** Les runners de F.1 sont des **scripts de non-régression
+> déterministes** (committés, backend mocké, assertions figées). `playwright-cli` est un **outil
+> de vérif/inspection ad hoc** : constater visuellement un bug, explorer un parcours, confirmer un
+> fix sur l'URL **live/preview** — sans écrire de script. Les deux sont **complémentaires** et
+> orthogonaux. Boucle qui se referme : ce qu'on valide à la main ici, si c'est récurrent, **on le
+> fige ensuite en assertion** dans `ux-smoke`/`ux-e2e` (F.8).
+
+**Installation** (global ; pré-installé nulle part, à poser dans la session) :
+```bash
+npm install -g @playwright/cli@latest
+npx playwright install chrome           # le canal par défaut est "chrome" (pas le chromium bundlé)
+playwright-cli --version                # 0.1.x
+playwright-cli install --skills         # (option) enregistre le skill agent (Claude) dans le workspace
+```
+
+**Workflow type — exactement ce qui a été joué contre la plateforme live :**
+```bash
+playwright-cli open https://groupsaleschallenge.vercel.app/   # ouvre + navigue
+playwright-cli snapshot                       # → refs : textbox "Enter access code" [ref=e10], button … [ref=e11]
+playwright-cli fill e10 "devoteam2026"        # saisir le code d'accès
+playwright-cli click e11                      # cliquer « ACCESS THE LEADERBOARD »
+playwright-cli snapshot                        # vérifier : banner LIVE + "Last updated … · Week N of 5"
+playwright-cli screenshot                      # PNG de l'état courant
+playwright-cli close
+```
+Ciblage des éléments : **ref de snapshot** (`e10`), sélecteur CSS unique (`#login-pwd`) ou locator
+Playwright. Sessions parallèles : `playwright-cli -s=<nom> <cmd>`. Cibler les sélecteurs stables de
+F.5. Le tour d'onboarding (overlay premier-visite) peut intercepter les clics → le passer
+(`Skip`/`snapshot` puis `click` sur la ref du bouton).
+
+**Piège réseau managé (déjà payé, même cause que `e2e/run.js`).** En environnement cloud/CI qui
+intercepte le TLS, `open` échoue avec `net::ERR_CERT_AUTHORITY_INVALID`. Lancer avec un fichier de
+config qui ignore les erreurs de cert — **temporaire/gitignoré, à NE PAS committer comme défaut**
+(ça n'affecte en rien la prod, qui sert des certs publics valides) :
+```bash
+cat > /tmp/pwcli.config.json <<'JSON'
+{ "browser": { "launchOptions": { "args": ["--ignore-certificate-errors"] },
+               "contextOptions": { "ignoreHTTPSErrors": true } } }
+JSON
+playwright-cli open --config /tmp/pwcli.config.json https://groupsaleschallenge.vercel.app/
+```
+
+**Artefacts.** `playwright-cli` écrit snapshots `.yml`, screenshots `.png` et logs console dans
+`.playwright-cli/` (et un workspace `.playwright/`) dans le cwd → **gitignorés** (`.gitignore`),
+jamais committés. Ce sont les « yeux de l'agent » (cf. §3.8) au même titre que les screenshots de
+`e2e/run.js`.
 
 ---
 

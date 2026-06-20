@@ -146,6 +146,12 @@ Session de validation de la suite de test sur la branche `claude/verify-test-sta
   **Annexe F** (« Suite de tests, opérationnel »), source unique regroupant **les 5 tests** + mémo
   CLI Playwright + sélecteurs + CI/hook/sessions + dépannage. Sommaire, §3.5/§3.8 et `README.md`
   mis à jour vers l'Annexe F.
+- **`playwright-cli` intégré (doc)** : installé (`npm i -g @playwright/cli`, canal `chrome` via
+  `npx playwright install chrome`) et **validé en live** (open → snapshot → `fill e10` code →
+  `click e11` → screenshot → close sur `groupsaleschallenge.vercel.app`). C'est un **outil de vérif
+  agent ad hoc**, **pas** un test de la suite → documenté en **PLAYBOOK Annexe F.9** (workflow,
+  ciblage par ref, piège TLS managé via config `ignoreHTTPSErrors`). Artefacts `.playwright-cli/` +
+  `.playwright/` **gitignorés**.
 - **⚠️ Pour Léandre** : confirmer avec Jose si le `Team Ranking` live doit bien lister **34 équipes**
   (le brief dit 32, hors Morocco/Serbia/Tunisia). Si 34 est la nouvelle norme, on peut bumper le
   défaut `EXPECT_TEAMS` du smoke live.
