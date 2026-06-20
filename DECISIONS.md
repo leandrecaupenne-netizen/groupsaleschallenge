@@ -154,7 +154,9 @@ Session de validation de la suite de test sur la branche `claude/verify-test-sta
   `.playwright/` **gitignorés**. `playwright-cli install --skills` exécuté → **skill committé** dans
   `.claude/skills/playwright-cli/` (SKILL.md + `references/`). **Hook SessionStart étendu** : installe
   le **binaire** en session web (best-effort) ; le canal **Chrome** (lourd) reste à la demande
-  (`npx playwright install chrome`) pour ne pas alourdir chaque démarrage.
+  (`npx playwright install chrome`) pour ne pas alourdir chaque démarrage. **Contenu du `SKILL.md`
+  inliné** dans **PLAYBOOK Annexe F.9.1** (référence complète des commandes) pour que le playbook
+  soit auto-suffisant — le fichier SKILL.md reste en place pour le chargement par l'agent.
 - **⚠️ Pour Léandre** : confirmer avec Jose si le `Team Ranking` live doit bien lister **34 équipes**
   (le brief dit 32, hors Morocco/Serbia/Tunisia). Si 34 est la nouvelle norme, on peut bumper le
   défaut `EXPECT_TEAMS` du smoke live.

@@ -1713,4 +1713,148 @@ jamais committés. Ce sont les « yeux de l'agent » (cf. §3.8) au même titre 
 
 ---
 
+### F.9.1 Référence complète des commandes (contenu intégré du `SKILL.md`)
+
+> Ce qui suit est le **contenu inliné** de `.claude/skills/playwright-cli/SKILL.md` (le fichier
+> reste à sa place pour être chargé comme skill par l'agent ; il est reproduit ici pour que le
+> PLAYBOOK soit auto-suffisant). Les `eNN` sont des **refs de snapshot**.
+
+**Quick start**
+```bash
+playwright-cli open                       # ouvre un navigateur
+playwright-cli goto https://playwright.dev # navigue
+playwright-cli click e15                   # interagit via une ref du snapshot
+playwright-cli type "page.click"
+playwright-cli press Enter
+playwright-cli screenshot                  # (rare : le snapshot suffit souvent)
+playwright-cli close
+```
+
+**Core**
+```bash
+playwright-cli open                        # ou : open https://example.com/  (ouvre + navigue)
+playwright-cli goto https://playwright.dev
+playwright-cli type "search query"
+playwright-cli click e3
+playwright-cli dblclick e7
+playwright-cli fill e5 "user@example.com" --submit   # --submit = Enter après remplissage
+playwright-cli drag e2 e8
+playwright-cli drop e4 --path=./image.png            # ou --data="text/plain=hello world"
+playwright-cli hover e4
+playwright-cli select e9 "option-value"
+playwright-cli upload ./document.pdf
+playwright-cli check e12        # / uncheck e12
+playwright-cli snapshot
+playwright-cli eval "document.title"                 # ou : eval "el => el.textContent" e5
+playwright-cli eval "el => el.getAttribute('data-testid')" e5
+playwright-cli dialog-accept    # ou : dialog-accept "texte" / dialog-dismiss
+playwright-cli resize 1920 1080
+playwright-cli close
+```
+
+**Navigation / Clavier / Souris**
+```bash
+playwright-cli go-back        # go-forward / reload
+playwright-cli press Enter    # press ArrowDown / keydown Shift / keyup Shift
+playwright-cli mousemove 150 300    # mousedown [right] / mouseup [right] / mousewheel 0 100
+```
+
+**Save as / Onglets**
+```bash
+playwright-cli screenshot               # screenshot e5 / --filename=page.png
+playwright-cli pdf --filename=page.pdf
+playwright-cli tab-list                  # tab-new [url] / tab-close [i] / tab-select 0
+```
+
+**Storage (auth, cookies, localStorage, sessionStorage)**
+```bash
+playwright-cli state-save [auth.json]    # state-load auth.json
+playwright-cli cookie-list [--domain=example.com]    # cookie-get/-set/-delete/-clear
+playwright-cli localstorage-list         # -get/-set/-delete/-clear  (idem sessionstorage-*)
+```
+
+**Network (mock / route)**
+```bash
+playwright-cli route "**/*.jpg" --status=404
+playwright-cli route "https://api.example.com/**" --body='{"mock": true}'
+playwright-cli route-list ; playwright-cli unroute ["**/*.jpg"]
+```
+> Note : c'est l'équivalent CLI du `ctx.route('**script.google.com**', …)` des runners `ux-*` —
+> pratique pour mocker l'API à la main pendant une inspection.
+
+**DevTools / capture**
+```bash
+playwright-cli console [warning]         # requests / request 5
+playwright-cli run-code "async page => await page.context().grantPermissions(['geolocation'])"
+playwright-cli tracing-start ; playwright-cli tracing-stop
+playwright-cli video-start video.webm ; playwright-cli video-stop
+playwright-cli show --annotate           # tableau de bord : l'utilisateur annote, tu reçois capture+notes
+playwright-cli generate-locator e5 --raw # génère un locator Playwright depuis une ref
+playwright-cli highlight e5 [--style="outline: 3px dashed red"] [--hide]
+```
+
+**Sortie brute / JSON**
+```bash
+playwright-cli --raw eval "JSON.stringify(performance.timing)" | jq '.loadEventEnd - .navigationStart'
+playwright-cli --raw snapshot > before.yml      # --raw retire status/code/snapshot, ne garde que la valeur
+playwright-cli list --json                       # --json enveloppe chaque réponse en JSON
+```
+
+**Paramètres de `open` / `attach`**
+```bash
+playwright-cli open --browser=chrome      # firefox / webkit / msedge
+playwright-cli open --persistent          # profil persistant (sinon in-memory) / --profile=/path
+playwright-cli attach --cdp=chrome        # ou --cdp=http://localhost:9222 / --extension=chrome
+playwright-cli open --config=my-config.json
+playwright-cli close                       # detach (laisse le navigateur externe ouvert) / delete-data
+```
+
+**Snapshots & ciblage des éléments**
+```bash
+playwright-cli snapshot                    # --filename=after.yaml / "#main" (élément) / --depth=4 / --boxes
+playwright-cli click e15                    # par ref (défaut)
+playwright-cli click "#main > button.submit"               # sélecteur CSS
+playwright-cli click "getByRole('button', { name: 'Submit' })"   # locator Playwright
+playwright-cli click "getByTestId('submit-button')"
+```
+
+**Sessions navigateur (parallélisme)**
+```bash
+playwright-cli -s=mysession open example.com --persistent
+playwright-cli -s=mysession click e6
+playwright-cli -s=mysession close
+playwright-cli list ; playwright-cli close-all ; playwright-cli kill-all
+```
+
+**Exemples**
+```bash
+# Soumission de formulaire
+playwright-cli open https://example.com/form
+playwright-cli snapshot
+playwright-cli fill e1 "user@example.com" ; playwright-cli fill e2 "password123" ; playwright-cli click e3
+playwright-cli snapshot ; playwright-cli close
+
+# Multi-onglets
+playwright-cli open https://example.com ; playwright-cli tab-new https://example.com/other
+playwright-cli tab-list ; playwright-cli tab-select 0 ; playwright-cli snapshot ; playwright-cli close
+
+# Debug DevTools (+ tracing)
+playwright-cli open https://example.com ; playwright-cli tracing-start
+playwright-cli click e4 ; playwright-cli fill e7 "test"
+playwright-cli console ; playwright-cli requests ; playwright-cli tracing-stop ; playwright-cli close
+```
+
+**Installation (rappel)**
+```bash
+npx --no-install playwright-cli --version   # version locale si dispo → préfixer toutes les cmds par npx
+npm install -g @playwright/cli@latest       # sinon, binaire global
+```
+
+**Tâches spécifiques** (fiches détaillées dans `.claude/skills/playwright-cli/references/`) :
+running/debugging Playwright tests · request-mocking · running-code · session-management ·
+spec-driven-testing (plan/generate/heal) · storage-state · test-generation · tracing ·
+video-recording · element-attributes.
+
+---
+
 *Fin du playbook. Si tu ne retiens que trois choses : (1) single-file + no build, données live via Sheet/Apps Script en POST ; (2) chaque bug UX devient un test Playwright headless (suite complète & mode d'emploi : Annexe F) ; (3) la mémoire du projet vit dans le repo — `CLAUDE.md` (cible) + `DECISIONS.md` (journal). Pour l'UX : applique l'Annexe C dès la première vue. Pour le "génie" du produit : pars de l'Annexe D. Pour scaffolder : copie l'Annexe E. **Tout est ici — ce fichier seul suffit à démarrer la prochaine app.***
