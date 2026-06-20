@@ -125,6 +125,31 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-20 — Vérif stack de test (nouvelle session) + fusion des deux playbooks
+Session de validation de la suite de test sur la branche `claude/verify-test-stack-sw29nc`.
+- **Stack de test confirmée verte.** Le hook `SessionStart` (`.claude/hooks/session-start.sh`)
+  installe bien Playwright + Chromium depuis `cdn.playwright.dev` (réseau Full → plus de 403).
+  La branche `verify-test-stack` était un **ancêtre direct** de `claude/playwright-exploration-e10ol6`
+  (merge-base = HEAD) : **fast-forward** vers elle (rien perdu) pour récupérer la suite `test/`,
+  le hook, la CI et la version d'app synchronisée. Les 3 tests offline/headless passent :
+  `backend-contract.js`, `ux-smoke.cjs`, `ux-e2e.cjs` → **ALL GREEN**, 0 erreur JS.
+- **Tests live exécutés** (réseau Full) : `run-live.sh` et `test/e2e/run.js`.
+  - `run-live.sh` : connectivité / auth / shape / intégrité OK. **Flag attendu** : `team count = 34`
+    (le check par défaut attend 32) — c'est la **dérive de donnée** déjà connue (cf. entrée 16-06
+    « 32→34 équipes »), pas un bug. Override : `EXPECT_TEAMS=34`. Warning orphelins : UK (14) + #N/A (1).
+  - `test/e2e/run.js` : **2 correctifs de robustesse** appliqués pour ne garder que les *vraies*
+    erreurs, alignés sur les runners headless — (1) **stub `/_vercel/`** (Speed Insights, servi
+    seulement sur Vercel) ; (2) **blocage du service worker** (ses fetchs de précache remontaient en
+    console 404 sans passer par `page.on('response')`). Réseau managé → lancer avec `E2E_INSECURE=1`
+    (TLS intercepté). Résultat : **ALL E2E CHECKS PASSED** (12/12) contre le back-end live.
+- **Fusion docs** : `PLAYWRIGHT_PLAYBOOK.md` **supprimé** et fusionné dans `PLAYBOOK.md` →
+  **Annexe F** (« Suite de tests, opérationnel »), source unique regroupant **les 5 tests** + mémo
+  CLI Playwright + sélecteurs + CI/hook/sessions + dépannage. Sommaire, §3.5/§3.8 et `README.md`
+  mis à jour vers l'Annexe F.
+- **⚠️ Pour Léandre** : confirmer avec Jose si le `Team Ranking` live doit bien lister **34 équipes**
+  (le brief dit 32, hors Morocco/Serbia/Tunisia). Si 34 est la nouvelle norme, on peut bumper le
+  défaut `EXPECT_TEAMS` du smoke live.
+
 ### 2026-06-16 — Indicateurs d'évolution « depuis la dernière MAJ » désactivés (peu fiables)
 Retour stakeholder (relayé par Léandre) : Italy affichait **▲4** alors qu'elle était **déjà #1** →
 deltas faussés. Cause : comparaison à un instantané `prevRanks` **non fiable** pendant la montée

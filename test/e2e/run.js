@@ -82,6 +82,19 @@ const TABS = [
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 900 });
 
+  // Vercel Speed Insights (`/_vercel/speed-insights/script.js`) is injected by the
+  // app but only ever served on Vercel — off-platform it 404s and logs a console
+  // error that has nothing to do with the app under test. The headless runners
+  // (ux-smoke / ux-e2e) stub `**/_vercel/**`; do the same here so this live test
+  // stays strict about REAL errors. Everything else passes through untouched.
+  await page.setRequestInterception(true);
+  page.on('request', req => {
+    if (req.url().includes('/_vercel/')) {
+      return req.respond({ status: 200, contentType: 'application/javascript', body: '' });
+    }
+    req.continue();
+  });
+
   // Pre-seed the "already onboarded" flags so the first-visit guided tour (a
   // full-screen overlay that intercepts clicks) never appears during the test.
   // Mirrors what a returning user's browser has; the tour itself is covered by
@@ -90,6 +103,16 @@ const TABS = [
     try {
       localStorage.setItem('devoteam_wc_tour_v1', '1');
       localStorage.setItem('devoteam_wc_intro_seen_v1', '1');
+    } catch (e) {}
+    // Block the service worker, like the headless runners do (Playwright's
+    // `serviceWorkers: 'block'`). The SW precaches the app shell on install and
+    // its background fetches surface as console 404s that `page.on('response')`
+    // can't see and that have nothing to do with the user journey under test.
+    // The SW's own behaviour is out of scope here (covered by the PWA section).
+    try {
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.register = () => Promise.reject(new Error('SW blocked for test'));
+      }
     } catch (e) {}
   });
 

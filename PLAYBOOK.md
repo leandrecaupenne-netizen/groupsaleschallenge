@@ -53,6 +53,7 @@
 - [C. Checklist d'acceptation UX](#annexe-c--checklist-dacceptation-ux-à-appliquer-dès-le-départ-prochaine-app) — à cocher par vue
 - [D. Principes de conception produit](#annexe-d--ce-qui-rend-lapp-géniale--principes-de-conception-transférables-pas-à-cloner) — ce qui rend l'app géniale
 - [E. Fichiers de référence prêts à copier](#annexe-e--fichiers-de-référence-prêts-à-copier-le-playbook-est-auto-suffisant) — le scaffolding complet
+- [F. Suite de tests (opérationnel)](#annexe-f--la-suite-de-tests-de-ce-repo-opérationnel--lancer--déboguer--étendre) — **les 5 tests regroupés** + mémo CLI Playwright
 
 ---
 
@@ -187,6 +188,8 @@ Ignorés : `node_modules`, dossiers d'assets (`cards/`, `qr/`, `history/`), sous
 Lancer en local : `npm i -D eslint eslint-plugin-html globals && npx eslint .`
 
 ### 3.5 Tests UX headless — Playwright + Chromium
+> 🛠️ Mode d'emploi concret (lancer / déboguer / CLI / sélecteurs / les **5 tests regroupés**) : **Annexe F**.
+
 Philosophie : **piloter la VRAIE app dans un vrai navigateur**, backend **mocké** (aucun appel réseau à Google).
 - Un **petit serveur HTTP statique** sert le repo sur un port éphémère.
 - `ctx.route('**script.google.com**', …)` intercepte et renvoie un **dataset mock** à la *shape* exacte de l'API.
@@ -211,7 +214,8 @@ Bypass ponctuel : `git push --no-verify`.
 
 ### 3.8 Pyramide de tests & boucle de vérification **agentique** (le point clé)
 La force du projet n'est pas un seul test : c'est une **pyramide à 3 niveaux** + un **agent qui pilote
-la vérification** au lieu de "lire le code et espérer".
+la vérification** au lieu de "lire le code et espérer". *(Le détail opérationnel des 5 tests — table,
+commandes, dépannage — est regroupé en **Annexe F**.)*
 
 **Les 3 niveaux (du plus rapide au plus réel) :**
 1. **Mocké, headless, automatique** — `test/ux-smoke.cjs` (pre-push) + `test/ux-e2e.cjs` (CI) +
@@ -1462,4 +1466,190 @@ function mockData(){ return { teams:[/* …shape exacte de l'API… */], people:
 
 ---
 
-*Fin du playbook. Si tu ne retiens que trois choses : (1) single-file + no build, données live via Sheet/Apps Script en POST ; (2) chaque bug UX devient un test Playwright headless ; (3) la mémoire du projet vit dans le repo — `CLAUDE.md` (cible) + `DECISIONS.md` (journal). Pour l'UX : applique l'Annexe C dès la première vue. Pour le "génie" du produit : pars de l'Annexe D. Pour scaffolder : copie l'Annexe E. **Tout est ici — ce fichier seul suffit à démarrer la prochaine app.***
+# ANNEXE F — La suite de tests de CE repo (opérationnel : lancer / déboguer / étendre)
+
+> La **méthode** (pyramide à 3 niveaux + boucle de vérification agentique) est en **§3.5–3.8**.
+> Cette annexe est le **mode d'emploi concret** de la suite `test/` telle qu'elle existe dans ce
+> repo : **tous les tests regroupés** au même endroit, comment les lancer / déboguer / étendre,
+> un **mémo CLI Playwright**, et les **pièges d'environnement déjà payés** (TLS, service worker,
+> scripts Vercel-only, dérive de données live). Cible : Léandre et tout futur intervenant.
+>
+> *Cette annexe a fusionné l'ancien `PLAYWRIGHT_PLAYBOOK.md` (supprimé) — c'est désormais la
+> source unique sur les tests.*
+
+## F.0 Point clé sur la stack
+
+On utilise la **librairie `playwright` brute** (`require('playwright')`) dans des runners Node
+`.cjs`, **pas** le test runner `@playwright/test`. Choix délibéré : **aucun `package.json`
+racine** n'est commité → le déploiement Vercel reste un **site statique pur** (les deps de
+test/lint s'installent à la volée en CI et via le hook pre-push). Conséquence : les commandes
+`npx playwright test …` **ne s'appliquent pas** ici — on lance `node test/<runner>.cjs`. Le
+test Puppeteer (`test/e2e/`) est un **sous-projet isolé** avec son propre `node_modules`
+(non commité).
+
+## F.1 Tous les tests, en un seul endroit
+
+| Test | Couvre | Niveau (pyramide §3.8) | Deps | Réseau | Quand le lancer |
+|---|---|---|---|---|---|
+| `test/backend-contract.js` | logique back-end `apps_script_backend.gs`, Apps Script mocké dans une sandbox `vm` | **1** — offline | aucune | aucun | **avant de redéployer** l'Apps Script |
+| `test/ux-smoke.cjs` | **rapide** : login, onglets, CTA « Find your position », modales, recherche + fuzzy, overflow @320/375/768, rien de clippé dans une carte sur mobile, intégrité i18n | **1** — mocké, headless | Playwright + Chromium | **mocké** (zéro Google) | à **chaque changement UI** (lancé au pre-push) |
+| `test/ux-e2e.cjs` | **profond** : admin (VAR TIME / Coach Room / VAR review), mode TV, partage de carte, ticker, compare, sous-vues, dark mode, deep-links, popovers **tap** mobile | **1** — mocké, headless | Playwright + Chromium | **mocké** | avant un lancement / **après une grosse refonte** (lancé en CI) |
+| `test/run-live.sh` | l'API **déployée** réelle : ping, mauvais mot de passe rejeté, pull authentifié, checks de **shape / compte / intégrité référentielle** | **2** — API live | `curl`, `python3` | **live** (`script.google.com`) | **après chaque redeploy** Apps Script / debug « Failed to load data » |
+| `test/e2e/run.js` | **parcours utilisateur complet en navigateur** contre le back-end **live** ; re-dérive les classements depuis le payload chargé et les **compare au DOM** ; **screenshots** de chaque état | **3** — navigateur + live | Puppeteer + Chromium (sous-projet `test/e2e/`) | **live** | **avant un lancement** / après un gros changement UI |
+
+Code de sortie `0` = tout vert ; `1` = un check a échoué ou une erreur JS a été levée.
+
+**Isolation des runners navigateur (important).** Les `ux-*.cjs` et `e2e/run.js` lancent **leur
+propre serveur statique** pour servir le repo. Les trois **bloquent le service worker** et
+**stubbent `**/_vercel/**`** (Vercel Speed Insights, servi *uniquement* en prod sur Vercel) pour
+ne garder que les **vraies** erreurs. Les `ux-*` **interceptent `script.google.com`** et
+renvoient un dataset mocké (login + payload) → zéro secret, zéro réseau Google, déterministe.
+`run.js` tape au contraire le **vrai** back-end (d'où son niveau 3).
+
+## F.2 Pré-requis & installation
+
+Playwright + Chromium sont **pré-installés dans les sessions cloud Claude Code** (et le hook
+`SessionStart` s'en assure — voir F.6). En local :
+
+```bash
+npm i -D playwright && npx playwright install chromium   # pour ux-smoke / ux-e2e
+npm i -D eslint eslint-plugin-html globals               # pour le lint
+cd test/e2e && npm install                               # puppeteer-core + Chromium (test live navigateur)
+```
+
+Pas de `package.json` racine : ces `npm i -D` créent un `node_modules/` local **non commité**
+(ignoré par `.gitignore`). C'est voulu.
+
+## F.3 Lancer les tests
+
+```bash
+# Niveau 1 — offline / mocké (zéro réseau, déterministe)
+node test/backend-contract.js   # contrat back-end (sandbox vm)
+node test/ux-smoke.cjs           # UX rapide (login, tabs, modals, responsive)
+node test/ux-e2e.cjs             # UX profond (admin, TV, share, compare, dark…)
+
+# Lint (mêmes règles que la CI)
+npx eslint .
+
+# Niveau 2 — API live déployée
+bash test/run-live.sh
+APPS_SCRIPT_URL=https://script.google.com/macros/s/…/exec PASSWORD=… bash test/run-live.sh
+EXPECT_TEAMS=34 bash test/run-live.sh     # ajuster le compte d'équipes attendu (cf. F.7)
+
+# Niveau 3 — parcours complet en navigateur contre le back-end live (Puppeteer)
+cd test/e2e && node run.js
+E2E_INSECURE=1 node run.js                # réseau managé qui intercepte le TLS (cf. F.7)
+```
+
+## F.4 🎯 Mémo CLI Playwright
+
+Avec la **librairie `playwright`**, la CLI sert surtout à **installer les navigateurs** et à
+**écrire/déboguer des sélecteurs** (le « run » des tests passe par `node test/<runner>.cjs`).
+
+```bash
+# Navigateurs
+npx playwright install chromium              # juste Chromium (ce dont les runners ont besoin)
+npx playwright install --with-deps chromium  # + libs système (Linux/CI ; nécessite apt)
+npx playwright --version
+
+# Écrire des tests par enregistrement (trouver des sélecteurs robustes)
+python3 -m http.server 8000                  # 1) servir l'app
+npx playwright codegen http://localhost:8000 # 2) enregistrer ses clics → code généré
+npx playwright codegen --device="iPhone 14" http://localhost:8000   # en émulation mobile
+
+# Inspecter / capturer
+npx playwright open http://localhost:8000                    # app + inspecteur de sélecteurs
+npx playwright screenshot --device="iPhone 14" http://localhost:8000 shot.png
+
+# Déboguer un runner pas-à-pas
+PWDEBUG=1 node test/ux-smoke.cjs             # ouvre le Playwright Inspector
+```
+
+> Codegen démarre sur l'**écran de login** : tape le code d'accès (`devoteam2026`) pour
+> atteindre le leaderboard, puis enregistre. Les binaires viennent de **`cdn.playwright.dev`** —
+> en session Claude Code web, cet hôte doit être dans l'allowlist réseau (**Custom** +
+> `cdn.playwright.dev`, ou niveau **Full**), sinon le download renvoie `403`.
+
+Pour voir la fenêtre en continu : passer ponctuellement `headless: true` → `false` (et éventuellement
+`slowMo: 250`) dans le `chromium.launch({…})` du runner — **à ne pas committer**. Côté Puppeteer
+(`e2e/run.js`) : `E2E_HEADFUL=1 node run.js`.
+
+## F.5 Sélecteurs stables de la plateforme
+
+| Élément | Sélecteur |
+|---|---|
+| Champ mot de passe / bouton login | `#login-pwd` / `#login-btn` |
+| Erreur login | `.login-error` |
+| Barre d'onglets / onglet | `#tabs-bar` / `.tab-btn[data-tab="golden"]` (`teams`/`spotlight`/`golden`/`playmaker`/`awards`/`var`/`position` ; + `vartime`/`coach` en admin) |
+| Onglet actif | `.tab-btn.active` |
+| Ligne équipe / carte podium | `.teams-table-row[data-team="…"]` / `.podium-card[data-team="…"]` |
+| Ligne / carte joueur | `[data-player="Louis MASSON"]` |
+| Hero « match-sheet » | `.ms-hero[data-player]` / peloton `.ms-row[data-player]` |
+| Modal squad / carte joueur | `#modal-overlay` (ou `.modal-overlay`) / `#player-overlay` |
+| Timestamp live / refresh (admin) | `#last-update` / `#refresh-btn` (caché sauf `?admin=leandre-refresh-2026`) |
+| Recherche My Position | `#position-search` |
+
+Privilégier `getByRole` / `getByText` quand possible (résistant aux refactors CSS).
+
+## F.6 CI, hook pre-push & sessions web
+
+- **`.github/workflows/ux-tests.yml`** — sur chaque push/PR : job **lint** (`npx eslint .`) puis
+  job **ux** (installe Playwright+Chromium, lance `ux-smoke.cjs` puis `ux-e2e.cjs`, commente en
+  cas d'échec). Les runners GitHub ont un egress ouvert : `playwright install --with-deps
+  chromium` y passe. (Détail méthode : §3.7.)
+- **`.github/workflows/snapshot.yml`** — snapshot hebdo de la donnée live → `history/`.
+- **Pre-push hook** `.githooks/pre-push` — lance ESLint + le smoke test avant chaque `git push`
+  (skip gracieux si Node/Playwright absents). À activer une fois par clone :
+  `git config core.hooksPath .githooks`. Contourner ponctuellement : `git push --no-verify`.
+- **Sessions Claude Code web** — chaque session démarre dans un conteneur neuf. Le hook
+  **`.claude/hooks/session-start.sh`** (enregistré dans `.claude/settings.json`) installe
+  automatiquement Playwright + Chromium (et ESLint). Idempotent, non-interactif, **ne casse jamais
+  le démarrage** : si `cdn.playwright.dev` n'est pas autorisé, il l'indique et la session démarre
+  quand même. Pré-requis réseau : `cdn.playwright.dev` en allowlist **Custom** (ou **Full**), puis
+  **démarrer une nouvelle session** (un changement de policy ne s'applique pas au conteneur déjà lancé).
+
+## F.7 Dépannage (dont pièges live déjà payés)
+
+**`Playwright not found` / `Executable doesn't exist`** — `npm i -D playwright && npx playwright
+install chromium` (ou attendre le hook en session web ; géré par `ux-tests.yml` en CI).
+
+**`Host not in allowlist: cdn.playwright.dev` (403)** — la policy réseau bloque le download.
+Environnement en **Custom + `cdn.playwright.dev`** (ou **Full**), puis **nouvelle** session.
+
+**Un test UX échoue / « flaky »** — `PWDEBUG=1 node test/ux-smoke.cjs` pour rejouer pas-à-pas ;
+vérifie les sélecteurs (F.5) et préfère les attentes auto (`waitForSelector`) aux délais fixes.
+
+**`e2e/run.js` : `net::ERR_CERT_AUTHORITY_INVALID` sur toutes les requêtes** — réseau managé
+(cloud/CI) qui intercepte le HTTPS avec une CA privée que le Chromium de Puppeteer ne connaît pas.
+Relancer avec **`E2E_INSECURE=1`** (n'affecte en rien la prod, qui sert des certs publics valides).
+
+**`e2e/run.js` : erreurs console 404 résiduelles** — déjà neutralisées : le runner **bloque le
+service worker** (ses fetchs de précache `script.googleusercontent` / assets remontaient en
+console mais pas via `page.on('response')`) et **stub `/_vercel/`** (Speed Insights, prod-only).
+Si de **nouvelles** 404 apparaissent, ce sont de vrais assets manquants — investigue, ne masque pas.
+
+**`run-live.sh` : `team count = N, expected 32`** — ce n'est pas un bug de code mais une **dérive
+de donnée** : le compte d'équipes du `Team Ranking` live ne vaut plus 32. Vérifie côté Sheet
+(Jose) si c'est voulu ; pour faire passer le check sur l'état courant, surcharge
+`EXPECT_TEAMS=<N> bash test/run-live.sh` (ou `EXPECT_TEAMS= ` vide pour sauter le check).
+Le « people on teams missing from Team Ranking » est un **warning** (pas un échec) : ces personnes
+classent quand même, elles n'ont juste pas d'équipe où driller.
+
+**Apps Script 302 en curl** — utiliser `-L` **sans** `-X` (sinon le POST se rejoue en GET sur le
+redirect). En navigateur, `connect-src` doit inclure `script.googleusercontent.com` (cf. §16).
+
+**ESLint casse la CI** — `npx eslint .` en local avant de pousser (config `eslint.config.mjs` :
+« vrais bugs = erreurs, style = warnings »).
+
+## F.8 Étendre la suite (la règle culturelle)
+
+**Chaque bug UX corrigé → une assertion** ajoutée au niveau 1 (`ux-smoke`/`ux-e2e`, cf. Annexe B).
+La liste des tests = la liste des régressions déjà payées ; le commit log est plein de
+`test+fix(ux): …`, c'est voulu. Pour un nouveau check : repère un sélecteur stable (F.5 ou
+`codegen`), ajoute un `log('…', condition)` au runner adéquat, et garde le test **déterministe**
+(backend mocké, attentes auto). Les pièges d'environnement (TLS, SW, scripts prod-only) se
+neutralisent **dans le runner**, pas en relâchant l'assertion.
+
+---
+
+*Fin du playbook. Si tu ne retiens que trois choses : (1) single-file + no build, données live via Sheet/Apps Script en POST ; (2) chaque bug UX devient un test Playwright headless (suite complète & mode d'emploi : Annexe F) ; (3) la mémoire du projet vit dans le repo — `CLAUDE.md` (cible) + `DECISIONS.md` (journal). Pour l'UX : applique l'Annexe C dès la première vue. Pour le "génie" du produit : pars de l'Annexe D. Pour scaffolder : copie l'Annexe E. **Tout est ici — ce fichier seul suffit à démarrer la prochaine app.***

@@ -20,7 +20,7 @@ For the Google Sheet structure to hand to Jose, see [`SHEET_SPEC.md`](./SHEET_SP
 | `apps_script_backend.gs` | Google Apps Script code — the read-only JSON API over the Sheet. |
 | `SHEET_SPEC.md` | Spec for the Google Sheet (4 tabs) — give this to Jose. |
 | `CLAUDE.md` | Full project brief and architecture. |
-| `PLAYWRIGHT_PLAYBOOK.md` | Testing playbook — how the `test/` suite works, with a Playwright CLI reference. |
+| `PLAYBOOK.md` | Knowledge-transfer guide for building this kind of live-leaderboard app — incl. **Annexe F**, the consolidated testing guide (all 5 tests, how to run/debug, Playwright CLI reference). |
 
 ---
 
@@ -215,9 +215,9 @@ Exit code `0` = all green, `1` = a check failed or a JS error was thrown.
 Prereqs: Playwright + Chromium (pre-installed in Claude Code cloud sessions).
 Locally: `npm i -D playwright && npx playwright install chromium`.
 
-> Full testing guide — how these runners are built, how they mock the backend,
-> and a complete **Playwright CLI reference** — in
-> [`PLAYWRIGHT_PLAYBOOK.md`](./PLAYWRIGHT_PLAYBOOK.md).
+> Full testing guide — all 5 tests grouped, how these runners are built, how they
+> mock the backend, and a complete **Playwright CLI reference** — in
+> [`PLAYBOOK.md` › Annexe F](./PLAYBOOK.md#annexe-f--la-suite-de-tests-de-ce-repo-opérationnel--lancer--déboguer--étendre).
 
 ### Pre-push hook
 A committed hook (`.githooks/pre-push`) runs the smoke test before every push and
