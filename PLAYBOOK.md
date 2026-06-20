@@ -1668,12 +1668,15 @@ chargés en contexte).
 > orthogonaux. Boucle qui se referme : ce qu'on valide à la main ici, si c'est récurrent, **on le
 > fige ensuite en assertion** dans `ux-smoke`/`ux-e2e` (F.8).
 
-**Installation** (global ; pré-installé nulle part, à poser dans la session) :
+**Installation.** Le **skill est committé** dans `.claude/skills/playwright-cli/` (SKILL.md +
+`references/`) → découvrable par l'agent dès le clone. Le **hook SessionStart** installe le
+**binaire** automatiquement en session web (best-effort). Le **canal Chrome** (plus lourd) reste
+**à la demande**, au premier pilotage de navigateur :
 ```bash
-npm install -g @playwright/cli@latest
-npx playwright install chrome           # le canal par défaut est "chrome" (pas le chromium bundlé)
+npm install -g @playwright/cli@latest   # binaire (le hook le fait en session web)
+npx playwright install chrome           # canal "chrome" requis (PAS le chromium bundlé) — 1re utilisation
 playwright-cli --version                # 0.1.x
-playwright-cli install --skills         # (option) enregistre le skill agent (Claude) dans le workspace
+playwright-cli install --skills         # (déjà fait) (ré)installe le skill agent dans .claude/skills/
 ```
 
 **Workflow type — exactement ce qui a été joué contre la plateforme live :**

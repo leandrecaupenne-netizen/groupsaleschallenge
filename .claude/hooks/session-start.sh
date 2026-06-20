@@ -42,3 +42,17 @@ else
   echo "[session-start]   Add 'cdn.playwright.dev' to the environment's Custom network allowlist"
   echo "[session-start]   (or use Full), then start a NEW session."
 fi
+
+# playwright-cli — the agent-driven browser-verification skill (committed under
+# .claude/skills/playwright-cli/). Install only the BINARY here (tiny, fast). It
+# needs a Chrome *channel*, NOT the Chromium above; that download is heavier, so
+# it's left on-demand to keep session startup light — run `npx playwright install
+# chrome` the first time you actually drive a browser. Best-effort: never fail the
+# session (the headless test suite above is what matters). See PLAYBOOK Annexe F.9.
+if command -v playwright-cli >/dev/null 2>&1; then
+  echo "[session-start] playwright-cli already present — skipping."
+elif npm install -g @playwright/cli@latest >/dev/null 2>&1; then
+  echo "[session-start] playwright-cli ready — first browser use: npx playwright install chrome (Annexe F.9)."
+else
+  echo "[session-start] NOTE: playwright-cli not installed (optional). Manual: npm i -g @playwright/cli"
+fi
