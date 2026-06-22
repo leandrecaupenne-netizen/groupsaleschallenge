@@ -125,6 +125,25 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-22 — Fix mobile : l'explication de la VAR Room rétrécie sur téléphone
+Retour de Léandre (capture mobile) : dans l'onglet **VAR Room**, le bloc explicatif `.var-help`
+(« How players land here… ») utilisait la taille desktop **12.5px** aussi sur mobile → un **pavé
+de texte** qui mangeait tout l'écran avant de voir les joueurs. **Fix** : media query
+`@media (max-width: 600px)` qui passe `.var-help` à **11px** (line-height 1.45, padding 9px 12px,
+margin-bottom 12px) → redevient une note discrète et glanceable. **Aucun changement de contenu**,
+juste du CSS responsive. Vérifié au rendu à **390px** (font-size calculée = 11px, capture OK) ;
+`node test/ux-smoke.cjs` **ALL GREEN**, 0 erreur JS.
+- À noter : la **coupe à droite** sur la capture de Léandre n'était **pas** un bug de l'app —
+  c'était le **panneau Edge de Samsung** (pastille translucide ⋯/♪) posé par-dessus. Le texte
+  s'enroule correctement dans la carte.
+- **Process** : développé sur une **branche dédiée `claude/var-help-mobile-fix` partie de `main`**
+  (et non de `verify-test-stack`, choix de Léandre), puis **mergée dans `main` à sa demande**
+  (`git merge --no-ff` → `db9ce29`, push prod). `main` étant la branche de prod connectée à
+  Vercel, le push **redéploie automatiquement** `https://groupsaleschallenge.vercel.app/`.
+- Hygiène au passage : ajout de `.playwright-cli/` + `.playwright/` au `.gitignore` (artefacts
+  runtime de l'outil playwright-cli, jamais à committer) — commit `35a2b4c`.
+- Commits : `54814de` (fix CSS), `35a2b4c` (gitignore), merge `db9ce29` sur `main`.
+
 ### 2026-06-16 — Indicateurs d'évolution « depuis la dernière MAJ » désactivés (peu fiables)
 Retour stakeholder (relayé par Léandre) : Italy affichait **▲4** alors qu'elle était **déjà #1** →
 deltas faussés. Cause : comparaison à un instantané `prevRanks` **non fiable** pendant la montée
