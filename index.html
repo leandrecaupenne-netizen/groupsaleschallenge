@@ -2723,6 +2723,11 @@ img, table { max-width: 100%; }
   border-radius: 10px; padding: 10px 14px; margin: 0 0 16px;
 }
 .var-help b { color: var(--ink); font-weight: 800; }
+/* On phones this explainer is a long wall of text at the desktop size — shrink it
+   so it stays a glanceable note rather than dominating the VAR Room. */
+@media (max-width: 600px) {
+  .var-help { font-size: 11px; line-height: 1.45; padding: 9px 12px; margin: 0 0 12px; }
+}
 /* Clean-sheet column: the "following the rules" side — green, distinct at a glance. */
 .var-col-clean { border-color: rgba(22,163,74,0.35); border-top: 3px solid var(--green); }
 .var-col-clean .var-col-title { color: var(--green); }
