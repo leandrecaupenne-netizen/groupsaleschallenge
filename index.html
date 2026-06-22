@@ -46,6 +46,7 @@
 /* === BASE === */
 :root {
   --usa-red: #C8102E;
+  --red-text: #C8102E;   /* red used for value/warning text — readable on white */
   --mex-green: #006847;
   --navy: #1E2A78;
   --navy-2: #2D3550;
@@ -78,6 +79,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   --ink-2: #D3DAE8;
   --muted: #A6B2C8;   /* lighter muted so labels stay legible */
   --line: #3A476C;    /* more visible borders between cards/rows */
+  --red-text: #FF7A85; /* brighter red so warning values stay legible on dark cards */
 }
 /* Lift cards off the dark page with a subtle outline + soft shadow. */
 :root[data-theme="dark"] .teams-table,
@@ -2708,10 +2710,19 @@ img, table { max-width: 100%; }
 .disc-badge-clean::after { content: ''; width: 6px; height: 3px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translate(0, -1px) rotate(-45deg); }
 .var-name { flex: 1; font-weight: 700; font-size: 14px; }
 .var-name em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
-.var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--usa-red); font-weight: 700; white-space: nowrap; }
+.var-val { font-family: ui-monospace, monospace; font-size: 13px; color: var(--red-text); font-weight: 700; white-space: nowrap; }
 .var-more { padding: 10px 6px; color: var(--muted); font-size: 12px; font-style: italic; border-top: 1px dashed var(--line); }
 .var-col-count { display: inline-block; min-width: 20px; text-align: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--usa-red); border-radius: 99px; padding: 1px 7px; vertical-align: middle; }
 .var-col-sub { font-size: 11px; color: var(--muted); margin: -6px 0 12px; letter-spacing: 0.02em; }
+/* Plain-language explainer of how the columns/sort/filters work — sits under the
+   sort bar so anyone understands who shows up and why. */
+.var-help {
+  font-size: 12.5px; line-height: 1.55; color: var(--ink-2);
+  background: color-mix(in srgb, var(--gold) 12%, var(--paper));
+  border: 1px solid var(--line); border-left: 3px solid var(--gold);
+  border-radius: 10px; padding: 10px 14px; margin: 0 0 16px;
+}
+.var-help b { color: var(--ink); font-weight: 800; }
 /* Clean-sheet column: the "following the rules" side — green, distinct at a glance. */
 .var-col-clean { border-color: rgba(22,163,74,0.35); border-top: 3px solid var(--green); }
 .var-col-clean .var-col-title { color: var(--green); }
@@ -3370,6 +3381,9 @@ const I18N = {
     'golden.sub': 'Most Goals · Top 5 Salespeople based on PS Bookings New Business',
     'playmaker.sub': 'Most Assists · Top 5 Salespeople based on New Business Opportunities Created (Stage 2+, > €50K)',
     'var.low': '🟨 Low activity — under 5 meetings/week', 'var.gm': '🟨 Low margin — GM below 25%',
+    'var.help': '<b>How players land here:</b> everyone is checked against two team rules — at least <b>5 meetings/week</b> and a <b>New Business GM ≥ 25%</b>. Break one and you pick up a yellow card and show up in that column; break both and it\'s a red (you appear in both). The <b>Clean Sheet</b> column lists those respecting every rule.<br><b>Sort by</b> only reorders each list: <b>New Business</b> = biggest PS Bookings (New Business) first · <b>Infraction severity</b> = worst offenders first (fewest meetings, then lowest margin). The search + <b>country</b> / <b>entity</b> filters narrow every column at once.',
+    'var.sortNbTip': 'Order each column by PS Bookings (New Business), highest first',
+    'var.sortInfTip': 'Order each column by how badly the rule is missed (fewest meetings / lowest margin first)',
     'pwa.title': 'Add to your phone', 'pwa.txt': 'Install the leaderboard for a full-screen, one-tap experience.',
     'pwa.install': '📲 Install', 'pwa.later': 'Not now',
     'pwa.ios': 'Tap <b>Share</b> <span class="pwa-ios-ic">⎙</span> then <b>“Add to Home Screen”</b> to install.',
@@ -5452,9 +5466,10 @@ function renderVAR() {
       ${filterBar}
       <div class="search-chips vt-sortbar">
         <span class="vt-sortlab">Sort by</span>
-        <button class="search-chip var-sort ${varSort === 'nb' ? 'on' : ''}" data-varsort="nb">🥇 New Business</button>
-        <button class="search-chip var-sort ${varSort === 'infraction' ? 'on' : ''}" data-varsort="infraction">⚠️ Infraction severity</button>
+        <button class="search-chip var-sort ${varSort === 'nb' ? 'on' : ''}" data-varsort="nb" title="${t('var.sortNbTip')}">🥇 New Business</button>
+        <button class="search-chip var-sort ${varSort === 'infraction' ? 'on' : ''}" data-varsort="infraction" title="${t('var.sortInfTip')}">⚠️ Infraction severity</button>
       </div>
+      <p class="var-help">${t('var.help')}</p>
       <div class="var-grid var-grid-3">
         ${col(t('var.low'), lowMeet, p => `${fmtNum(p.meetings)} meet/wk`,
           filtersActive ? 'Nobody here for this filter. ✅' : "Everyone's hitting their meetings. ✅",
