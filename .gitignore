@@ -19,3 +19,7 @@ dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# playwright-cli runtime artifacts (snapshots / screenshots / console logs / workspace)
+.playwright-cli/
+.playwright/
