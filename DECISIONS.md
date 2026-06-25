@@ -125,6 +125,23 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-25 — Netteté des avatars restaurée en mode TV / projection
+Retour de Léandre (capture du board **Golden Boot** en mode TV) : impression que la **qualité
+des images a baissé**. Diagnostic : c'est le système de **vignettes** introduit en `5308784`
+(ajout de `cards/thumb/*.webp` **256px** + `photoThumb()`, `CARD_VER=9`). Depuis, **tous les
+petits avatars ronds** passent par `avatarInner()` → vignette **256px** (bon pour les listes
+mobiles ~50px et pour alléger la VAR Room, ~5 Mo de portraits en full sinon). **Effet de bord** :
+en **mode TV**, les avatars de liste (`.tv-avatar`, jusqu'à **96px CSS** ≈ 192px en 2×, davantage
+sur vidéoprojecteur 4K) recevaient eux aussi la vignette 256px ré-upscalée → **rendu mou** sur
+grand écran. Le portrait héros (#1) n'était pas touché (il tire déjà le **1024px** via
+`photoFor()`).
+**Correctif (ciblé, sans réalourdir le mobile)** : `avatarInner(name, opts)` accepte désormais
+`{full:true}` → utilise `photoFor()` (1024px) au lieu de `photoThumb()`. Appliqué aux **seuls
+gros discs TV** : lignes match-sheet joueurs (`tvMatchSheet`, golden/playmaker/fairplay/spotlight)
+et **VAR Room TV**. Laissés en vignette : toutes les vues mobiles/listes, et les avatars d'awards
+TV (`.tv-awcol`, plafonnés à 66px → 256px suffit). Pas de bump `CARD_VER` (mêmes fichiers, on
+demande juste la taille 1024 déjà présente). `node test/ux-smoke.cjs` → **ALL GREEN, 0 erreur JS**.
+
 ### 2026-06-22 — Fix mobile : l'explication de la VAR Room rétrécie sur téléphone
 Retour de Léandre (capture mobile) : dans l'onglet **VAR Room**, le bloc explicatif `.var-help`
 (« How players land here… ») utilisait la taille desktop **12.5px** aussi sur mobile → un **pavé
