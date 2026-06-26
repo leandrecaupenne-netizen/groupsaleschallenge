@@ -125,6 +125,20 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-26 — Mode TV « Special Awards » : colonnes Licence/Rookie équilibrées
+Retour de Léandre (capture TV) : les 2 colonnes du panneau **Special Awards** étaient
+**déséquilibrées** — Licence bien plus haute que Rookie, lignes non alignées entre colonnes.
+Cause : chaque `.tv-row` (rendue par `tvPersonRow`) avait une **hauteur variable** selon le
+nombre de lignes du libellé (nom + surnom d'équipe + nom officiel), et surtout le **surnom long**
+de Marc Willemse (« THE FLYING DUTCH - WE HEAD THEM STRAIGHT IN ») **passait sur 2 lignes** et
+faisait exploser sa ligne. **Fix CSS** (scopé `.tv-awcol`) : (1) `min-height` fixe sur les lignes
+awards + contenu centré verticalement → **toutes les lignes à la même hauteur** quel que soit le
+nombre de lignes de texte, donc les 2 colonnes s'alignent et finissent à la même hauteur ; (2)
+surnom **et** nom officiel chacun forcés sur **une seule ligne** (`white-space:nowrap` +
+`text-overflow:ellipsis`) → un surnom trop long est tronqué proprement au lieu de déséquilibrer.
+Vérif headless (mock Willemse + rookies) : les 2 colonnes mesurent **384px, 5×71px** identiques.
+`node test/ux-smoke.cjs` → **ALL GREEN, 0 erreur JS**. Mergé dans `main`.
+
 ### 2026-06-26 — Passe de netteté sur les 358 portraits (unsharp mask) + CARD_VER 10
 Suite du sujet « images floues » : une fois le mode TV repassé en 1024px (voir entrée du
 25-06), Léandre trouvait le rendu **encore un peu mou**. Diagnostic confirmé (sonde headless +
