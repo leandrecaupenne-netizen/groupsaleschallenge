@@ -2482,16 +2482,23 @@ img, table { max-width: 100%; }
 .tv-awh { font-family: 'Anton', Impact, sans-serif; font-size: clamp(18px, 3.4vmin, 34px); color: var(--gold); text-align: center; margin-bottom: 1.4vh; letter-spacing: 0.02em; }
 .tv-awcol .tv-list { gap: 1vh; }
 /* Two-column awards show top 5 each, so rows are more compact than the single-
-   column lists — smaller portrait/padding gives the name room (no char wrapping). */
-.tv-awcol .tv-row { padding: 0.7vh clamp(10px, 1.1vw, 18px); border-radius: 12px; gap: clamp(8px, 1vw, 16px); }
+   column lists — smaller portrait/padding gives the name room (no char wrapping).
+   A fixed min-height + centred content makes every row the SAME height regardless
+   of how many lines its name/nickname/team takes, so the Licence and Rookie columns
+   stay balanced and line up row-for-row across the gap. */
+.tv-awcol .tv-row { padding: 0.7vh clamp(10px, 1.1vw, 18px); border-radius: 12px; gap: clamp(8px, 1vw, 16px); min-height: clamp(64px, 9.2vmin, 104px); }
 .tv-awcol .tv-pos { font-size: clamp(18px, 3vmin, 38px); }
 .tv-awcol .tv-avatar { width: clamp(40px, 5vmin, 66px); height: clamp(40px, 5vmin, 66px); }
-.tv-awcol .tv-name { font-size: clamp(15px, 2.3vmin, 27px); }
-.tv-awcol .tv-name em { font-size: clamp(13px, 1.95vmin, 22px); margin-top: 3px; }
+.tv-awcol .tv-name { font-size: clamp(15px, 2.3vmin, 27px); min-width: 0; }
+/* In the narrow award columns a long team nickname (e.g. "THE FLYING DUTCH - WE
+   HEAD THEM STRAIGHT IN") would wrap to 2-3 lines and blow up its row, unbalancing
+   the column. Keep the nickname AND the official name each to a single line with an
+   ellipsis — the row height stays uniform. */
+.tv-awcol .tv-name em { font-size: clamp(13px, 1.95vmin, 22px); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 /* The official team name nests inside the nickname <em>, so an em-relative size
    compounds down to ~5px. Give it an absolute clamp (and beat the .tv-name small
    rule on specificity) so it stays readable on a projector. */
-.tv-awcol .tv-name em small.tv-real { font-size: clamp(11px, 1.5vmin, 18px); color: rgba(255,255,255,0.78); margin-top: 3px; }
+.tv-awcol .tv-name em small.tv-real { font-size: clamp(11px, 1.5vmin, 18px); color: rgba(255,255,255,0.78); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .tv-awcol .tv-val { font-size: clamp(17px, 2.8vmin, 34px); }
 /* "+ Show more" toggle on TV ranking panels (top 5 by default, expand for the rest).
    Sticky to the bottom of the viewport so the "back to top 5" control stays reachable
