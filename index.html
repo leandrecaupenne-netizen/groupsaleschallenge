@@ -3335,14 +3335,16 @@ function avatarInitials(name) {
 // have it (falling back to initials if it 404s), else the initials. Drop this
 // inside any element that already styles a circular avatar. Adds the
 // `has-photo` class on the parent so CSS can switch to image styling.
-function avatarInner(name) {
-  const ph = photoThumb(name); // small disc → crisp pre-scaled thumb (not the 1024px source)
+function avatarInner(name, opts) {
+  // Default: small discs use the 256px sharpened thumb — crisp up to ~96px at 2×
+  // density, and it keeps busy HiDPI views light (the VAR Room would otherwise pull
+  // ~5MB of full-res portraits). Pass {full:true} for the few LARGE discs: the
+  // TV/projection list rows are styled up to 96px CSS, which on a 4K projector or a
+  // 3× display out-resolves a 256px thumb and looks soft — those take the full
+  // 1024px card. The hero/player card already uses photoFor() directly.
+  const ph = (opts && opts.full) ? photoFor(name) : photoThumb(name);
   if (!ph) return avatarInitials(name);
   const ini = avatarInitials(name);
-  // Small discs always use the 256px sharpened thumb. It covers every list size up
-  // to ~96px even at 2× density, so we deliberately do NOT pull the 1024px card here
-  // (that would load ~5MB of portraits on a busy HiDPI VAR Room). The hero/player
-  // card uses the full 1024px directly via photoFor().
   return `<img class="av-photo" src="${ph}" alt="" loading="lazy" decoding="async" onerror="this.parentElement.classList.remove('has-photo');this.outerHTML='${ini}'" />`;
 }
 
@@ -9518,7 +9520,7 @@ function tvMatchSheet(items, opts) {
   const rows = items.slice(1).map((p, i) => `
     <div class="tv-ms-row${clk ? ' tv-clickable' : ''}"${clk ? clkAttr(p) : ''}>
       <span class="tv-ms-pos">${['🥈', '🥉'][i] || ('#' + (i + 2))}</span>
-      ${kind === 'player' ? `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}</span>` : ''}
+      ${kind === 'player' ? `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name, { full: true })}</span>` : ''}
       <span class="tv-ms-name">${escapeHtml(p.name)}${p.cards || ''}${p.team && p.team !== p.name ? ` <em>${kind === 'player' ? tvTeamLabelHTML(p.team) : escapeHtml(p.team)}</em>` : ''}</span>
       <span class="tv-ms-figure">
         <span class="tv-ms-val">${p.val}</span>
@@ -9575,7 +9577,7 @@ function tvPanelHTML(kind) {
       const bits = [];
       if (p.yellow_meetings) bits.push(`${fmtNum(p.meetings)} mtg/wk <em>(needs 5)</em>`);
       if (p.yellow_gm) bits.push(`NB GM ${fmtPct(indivGm(p))} <em>(needs 25%)</em>`);
-      const av = `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name)}<span class="tv-avatar-card">🟨</span></span>`;
+      const av = `<span class="tv-avatar${photoFor(p.name) ? ' has-photo' : ''}" style="--ac:${colorForTeam(p.team)}">${avatarInner(p.name, { full: true })}<span class="tv-avatar-card">🟨</span></span>`;
       return `<div class="tv-row tv-clickable" data-tvplayer="${escapeHtml(p.name)}" title="Tap to open ${escapeHtml(p.name)}'s card">${av}<span class="tv-name">${escapeHtml(p.name)} <em>${escapeHtml(p.team)}</em></span><span class="tv-val tv-val-reason">${bits.join(' · ')}</span></div>`;
     }).join('') || `<div class="tv-row"><span class="tv-name">Clean across the board — no cards! ✅</span></div>`;
     const sub = n ? `Top ${shown} by PS Total · ${n} player${n === 1 ? '' : 's'} to watch · two yellows make a red` : 'two yellows make a red';
