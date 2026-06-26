@@ -3313,7 +3313,7 @@ function normLoose(s) {
 // Returns the photo URL for a player if we have one, else ''.
 // The ?v= tag is bumped whenever the card art changes, so browsers fetch the
 // new image even though the filename is stable (defeats any stale HTTP cache).
-const CARD_VER = '9';
+const CARD_VER = '10';
 // Duplicate names get a " · TEAM" suffix (see fetchData) to stay unique as an
 // identity key; strip it before resolving the photo slug / initials.
 const baseName = name => String(name == null ? '' : name).split(' · ')[0];
