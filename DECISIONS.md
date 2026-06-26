@@ -125,6 +125,22 @@
 
 ## Journal (le plus récent en premier)
 
+### 2026-06-26 — Passe de netteté sur les 358 portraits (unsharp mask) + CARD_VER 10
+Suite du sujet « images floues » : une fois le mode TV repassé en 1024px (voir entrée du
+25-06), Léandre trouvait le rendu **encore un peu mou**. Diagnostic confirmé (sonde headless +
+`curl` prod : `x-vercel-cache: HIT`, fix bien servi) → ce n'était plus ni le code ni le cache :
+la **source elle-même** est molle (illustrations AI au rendu peinture, contours doux). On sert
+déjà la résolution max (1024px), donc seul levier restant = **accentuer la netteté**.
+**Action** : passe **UnsharpMask** (radius 2.2 / percent 145 / threshold 2) sur les **358 cartes
+1024px** (alpha préservée — split RGB/A, sharpen RGB seul, recombine), réencodées WebP
+**quality=84 method=6** → même poids qu'avant (44MB → 43MB, **aucun gonflement**). Les **358
+thumbs 256px** sont **régénérés depuis les versions nettes** (LANCZOS + léger unsharp
+post-downscale, q82 → ~16KB/u). `CARD_VER` **9 → 10** pour buster le cache CDN/navigateur chez
+les ~400 participants. QA visuel (Erjona, Perrot) : contours yeux/sourcils/cheveux nets, **pas de
+sur-traitement**. `node test/ux-smoke.cjs` → **ALL GREEN, 0 erreur JS**. Mergé dans `main`.
+> Note : c'est le plafond de qualité atteignable sans **regénérer** les portraits (domaine de
+> Léandre, Gemini/Panini). Pour aller plus loin, il faudrait de nouvelles sources plus piquées.
+
 ### 2026-06-25 — Netteté des avatars restaurée en mode TV / projection
 Retour de Léandre (capture du board **Golden Boot** en mode TV) : impression que la **qualité
 des images a baissé**. Diagnostic : c'est le système de **vignettes** introduit en `5308784`
